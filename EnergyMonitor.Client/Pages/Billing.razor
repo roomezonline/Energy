@@ -17,6 +17,7 @@
         <button class="bll-tab @(_activeTab == "calc" ? "bll-tab--on" : "")" @onclick="ShowCalc">💰 محاسبه صورتحساب</button>
         <button class="bll-tab @(_activeTab == "tariffs" ? "bll-tab--on" : "")" @onclick="ShowTariffs">⚙️ تعرفه‌ها</button>
         <button class="bll-tab @(_activeTab == "consumerTypes" ? "bll-tab--on" : "")" @onclick="ShowConsumerTypes">🏭 انواع مصرف‌کننده</button>
+        <button class="bll-tab @(_activeTab == "billingModels" ? "bll-tab--on" : "")" @onclick="ShowBillingModels">📐 مدل محاسبه</button>
         <button class="bll-tab @(_activeTab == "yearlyRates" ? "bll-tab--on" : "")" @onclick="ShowYearlyRates">📅 نرخ پایه سالانه</button>
         <button class="bll-tab bll-tab--help" @onclick="() => _showHelp = true">❓</button>
     </div>
@@ -58,9 +59,9 @@
                                     <span class="inv-override-a">(خودکار: @P(item.AutoValue, "N0"))</span>
                                     <input type="number" class="bll-fi" style="width:120px" value="@(item.OverrideValue ?? item.AutoValue)" @onchange="(e) => OnOverrideChange(item.FieldName, decimal.Parse(e.Value?.ToString() ?? item.AutoValue.ToString()))" />
                                     <input class="bll-fi" style="width:180px" placeholder="دلیل تغییر" value="@item.OverrideReason" @onchange="(e) => OnOverrideReasonChange(item.FieldName, e.Value?.ToString())" />
-                                </div>
-                            }
-                            <div class="inv-override-n">مقادیر ویرایش شده پس از ذخیره در صورتحساب ثبت می‌شوند.</div>
+                                    </div>
+                                }
+                                <div class="inv-override-n">مقادیر ویرایش شده پس از ذخیره در صورتحساب ثبت می‌شوند.</div>
                         </div>
                     }
 
@@ -362,6 +363,55 @@
                             </div>
                         </div>
                     }
+                </div>
+            }
+        </div>
+    }
+    @if (_activeTab == "billingModels")
+    {
+        <div class="bll-panel">
+            <div class="bll-filter-bar" style="grid-template-columns:1fr 1fr">
+                <div class="bll-fg"><label class="bll-fl">نوع مصرف‌کننده</label><select class="bll-fi" @bind="_bmConsumerTypeCode" @bind:after="LoadBillingModelTiers"><option value="">انتخاب کنید</option>@foreach (var ct in _consumerTypes) { <option value="@ct.Code">@ct.Name (@ct.Code)</option> }</select></div>
+                <div class="bll-fg"><label class="bll-fl">سال</label><select class="bll-fi" @bind="_bmYear" @bind:after="LoadBillingModelTiers"><option value="0">انتخاب کنید</option>@foreach (var yr in _yearlyRates) { <option value="@yr.Year">@yr.Year</option> }</select></div>
+            </div>
+
+            @if (_bmConsumerTypeCode != "" && _bmYear > 0)
+            {
+                <div style="margin-top:16px">
+                    <div class="bll-bar" style="justify-content:space-between">
+                        <span class="bll-bar-info">تعریف پله‌های مصرف برای <strong>@_consumerTypes.FirstOrDefault(c => c.Code == _bmConsumerTypeCode)?.Name</strong> — سال <strong>@_bmYear</strong></span>
+                        <button class="bll-btn bll-btn-sm bll-btn-blue" @onclick="AddBillingModelTier">+ پله جدید</button>
+                    </div>
+                    @if (_bmTiers.Count == 0)
+                    {
+                        <div class="bll-empty"><div class="bll-empty-i">📐</div><div class="bll-empty-t">هیچ پله‌ای تعریف نشده</div><div class="bll-empty-d">روی دکمه "پله جدید" کلیک کنید.</div></div>
+                    }
+                    else
+                    {
+                        <div class="bll-tbl-wr" style="margin-top:12px">
+                            <table class="bll-tbl">
+                                <thead><tr><th>ترتیب</th><th>از (kWh)</th><th>تا (kWh)</th><th>ضریب</th><th>نرخ (ریال/kWh)</th><th></th></tr></thead>
+                                <tbody>
+                                    @foreach (var t in _bmTiers)
+                                    {
+                                        <tr>
+                                            <td>@(_bmTiers.IndexOf(t) + 1)</td>
+                                            <td><input class="bll-fi" type="number" style="width:80px" @bind="t.TierFrom" /></td>
+                                            <td><input class="bll-fi" type="number" style="width:80px" @bind="t.TierTo" /></td>
+                                            <td><input class="bll-fi" type="number" step="0.001" style="width:90px" @bind="t.Coefficient" /></td>
+                                            <td><input class="bll-fi" type="number" step="1" style="width:110px" @bind="t.RatePerKwh" /></td>
+                                            <td><button class="bll-btn-sm bll-btn-sm-del" @onclick="() => RemoveBillingModelTier(t)">✕</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="bll-bm-example" style="margin-top:12px">💡 مقدار صفر در «تا» به معنی بی‌نهایت است. اگر ضریب دارد، نرخ نهایی = ضریب × قیمت تمام‌شده (SupplyCost). اگر ضریب صفر باشد، «نرخ» مستقیماً استفاده می‌شود.</div>
+                    }
+                    <div class="bll-bar" style="margin-top:12px">
+                        <button class="bll-btn bll-btn-blue" @onclick="SaveBillingModelTiers" disabled="@_bmSaving">@(_bmSaving ? "در حال ذخیره..." : "💾 ذخیره مدل محاسبه")</button>
+                        @if (!string.IsNullOrEmpty(_bmMessage)) { <span class="bll-toast bll-toast-@(_bmMessageOk ? "ok" : "er")">@_bmMessage</span> }
+                    </div>
                 </div>
             }
         </div>
@@ -781,6 +831,68 @@
     private void ShowTariffs() { SwitchTab("tariffs"); }
     private void ShowConsumerTypes() { SwitchTab("consumerTypes"); }
     private void ShowYearlyRates() { SwitchTab("yearlyRates"); }
+    private void ShowBillingModels() { SwitchTab("billingModels"); }
+
+    // Billing Model (Tiered Rates) Management
+    private string _bmConsumerTypeCode = "";
+    private int _bmYear;
+    private List<TieredRateItem> _bmTiers = new();
+    private bool _bmSaving;
+    private string? _bmMessage;
+    private bool _bmMessageOk;
+
+    private async Task LoadBillingModelTiers()
+    {
+        _bmMessage = null;
+        _bmTiers.Clear();
+        if (string.IsNullOrEmpty(_bmConsumerTypeCode) || _bmYear <= 0) return;
+        try
+        {
+            var tiers = await Http.GetFromJsonAsync<List<TieredRateItem>>($"/api/v2/consumer-types/{_bmConsumerTypeCode}/tiers/{_bmYear}");
+            _bmTiers = tiers ?? new();
+        }
+        catch { _bmMessage = "خطا در بارگذاری پله‌ها"; _bmMessageOk = false; }
+    }
+
+    private void AddBillingModelTier()
+    {
+        _bmTiers.Add(new TieredRateItem
+        {
+            TierFrom = _bmTiers.Count > 0 ? _bmTiers.Last().TierTo : 0,
+            TierTo = _bmTiers.Count > 0 ? _bmTiers.Last().TierTo + 100 : 100,
+            Coefficient = 1,
+            RatePerKwh = 0,
+            SortOrder = _bmTiers.Count + 1
+        });
+    }
+
+    private void RemoveBillingModelTier(TieredRateItem item) { _bmTiers.Remove(item); }
+
+    private async Task SaveBillingModelTiers()
+    {
+        _bmMessage = null;
+        _bmSaving = true;
+        try
+        {
+            for (int i = 0; i < _bmTiers.Count; i++) _bmTiers[i].SortOrder = i + 1;
+            var res = await Http.PutAsJsonAsync($"/api/v2/consumer-types/{_bmConsumerTypeCode}/tiers/{_bmYear}", _bmTiers);
+            if (res.IsSuccessStatusCode)
+            {
+                _bmMessage = "مدل محاسبه ذخیره شد";
+                _bmMessageOk = true;
+                var saved = await res.Content.ReadFromJsonAsync<List<TieredRateItem>>();
+                if (saved is not null) _bmTiers = saved;
+            }
+            else
+            {
+                var err = await res.Content.ReadAsStringAsync();
+                _bmMessage = $"خطا: {err}";
+                _bmMessageOk = false;
+            }
+        }
+        catch (Exception ex) { _bmMessage = $"خطا: {ex.Message}"; _bmMessageOk = false; }
+        _bmSaving = false;
+    }
 
     private async Task Calculate()
     {
@@ -962,6 +1074,7 @@
 
     public class ConsumerTypeForm { public string Code { get; set; } = ""; public string Name { get; set; } = ""; public string Category { get; set; } = "Residential"; public string BillingModel { get; set; } = "TOU"; public decimal EcaCoefficient { get; set; } = 1; public int SortOrder { get; set; } public string? Description { get; set; } }
     public class YearlyRateForm { public int Year { get; set; } public decimal BaseRatePerKwh { get; set; } public string? SourceDocument { get; set; } public string? Description { get; set; } }
+    public class TieredRateItem { public decimal TierFrom { get; set; } public decimal TierTo { get; set; } public decimal Coefficient { get; set; } public decimal RatePerKwh { get; set; } public int SortOrder { get; set; } }
     public class BillingCalculationRequest { public Guid CenterId { get; set; } public string? DeviceId { get; set; } public string FromDate { get; set; } = ""; public string ToDate { get; set; } = ""; public Guid? TariffId { get; set; } }
     public class InvoiceItem { public Guid Id { get; set; } public string FromDate { get; set; } = ""; public string ToDate { get; set; } = ""; public int Days { get; set; } public decimal TotalKWh { get; set; } public decimal EnergyCost { get; set; } public decimal ReactivePenalty { get; set; } public decimal GrandTotal { get; set; } public string Status { get; set; } = ""; public DateTime CreatedAt { get; set; } }
 }
@@ -1055,6 +1168,14 @@
 .bll-tr{display:flex;align-items:center;gap:6px;font-size:12px}
 .bll-tr-l{color:var(--text-secondary);min-width:45px}
 .bll-tr-v{font-weight:700;color:var(--text);direction:ltr}
+
+/* ── Billing model (tiered rates) ── */
+.bll-panel .bll-fi[type=number]{direction:ltr;text-align:right;font-family:var(--font-mono)}
+.bll-bm-example{font-size:12px;color:var(--text-secondary);background:var(--bg-alt);padding:8px 12px;border-radius:8px}
+.bll-toast{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600}
+.bll-toast-ok{background:var(--green-bg);color:var(--green)}
+.bll-toast-er{background:var(--red-bg);color:var(--red)}
+.bll-bar-info{font-size:13px;color:var(--text-secondary)}
 .bll-tr-tm{font-size:10px;color:var(--text-muted);background:var(--bg);padding:1px 6px;border-radius:4px}
 .bll-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1.4}
 .bll-badge-on{background:var(--green-bg);color:var(--green)}

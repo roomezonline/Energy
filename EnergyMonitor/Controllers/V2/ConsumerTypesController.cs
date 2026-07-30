@@ -82,6 +82,77 @@ public class ConsumerTypesController : ControllerBase
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
+
+    // ===== Tiered Rate Management =====
+
+    [HttpGet("{code}/tiers/{year}")]
+    public async Task<IActionResult> GetTiers(string code, int year, CancellationToken ct)
+    {
+        var config = await _db.ConsumerTypeYearlyConfigs
+            .Include(c => c.TieredRates.OrderBy(t => t.SortOrder))
+            .FirstOrDefaultAsync(c => c.ConsumerTypeCode == code && c.Year == year, ct);
+        if (config is null)
+            return Ok(Array.Empty<TieredRateDto>());
+        return Ok(config.TieredRates.Select(t => new TieredRateDto
+        {
+            TierFrom = t.TierFrom,
+            TierTo = t.TierTo,
+            Coefficient = t.Coefficient ?? 0,
+            RatePerKwh = t.RatePerKwh,
+            SortOrder = t.SortOrder
+        }).ToList());
+    }
+
+    [HttpPut("{code}/tiers/{year}")]
+    public async Task<IActionResult> SaveTiers(string code, int year, [FromBody] List<TieredRateDto> tiers, CancellationToken ct)
+    {
+        var config = await _db.ConsumerTypeYearlyConfigs
+            .FirstOrDefaultAsync(c => c.ConsumerTypeCode == code && c.Year == year, ct);
+        if (config is null)
+        {
+            config = new ConsumerTypeYearlyConfig { ConsumerTypeCode = code, Year = year };
+            _db.ConsumerTypeYearlyConfigs.Add(config);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        await _db.ConsumerTypeTieredRates
+            .Where(t => t.ConsumerTypeYearlyConfigId == config.Id)
+            .ExecuteDeleteAsync(ct);
+
+        int sort = 1;
+        foreach (var t in tiers)
+        {
+            config.TieredRates.Add(new ConsumerTypeTieredRate
+            {
+                TierFrom = t.TierFrom,
+                TierTo = t.TierTo,
+                Coefficient = t.Coefficient,
+                RatePerKwh = t.RatePerKwh,
+                SortOrder = sort++
+            });
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        var saved = config.TieredRates.OrderBy(t => t.SortOrder).Select(t => new TieredRateDto
+        {
+            TierFrom = t.TierFrom,
+            TierTo = t.TierTo,
+            Coefficient = t.Coefficient ?? 0,
+            RatePerKwh = t.RatePerKwh,
+            SortOrder = t.SortOrder
+        }).ToList();
+        return Ok(saved);
+    }
+}
+
+public class TieredRateDto
+{
+    public decimal TierFrom { get; set; }
+    public decimal TierTo { get; set; }
+    public decimal Coefficient { get; set; }
+    public decimal RatePerKwh { get; set; }
+    public int SortOrder { get; set; }
 }
 
 public class ConsumerTypeRequest

@@ -162,10 +162,15 @@ public class AppDbContext : DbContext
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.ConsumerTypeCode).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Year).IsRequired();
+            e.HasOne(x => x.ConsumerType).WithMany(x => x.YearlyConfigs).HasForeignKey(x => x.ConsumerTypeCode);
+            e.HasMany(x => x.TieredRates).WithOne(x => x.ConsumerTypeYearlyConfig).HasForeignKey(x => x.ConsumerTypeYearlyConfigId);
+            e.HasIndex(x => new { x.ConsumerTypeCode, x.Year });
         });
         model.Entity<ConsumerTypeTieredRate>(e =>
         {
             e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.ConsumerTypeYearlyConfigId, x.SortOrder });
         });
         model.Entity<TariffOverride>(e =>
         {
