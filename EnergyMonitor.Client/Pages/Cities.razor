@@ -6,51 +6,63 @@
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>مدیریت شهرها</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ شهر جدید</button>
+<div class="cty-container">
+    <div class="cty-top">
+        <div class="cty-top-l">
+            <span class="cty-icon">🏙️</span>
+            <h2 class="cty-title">مدیریت شهرها</h2>
+        </div>
+        <div class="cty-top-r">
+            <button class="cty-btn cty-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="cty-btn cty-btn-add" @onclick="OpenCreate">+ شهر جدید</button>
+        </div>
     </div>
 
-    <PrereqAlert Met="(_provinces.Count > 0)"
-        Title="هنوز استانی ثبت نشده"
-        Text="برای ثبت شهر، ابتدا باید یک استان ایجاد کنید. به صفحه استان‌ها بروید و استان مورد نظر را ثبت کنید."
-        LinkText="رفتن به مدیریت استان‌ها"
-        LinkHref="/provinces" />
-
-    <HelpBox>
-        <p><strong>شهر</strong> سومین سطح جغرافیایی است. هر شهر به یک استان متصل می‌شود.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>استان</strong> مربوطه را قبلاً ایجاد کرده باشید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام شهر و استان مربوطه را انتخاب کنید — کد به صورت خودکار تولید می‌شود.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت شهرها، به بخش <strong>مراکز</strong> بروید و مرکز را به این شهر متصل کنید.</span></div>
-        <div class="hlp-tip">💡 یک استان می‌تواند چندین شهر داشته باشد.</div>
-    </HelpBox>
-
-    @if (_loading) { <div class="loading-state"><div class="spinner"></div></div> }
-    else if (_items.Count == 0)
+    @if (_provinces.Count == 0)
     {
-        <div class="empty-state">
-            <div class="empty-icon">🏙️</div>
-            <div class="empty-title">شهری ثبت نشده</div>
+        <div class="cty-prereq">
+            <div class="cty-prereq-icon">⚠️</div>
+            <div class="cty-prereq-b">
+                <div class="cty-prereq-t">هنوز استانی ثبت نشده</div>
+                <div class="cty-prereq-d">برای ثبت شهر، ابتدا باید یک استان ایجاد کنید. به صفحه استان‌ها بروید.</div>
+                <a class="cty-prereq-a" href="/provinces">← رفتن به مدیریت استان‌ها</a>
+            </div>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <div class="cty-loading"><div class="cty-spinner"></div></div>
+    }
+    else if (_items.Count == 0 && _provinces.Count > 0)
+    {
+        <div class="cty-empty">
+            <div class="cty-empty-icon">🏙️</div>
+            <div class="cty-empty-t">شهری ثبت نشده</div>
+            <div class="cty-empty-d">روی «+ شهر جدید» کلیک کنید تا اولین شهر را ایجاد کنید.</div>
         </div>
     }
     else
     {
-        <div class="card-list">
+        <div class="cty-grid">
             @foreach (var item in _items)
             {
-                <div class="card-item">
-                    <div class="card-hdr">
-                        <strong>@item.Name</strong>
-                        <span class="card-tag @(item.IsActive ? "active" : "inactive")">@(item.IsActive ? "فعال" : "غیرفعال")</span>
+                <div class="cty-card @(item.IsActive ? "cty-card--on" : "cty-card--off")">
+                    <div class="cty-card-bar"></div>
+                    <div class="cty-card-body">
+                        <div class="cty-card-top">
+                            <span class="cty-card-name">@item.Name</span>
+                            <span class="cty-card-badge @(item.IsActive ? "cty-badge-on" : "cty-badge-off")">@(item.IsActive ? "فعال" : "غیرفعال")</span>
+                        </div>
+                        <div class="cty-card-code">@item.Code</div>
+                        <div class="cty-card-meta">
+                            <span class="cty-card-meta-lbl">استان:</span>
+                            <span class="cty-card-meta-val">@item.ProvinceName</span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="card-row"><span>کد</span><span class="ltr">@item.Code</span></div>
-                        <div class="card-row"><span>استان</span><span>@item.ProvinceName</span></div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="card-btn primary" @onclick="() => OpenEdit(item)">ویرایش</button>
-                        <button class="card-btn danger" @onclick="() => ConfirmDelete(item)">حذف</button>
+                    <div class="cty-card-acts">
+                        <button class="cty-btn-sm cty-btn-edit" @onclick="() => OpenEdit(item)">ویرایش</button>
+                        <button class="cty-btn-sm cty-btn-del" @onclick="() => ConfirmDelete(item)">حذف</button>
                     </div>
                 </div>
             }
@@ -58,37 +70,90 @@
     }
 </div>
 
-@if (_showModal)
+@* Help modal *@
+@if (_showHelp)
 {
-    <div class="modal-overlay" @onclick="CloseModal">
-        <div class="modal-card" @onclick:stopPropagation>
-            <div class="modal-hdr">
-                <h3>@(_editingId == Guid.Empty ? "شهر جدید" : "ویرایش شهر")</h3>
-                <button class="modal-close" @onclick="CloseModal">&times;</button>
+    <div class="cty-overlay" @onclick="() => _showHelp = false">
+        <div class="cty-modal cty-modal-help" @onclick:stopPropagation>
+            <div class="cty-mh">
+                <span class="cty-mh-icon">📘</span>
+                <span class="cty-mh-t">راهنمای مدیریت شهرها</span>
+                <button class="cty-mh-x" @onclick="() => _showHelp = false">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="form-row"><label>استان</label><select class="form-input" @bind="_form.ProvinceId"><option value="">انتخاب کنید</option>@foreach (var p in _provinces) { <option value="@p.Id">@p.Name</option> }</select></div>
-                <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
-                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" disabled /></div>
-                <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
+            <div class="cty-mb">
+                <p class="cty-mb-intro"><strong>شهر</strong> سومین سطح جغرافیایی است. هر شهر به یک استان متصل می‌شود.</p>
+                <div class="cty-mb-step"><span class="cty-step-n">۱</span><span>مطمئن شوید <strong>استان</strong> مورد نظر قبلاً ایجاد شده باشد.</span></div>
+                <div class="cty-mb-step"><span class="cty-step-n">۲</span><span>نام شهر و استان مربوطه را انتخاب کنید — کد به صورت خودکار تولید می‌شود.</span></div>
+                <div class="cty-mb-step"><span class="cty-step-n">۳</span><span>پس از ثبت شهرها، به بخش <strong>مراکز</strong> بروید و مرکز را به این شهر متصل کنید.</span></div>
+                <div class="cty-mb-tip">💡 یک استان می‌تواند چندین شهر داشته باشد.</div>
             </div>
-            <div class="modal-ftr">
-                <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
-                <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            <div class="cty-mf">
+                <button class="cty-btn cty-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
             </div>
         </div>
     </div>
 }
 
+@* Create / Edit modal *@
+@if (_showModal)
+{
+    <div class="cty-overlay" @onclick="CloseModal">
+        <div class="cty-modal cty-modal-form" @onclick:stopPropagation>
+            <div class="cty-mh">
+                <span class="cty-mh-t">@(_editingId == Guid.Empty ? "شهر جدید" : "ویرایش شهر")</span>
+                <button class="cty-mh-x" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="cty-mb">
+                <div class="cty-fg">
+                    <label class="cty-fl">استان</label>
+                    <select class="cty-fi" @bind="_form.ProvinceId">
+                        <option value="@Guid.Empty">انتخاب کنید</option>
+                        @foreach (var p in _provinces)
+                        {
+                            <option value="@p.Id">@p.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="cty-fg">
+                    <label class="cty-fl">نام شهر</label>
+                    <input @bind="_form.Name" class="cty-fi" placeholder="مثلاً شهر تهران" />
+                </div>
+                <div class="cty-fg">
+                    <label class="cty-fl">کد</label>
+                    <input @bind="_form.Code" class="cty-fi cty-fi-ltr" disabled />
+                </div>
+                <div class="cty-fg">
+                    <label class="cty-fl">وضعیت</label>
+                    <label class="cty-tgl">
+                        <input type="checkbox" @bind="_form.IsActive" />
+                        <span class="cty-tgl-sl"></span>
+                        <span class="cty-tgl-lbl">@(_form.IsActive ? "فعال" : "غیرفعال")</span>
+                    </label>
+                </div>
+            </div>
+            <div class="cty-mf">
+                <button class="cty-btn cty-btn-cancel" @onclick="CloseModal">انصراف</button>
+                <button class="cty-btn cty-btn-save" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Delete confirm modal *@
 @if (_deleteTarget is not null)
 {
-    <div class="modal-overlay" @onclick="() => _deleteTarget = null">
-        <div class="modal-card" @onclick:stopPropagation>
-            <div class="modal-hdr"><h3>حذف شهر</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
-            <div class="modal-body"><p>آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p></div>
-            <div class="modal-ftr">
-                <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
-                <button class="btn btn-danger" @onclick="DeleteItem">حذف</button>
+    <div class="cty-overlay" @onclick="() => _deleteTarget = null">
+        <div class="cty-modal cty-modal-form" @onclick:stopPropagation>
+            <div class="cty-mh">
+                <span class="cty-mh-t cty-mh-t-del">حذف شهر</span>
+                <button class="cty-mh-x" @onclick="() => _deleteTarget = null">&times;</button>
+            </div>
+            <div class="cty-mb">
+                <p class="cty-del-msg">آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p>
+            </div>
+            <div class="cty-mf">
+                <button class="cty-btn cty-btn-cancel" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="cty-btn cty-btn-danger" @onclick="DeleteItem">حذف</button>
             </div>
         </div>
     </div>
@@ -96,17 +161,18 @@
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="cty-denied">
+        <div class="cty-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="cty-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
     private List<CityItem> _items = new();
     private List<ProvinceItem> _provinces = new();
-    private bool _loading = true, _saving, _showModal;
+    private bool _loading = true, _saving, _showModal, _showHelp;
     private Guid _editingId;
     private CityForm _form = new();
     private CityItem? _deleteTarget;
@@ -160,3 +226,143 @@ else
     public class CityForm { public string Name { get; set; } = ""; public string Code { get; set; } = ""; public Guid ProvinceId { get; set; } public bool IsActive { get; set; } = true; }
     public class ProvinceItem { public Guid Id { get; set; } public string Name { get; set; } = ""; public string Code { get; set; } = ""; }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Cities page — modern card grid
+   ═══════════════════════════════════════════ */
+.cty-container{max-width:1120px;margin:0 auto;padding:24px 16px}
+.cty-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.cty-top-l{display:flex;align-items:center;gap:10px}
+.cty-icon{font-size:24px}
+.cty-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.cty-top-r{display:flex;gap:8px}
+.cty-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.cty-btn:active{transform:scale(.95)}
+.cty-btn-add{background:var(--grad-blue);color:#fff}
+.cty-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.cty-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.cty-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.cty-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.cty-btn-cancel:hover{background:var(--bg-alt)}
+.cty-btn-save{background:var(--grad-blue);color:#fff}
+.cty-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.cty-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.cty-btn-danger{background:var(--red);color:#fff}
+.cty-btn-danger:hover{box-shadow:var(--shadow-red);transform:translateY(-1px)}
+.cty-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.cty-btn-sm:active{transform:scale(.93)}
+.cty-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.cty-btn-edit:hover{background:var(--blue);color:#fff}
+.cty-btn-del{background:var(--red-bg);color:var(--red)}
+.cty-btn-del:hover{background:var(--red);color:#fff}
+
+/* Prereq alert */
+.cty-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.cty-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.cty-prereq-b{flex:1}
+.cty-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.cty-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.cty-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none;transition:color .2s}
+.cty-prereq-a:hover{text-decoration:underline}
+
+/* Loading */
+.cty-loading{text-align:center;padding:80px 20px}
+.cty-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:cty-spin .7s linear infinite;margin:0 auto}
+@@keyframes cty-spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.cty-empty{text-align:center;padding:60px 20px}
+.cty-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.cty-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.cty-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.cty-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.cty-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.cty-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.cty-card:active{transform:scale(.97)}
+.cty-card-bar{height:4px;flex-shrink:0}
+.cty-card--on .cty-card-bar{background:var(--grad-green)}
+.cty-card--off .cty-card-bar{background:#d1d5db}
+.cty-card-body{padding:16px 16px 12px;flex:1}
+.cty-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cty-card-name{font-size:15px;font-weight:700;color:var(--text)}
+.cty-card-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.cty-badge-on{background:var(--green-bg);color:var(--green)}
+.cty-badge-off{background:var(--red-bg);color:var(--red)}
+.cty-card-code{direction:ltr;font-size:13px;font-weight:600;color:var(--text-secondary);letter-spacing:.5px;margin-bottom:6px}
+.cty-card-meta{display:flex;gap:4px;font-size:12px;color:var(--text-muted);align-items:center}
+.cty-card-meta-lbl{color:var(--text-secondary)}
+.cty-card-meta-val{color:var(--text);font-weight:600}
+.cty-card-acts{display:flex;gap:6px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+
+/* Overlay + modal */
+.cty-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:cty-fade .2s ease}
+@@keyframes cty-fade{from{opacity:0}to{opacity:1}}
+.cty-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:cty-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes cty-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cty-modal-form{max-width:420px}
+.cty-modal-help{max-width:500px}
+.cty-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.cty-mh-icon{font-size:18px}
+.cty-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.cty-mh-t-del{color:var(--red)}
+.cty-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.cty-mh-x:hover{background:var(--bg);color:var(--text)}
+.cty-mb{padding:16px 20px}
+.cty-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.cty-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.cty-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.cty-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.cty-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.cty-fg{margin-bottom:16px}
+.cty-fg:last-child{margin-bottom:0}
+.cty-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.cty-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.cty-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.cty-fi::placeholder{color:var(--text-muted)}
+.cty-fi:disabled{background:var(--bg);color:var(--text-muted);cursor:not-allowed}
+.cty-fi-ltr{direction:ltr;text-align:right}
+.cty-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.cty-tgl input{opacity:0;width:0;height:0}
+.cty-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.cty-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.cty-tgl input:checked+.cty-tgl-sl{background:var(--grad-blue)}
+.cty-tgl input:checked+.cty-tgl-sl::before{transform:translateX(18px)}
+.cty-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.cty-del-msg{font-size:14px;line-height:1.7;color:var(--text)}
+
+/* Access denied */
+.cty-denied{text-align:center;padding:80px 20px;color:#888}
+.cty-denied-icon{font-size:48px;margin-bottom:12px}
+.cty-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.cty-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.cty-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.cty-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .cty-container{padding:16px 12px}
+    .cty-top{flex-direction:column;align-items:stretch;gap:10px}
+    .cty-top-r{justify-content:space-between}
+    .cty-title{font-size:16px}
+    .cty-grid{grid-template-columns:1fr;gap:10px}
+    .cty-card-body{padding:14px 14px 10px}
+    .cty-card-acts{padding:8px 14px}
+    .cty-card-name{font-size:14px}
+    .cty-btn{padding:8px 14px;font-size:12px}
+    .cty-modal-form,.cty-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .cty-mh{padding:14px 16px 12px}
+    .cty-mb{padding:12px 16px}
+    .cty-mf{padding:10px 16px 14px}
+    .cty-mb-step{font-size:12px}
+    .cty-empty{padding:40px 16px}
+    .cty-mb-intro{font-size:12px}
+    .cty-prereq{padding:14px;border-radius:12px}
+    .cty-prereq-t{font-size:13px}
+    .cty-prereq-d{font-size:11px}
+}
+</style>
