@@ -636,11 +636,15 @@
                                         @if (_billData.Year.HasValue) { <div class="bill-item"><span>سال</span><span>@_billData.Year</span></div> }
                                         @if (_billData.EcaCoefficient.HasValue) { <div class="bill-item"><span>ضریب ECA</span><span>@_billData.EcaCoefficient?.ToString("F4")</span></div> }
                                         @if (_billData.BaseEcaRate.HasValue) { <div class="bill-item"><span>نرخ پایه</span><span>@_billData.BaseEcaRate?.ToString("N0") ریال/kWh</span></div> }
-                                        @if (_billData.EffectiveOffPeakRate.HasValue)
+                                        @if (_billData.TouOffPeakMultiplier.HasValue && _billData.EffectiveOffPeakRate.HasValue)
                                         {
                                             <div class="bill-item"><span>نرخ مؤثر کم‌باری</span><span>@_billData.EffectiveOffPeakRate?.ToString("N0") ریال/kWh</span></div>
                                             <div class="bill-item"><span>نرخ مؤثر میان‌باری</span><span>@_billData.EffectiveMidPeakRate?.ToString("N0") ریال/kWh</span></div>
                                             <div class="bill-item"><span>نرخ مؤثر اوج‌باری</span><span>@_billData.EffectivePeakRate?.ToString("N0") ریال/kWh</span></div>
+                                        }
+                                        else if (_billData.SupplyCostPerKwh.HasValue)
+                                        {
+                                            <div class="bill-item"><span>نرخ تأمین برق</span><span>@_billData.SupplyCostPerKwh?.ToString("N0") ریال/kWh</span></div>
                                         }
                                     </div>
                                 </div>
