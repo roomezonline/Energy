@@ -44,7 +44,6 @@ public class Tariff
     public RateDerivationMode RateDerivationMode { get; set; } = RateDerivationMode.Manual;
     public string? ConsumerTypeCode { get; set; }
     public int? Year { get; set; }
-    public decimal? VoltageLevelKV { get; set; }
 
     public ICollection<TariffRate> Rates { get; set; } = new List<TariffRate>();
     public ICollection<TieredRate> TieredRates { get; set; } = new List<TieredRate>();

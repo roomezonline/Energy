@@ -938,8 +938,10 @@ BEGIN
     ALTER TABLE Tariffs ADD RateDerivationMode nvarchar(20) NOT NULL DEFAULT 'Manual';
     ALTER TABLE Tariffs ADD ConsumerTypeCode nvarchar(20) NULL;
     ALTER TABLE Tariffs ADD [Year] int NULL;
-    ALTER TABLE Tariffs ADD VoltageLevelKV decimal(8,2) NULL;
 END");
+        // Drop VoltageLevelKV column (removed from entity)
+        try { db.Database.ExecuteSqlRaw("IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Tariffs') AND name = 'VoltageLevelKV') ALTER TABLE Tariffs DROP COLUMN VoltageLevelKV"); } catch { }
+        try { db.Database.ExecuteSqlRaw("IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Centers') AND name = 'VoltageLevelKV') ALTER TABLE Centers DROP COLUMN VoltageLevelKV"); } catch { }
     }
     catch (Exception ex) { logger.LogWarning(ex, "Migration: Tariffs new columns"); }
 
@@ -965,7 +967,6 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Centers') 
 BEGIN
     ALTER TABLE Centers ADD ConsumerTypeCode nvarchar(20) NULL;
     ALTER TABLE Centers ADD ContractCapacityMW decimal(10,4) NULL;
-    ALTER TABLE Centers ADD VoltageLevelKV decimal(8,2) NULL;
 END");
     }
     catch (Exception ex) { logger.LogWarning(ex, "Migration: Centers new columns"); }
@@ -1169,7 +1170,6 @@ ALTER TABLE [{table}] ALTER COLUMN [{col}] {type} {nullable};";
     AlterCol("AlarmLogs", "Value", "decimal(14,4)", notNull: false);
     AlterCol("EnergyLimits", "MaxValue", "decimal(14,4)");
     AlterCol("EnergyLimits", "AlertThresholdPercent", "decimal(5,2)");
-    AlterCol("Tariffs", "VoltageLevelKV", "decimal(10,2)", notNull: false);
     AlterCol("Tariffs", "OffPeakRate", "decimal(14,4)");
     AlterCol("Tariffs", "MidPeakRate", "decimal(14,4)");
     AlterCol("Tariffs", "PeakRate", "decimal(14,4)");

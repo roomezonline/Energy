@@ -29,12 +29,19 @@ public class CentersController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
-        var list = await _centers.GetAllAsync(ct);
-        if (_currentUser.Role == UserRole.RegionalAdmin && _currentUser.RegionId.HasValue)
-            list = list.Where(x => x.City != null && x.City.Province != null && x.City.Province.RegionId == _currentUser.RegionId.Value).ToList();
-        else if (_currentUser.Role == UserRole.Admin && _currentUser.CenterId.HasValue)
-            list = list.Where(x => x.Id == _currentUser.CenterId.Value).ToList();
-        return Ok(list);
+        try
+        {
+            var list = await _centers.GetAllAsync(ct);
+            if (_currentUser.Role == UserRole.RegionalAdmin && _currentUser.RegionId.HasValue)
+                list = list.Where(x => x.City != null && x.City.Province != null && x.City.Province.RegionId == _currentUser.RegionId.Value).ToList();
+            else if (_currentUser.Role == UserRole.Admin && _currentUser.CenterId.HasValue)
+                list = list.Where(x => x.Id == _currentUser.CenterId.Value).ToList();
+            return Ok(list);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
+        }
     }
 
     [HttpGet("{id:guid}")]

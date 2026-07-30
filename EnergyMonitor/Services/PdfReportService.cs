@@ -51,22 +51,28 @@ public class PdfReportService : IPdfReportService
                 {
                     h.Item().Background("#1e293b").Padding(16).Row(row =>
                     {
+                        // Right (first item in RTL row): Logo
                         row.AutoItem().AlignRight().Column(c =>
                         {
                             c.Item().Text("انرژی‌کال").Bold().FontSize(22).FontColor("#fff");
                             c.Item().PaddingTop(2).Text("سامانه پایش هوشمند انرژی").FontSize(9).FontColor("#94a3b8");
                         });
+                        // Center: Title + date/duration in two columns
                         row.RelativeItem().AlignCenter().Column(c =>
                         {
                             c.Item().Text("صورتحساب مصرف انرژی").Bold().FontSize(18).FontColor("#fff").AlignCenter();
-                            c.Item().PaddingTop(2).Text($"{r.FromDate}  تا  {r.ToDate}").FontSize(9).FontColor("#94a3b8").AlignCenter();
-                            c.Item().PaddingTop(1).Text($"{P(r.Days)} روز  |  {P(r.Months)} ماه").FontSize(8).FontColor("#cbd5e1").AlignCenter();
+                            c.Item().PaddingTop(6).Row(r2 =>
+                            {
+                                r2.RelativeItem().AlignCenter().Text($"{r.FromDate}  تا  {r.ToDate}").FontSize(9).FontColor("#94a3b8").AlignCenter();
+                                r2.RelativeItem().AlignCenter().Text($"{P(r.Days)} روز  |  {P(r.Months)} ماه").FontSize(9).FontColor("#94a3b8").AlignCenter();
+                            });
                         });
+                        // Left (last item in RTL row): Consumer type + Tariff chip
                         row.AutoItem().AlignLeft().Column(c =>
                         {
-                            c.Item().Background("#f59e0b").PaddingHorizontal(16).PaddingVertical(6).Text(r.TariffName).FontSize(11).FontColor("#fff").Bold().AlignCenter();
                             if (!string.IsNullOrEmpty(r.ConsumerTypeName))
-                                c.Item().PaddingTop(4).Text(r.ConsumerTypeName).FontSize(9).FontColor("#cbd5e1").AlignLeft();
+                                c.Item().PaddingBottom(4).Text(r.ConsumerTypeName).FontSize(9).FontColor("#cbd5e1");
+                            c.Item().Background("#f59e0b").PaddingHorizontal(14).PaddingVertical(5).Text(r.TariffName).FontSize(11).FontColor("#fff").Bold().AlignCenter();
                         });
                     });
                     h.Item().Background("#f59e0b").Height(3);

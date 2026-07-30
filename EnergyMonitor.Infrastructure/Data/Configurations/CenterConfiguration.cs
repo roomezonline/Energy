@@ -24,6 +24,5 @@ public class CenterConfiguration : IEntityTypeConfiguration<Center>
         // New fields
         builder.Property(x => x.ConsumerTypeCode).HasMaxLength(20);
         builder.Property(x => x.ContractCapacityMW).HasColumnType("decimal(10,4)");
-        builder.Property(x => x.VoltageLevelKV).HasColumnType("decimal(8,2)");
     }
 }

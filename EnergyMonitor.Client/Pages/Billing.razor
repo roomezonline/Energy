@@ -66,13 +66,27 @@
 
                     <div class="inv-bill" id="invoiceArea">
                         <div class="inv-hdr">
-                            <div class="inv-logo"><span class="inv-logo-icon">⚡</span><div><div class="inv-logo-t">انرژی‌کال</div><div class="inv-logo-s">سیستم پایش هوشمند انرژی</div></div></div>
-                            <div><div class="inv-title">صورتحساب مصرف انرژی</div><div class="inv-badge">@_billData.TariffName</div></div>
+                            <div class="inv-hdr-left">
+                                @if (!string.IsNullOrEmpty(_billData.ConsumerTypeName))
+                                {
+                                    <div class="inv-consumer-type">@_billData.ConsumerTypeName</div>
+                                }
+                                <div class="inv-badge">@_billData.TariffName</div>
+                            </div>
+                            <div class="inv-hdr-center">
+                                <div class="inv-title">صورتحساب مصرف انرژی</div>
+                            </div>
+                            <div class="inv-logo">
+                                <span class="inv-logo-icon">⚡</span>
+                                <div><div class="inv-logo-t">انرژی‌کال</div><div class="inv-logo-s">سامانه پایش هوشمند انرژی</div></div>
+                            </div>
                         </div>
                         <div class="inv-meta">
                             <div class="inv-meta-c"><span class="inv-meta-i">🏢</span><div><div class="inv-meta-l">مشترک</div><div class="inv-meta-v">@_billData.CenterName</div></div></div>
-                            <div class="inv-meta-c"><span class="inv-meta-i">📅</span><div><div class="inv-meta-l">دوره صورتحساب</div><div class="inv-meta-v">@_billData.FromDate لغایت @_billData.ToDate</div></div></div>
-                            <div class="inv-meta-c"><span class="inv-meta-i">⏳</span><div><div class="inv-meta-l">مدت</div><div class="inv-meta-v">@P(_billData.Days) روز — @P(_billData.Months) ماه</div></div></div>
+                            <div class="inv-meta-duo">
+                                <div class="inv-meta-c"><span class="inv-meta-i">📅</span><div><div class="inv-meta-l">دوره صورتحساب</div><div class="inv-meta-v">@_billData.FromDate لغایت @_billData.ToDate</div></div></div>
+                                <div class="inv-meta-c"><span class="inv-meta-i">⏳</span><div><div class="inv-meta-l">مدت</div><div class="inv-meta-v">@P(_billData.Days) روز — @P(_billData.Months) ماه</div></div></div>
+                            </div>
                         </div>
 
                         @if (!string.IsNullOrEmpty(_billData.ConsumerTypeName))
@@ -81,7 +95,6 @@
                                 <div class="inv-section-t">اطلاعات تعرفه</div>
                                 <div class="inv-tariff-card">
                                     <div class="inv-tariff-row">
-                                        <div class="inv-tariff-i"><span class="inv-tariff-l">نوع مصرف‌کننده</span><span class="inv-tariff-v">@_billData.ConsumerTypeName</span></div>
                                         @if (_billData.Year.HasValue) { <div class="inv-tariff-i"><span class="inv-tariff-l">سال</span><span class="inv-tariff-v">@P(_billData.Year)</span></div> }
                                     </div>
                                     @if (_billData.EcaCoefficient.HasValue)
@@ -366,11 +379,69 @@
                 <button class="bll-mh-x" @onclick="() => _showHelp = false">&times;</button>
             </div>
             <div class="bll-mb">
-                <p>سیستم محاسبه صورتحساب انرژی‌کال از سه بخش اصلی تشکیل شده است:</p>
-                <div class="bll-hlp-step"><span class="bll-hlp-n">۱</span><span><strong>انواع مصرف‌کننده</strong> — مشخص می‌کند مصرف‌کننده از چه نوعی است (خانگی، صنعتی، تجاری، کشاورزی).</span></div>
-                <div class="bll-hlp-step"><span class="bll-hlp-n">۲</span><span><strong>نرخ پایه سالانه</strong> — نرخ پایه برق (ریال بر kWh) که هر سال توسط وزارت نیرو ابلاغ می‌شود.</span></div>
-                <div class="bll-hlp-step"><span class="bll-hlp-n">۳</span><span><strong>تعرفه</strong> — مشخص می‌کند هر kWh در ساعت‌های مختلف روز چه قیمتی دارد. روش دستی (ثابت) یا خودکار (ECA).</span></div>
-                <div class="bll-hlp-tip">💡 در حالت خودکار: نرخ = نرخ پایه × ضریب ECA × ضریب TOU (کم‌باری ۰.۵، میان‌باری ۱.۰، اوج‌باری ۲.۰)</div>
+                <p>سیستم صورتحساب انرژی‌کال از <strong>۴ بخش</strong> تشکیل شده که در تب‌های بالا قابل دسترسی هستند. هر تب توضیح داده می‌شود:</p>
+
+                <div class="bll-hlp-sep"></div>
+                <div class="bll-hlp-tab-t">
+                    <span class="bll-hlp-tab-i" style="background:#e8f5e9;color:#2e7d32">💰</span>
+                    تب اول: محاسبه صورتحساب
+                </div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">۱</span><span><strong>انتخاب مرکز و دستگاه</strong> — مرکز مصرف‌کننده و دستگاه دلخواه را انتخاب کنید. اگر دستگاهی انتخاب نکنید، مجموع همه دستگاه‌های آن مرکز محاسبه می‌شود.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">۲</span><span><strong>بازه صورتحساب</strong> — از تاریخ و تا تاریخ را به صورت شمسی (مثال ۱۴۰۴/۰۱/۰۱) وارد کنید. طول دوره حداقل یک روز و حداکثر یک سال می‌تواند باشد.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">۳</span><span><strong>انتخاب تعرفه</strong> — تعرفه مورد نظر را انتخاب کنید. تعرفه مشخص می‌کند نرخ‌ها چگونه محاسبه شوند (دستی یا خودکار ECA).</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">۴</span><span><strong>مشاهده نتایج</strong> — پس از محاسبه، صورتحساب شامل: جدول مصرف تفکیک فازها (A, B, C) و بازه‌ها (کم‌باری، میان‌باری، اوج‌باری)، هزینه انرژی (پله‌ای یا TOU)، آبونمان، دیماند، جریمه راکتیو، تخفیف کم‌باری، ماده ۱۶، عوارض، مالیات و جمع کل قابل پرداخت نمایش داده می‌شود.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">۵</span><span><strong>ویرایش دستی</strong> — دکمه "ویرایش مقادیر" به شما اجازه می‌دهد موارد خاص را دستی تغییر دهید و دلیل آن را ثبت کنید (مثلاً اعمال تخفیف یا اصلاح نرخ).</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">۶</span><span><strong>PDF و ذخیره</strong> — صورتحساب را می‌توانید به صورت PDF رنگی دریافت کنید یا در بانک اطلاعاتی ذخیره نمایید.</span></div>
+
+                <div class="bll-hlp-sep"></div>
+                <div class="bll-hlp-tab-t">
+                    <span class="bll-hlp-tab-i" style="background:#fff3e0;color:#e65100">⚙️</span>
+                    تب دوم: تعرفه‌ها
+                </div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>تعریف تعرفه:</strong> هر تعرفه شامل یک نام، روش محاسبه (دستی یا خودکار ECA)، ساعت‌های TOU در تابستان و زمستان، و تنظیمات آبونمان و جریمه راکتیو است.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>روش دستی (ثابت):</strong> نرخ کم‌باری، میان‌باری و اوج‌باری را مستقیماً وارد می‌کنید. برای تعرفه‌های ساده یا قدیمی مناسب است.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>روش خودکار (ECA):</strong> نرخ‌ها به صورت خودکار محاسبه می‌شوند: <strong>نرخ پایه سالانه × ضریب ECA نوع مصرف‌کننده × ضریب TOU</strong>. ضرایب TOU ثابت هستند: کم‌باری ۰.۵، میان‌باری ۱.۰، اوج‌باری ۲.۰. نرخ پایه از "نرخ پایه سالانه" و ضریب ECA از "نوع مصرف‌کننده" خوانده می‌شود.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>ساعت‌های TOU:</strong> تابستان (ماه ۴ تا ۹) و زمستان (ماه ۱ تا ۳ و ۱۰ تا ۱۲) ساعت‌های متفاوتی دارند. مثلاً اوج‌باری تابستان ۱۲ تا ۲۳ و زمستان ۱۷ تا ۲۳ است.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>آبونمان:</strong> مبلغ ثابت ماهانه که به هر صورتحساب اضافه می‌شود.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>جریمه راکتیو:</strong> اگر ضریب توان (PF) از آستانه تعیین‌شده کمتر باشد، درصدی از هزینه انرژی به عنوان جریمه محاسبه می‌شود. همچنین اگر PF از حد بالاتر باشد، پاداش راکتیو تعلق می‌گیرد.</span></div>
+
+                <div class="bll-hlp-sep"></div>
+                <div class="bll-hlp-tab-t">
+                    <span class="bll-hlp-tab-i" style="background:#e3f2fd;color:#1565c0">🏭</span>
+                    تب سوم: انواع مصرف‌کننده
+                </div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>دسته‌بندی:</strong> هر نوع مصرف‌کننده در یکی از دسته‌های خانگی، تجاری، صنعتی، کشاورزی یا سایر قرار می‌گیرد.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>مدل محاسبه:</strong> چهار مدل پشتیبانی می‌شود:</span></div>
+                <div class="bll-hlp-sub">
+                    <div><strong>پلکانی (Tiered):</strong> مصرف به پله‌هایی با ضرایب فزاینده تقسیم می‌شود. هرچه مصرف بیشتر باشد، نرخ هر پله بالاتر می‌رود (۵ پله با ضرایب ۰.۱۴۶ تا ۵.۰). مناسب مصرف‌کنندگان خانگی و تجاری کوچک.</div>
+                    <div><strong>سه‌زمانه (TOU):</strong> شبانه‌روز به سه بازه کم‌باری، میان‌باری و اوج‌باری با ضرایب ۰.۵، ۱.۰ و ۲.۰ تقسیم می‌شود. نرخ نهایی = نرخ پایه ECA × ضریب ECA × ضریب TOU. مناسب صنایع و مراکز بزرگ.</div>
+                    <div><strong>تخت (Flat):</strong> یک نرخ ثابت برای تمام kWhها. ساده‌ترین روش.</div>
+                    <div><strong>ترکیبی (TOU+Tiered):</strong> دقیق‌ترین روش. ابتدا نرخ پایه با ضریب ECA و ضرایب TOU محاسبه می‌شود، سپس پله‌های مصرف اعمال و هزینه بین بازه‌های TOU به نسبت سهم هر بازه توزیع می‌شود. مناسب مراکز صنعتی بزرگ.</div>
+                </div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>ضریب ECA:</strong> ضریب مخصوص هر نوع مصرف‌کننده که در روش خودکار (ECA) در فرمول نرخ‌دهی استفاده می‌شود. این ضریب توسط وزارت نیرو برای هر دسته از مشترکین تعیین می‌شود و نشان‌دهنده سوبسید یا هزینه اضافی هر دسته است. مقادیر معمول بین ۰.۵ تا ۱.۵ است.</span></div>
+
+                <div class="bll-hlp-sep"></div>
+                <div class="bll-hlp-tab-t">
+                    <span class="bll-hlp-tab-i" style="background:#fce4ec;color:#c62828">📅</span>
+                    تب چهارم: نرخ پایه سالانه
+                </div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>نرخ پایه برق</strong> مبلغ پایه (به ریال بر kWh) است که هر سال توسط وزارت نیرو ابلاغ و در سامانه ثبت می‌شود. مأخذ (سند) مربوطه را می‌توان ثبت کرد.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>کاربرد:</strong> نرخ پایه در روش خودکار (ECA) به عنوان مبنا استفاده می‌شود. هنگام محاسبه صورتحساب، اگر تعرفه در سال خاصی تعریف شده باشد از نرخ پایه همان سال استفاده می‌کند. در غیر این صورت ابتدا سال جاری شمسی و در نهایت آخرین سال ثبت‌شده به کار می‌رود.</span></div>
+
+                <div class="bll-hlp-sep"></div>
+                <div class="bll-hlp-tab-t">
+                    <span class="bll-hlp-tab-i" style="background:#f3e5f5;color:#6a1b9a">📐</span>
+                    مفاهیم پیشرفته
+                </div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>ضریب ECA چیست؟</strong> ضریب ECA (Energy Cost Adjustment) یک ضریب اصلاحی است که توسط وزارت نیرو برای تعدیل نرخ برق بر اساس هزینه واقعی تأمین انرژی تعیین می‌شود. این ضریب به صورت ماهانه یا فصلی ابلاغ می‌شود و در روش خودکار (ECA) در محاسبه نرخ نهایی ضرب می‌شود: <strong>نرخ نهایی = نرخ پایه × ضریب ECA × ضریب TOU</strong>.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>جریمه اوج مصرف:</strong> درصدی از مصرف در ساعات اوج‌باری که به عنوان جریمه به صورتحساب اضافه می‌شود. این جریمه برای تشویق به انتقال مصرف به ساعات کم‌باری طراحی شده است.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>تخفیف کم‌باری:</strong> درصدی از مصرف در ساعات کم‌باری که به عنوان تخفیف از صورتحساب کسر می‌شود. مشوقی برای مصرف در ساعات غیر اوج.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>قانون ماده ۱۶:</strong> درصدی از مبلغ صورتحساب (معمولاً ۱٪) که به منظور توسعه صنعت برق کشور طبق قانون بودجه اخذ می‌شود.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>عوارض:</strong> درصدی از مبلغ صورتحساب (معمولاً ۵٪) که تحت عنوان عوارض برق توسط شرکت توزیع دریافت می‌شود.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>جریمه و پاداش راکتیو:</strong> ضریب توان (Power Factor یا PF) نشان‌دهنده بهره‌وری مصرف انرژی است. PF نزدیک به ۱ نشان‌دهنده مصرف بهینه است. اگر PF از آستانه تعیین‌شده در تعرفه کمتر باشد (مثلاً کمتر از ۰.۹)، جریمه راکتیو محاسبه می‌شود. اگر PF بالاتر از آستانه باشد، پاداش راکتیو تعلق می‌گیرد.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>دیماند:</strong> حداکثر توان مصرفی (بر حسب کیلووات) در دوره صورتحساب. برخی تعرفه‌ها (به ویژه صنعتی) دارای هزینه دیماند هستند که بر اساس حداکثر توان مصرفی محاسبه می‌شود.</span></div>
+                <div class="bll-hlp-step"><span class="bll-hlp-n">▸</span><span><strong>خودکار شدن سال:</strong> اگر تعرفه در حالت ECA باشد ولی سال آن مشخص نباشد (تعرفه دستی)، سامانه ابتدا سال جاری شمسی را برای نرخ پایه جستجو می‌کند. اگر نرخ پایه‌ای برای سال جاری ثبت نشده باشد، آخرین سال ثبت‌شده در بانک اطلاعاتی را به کار می‌گیرد. این مکانیزم باعث می‌شود تعرفه‌های ECA بدون نیاز به به‌روزرسانی سالانه کار کنند.</span></div>
+                <div class="bll-hlp-tip">💡 نکته: صورت‌حساب محاسبه‌شده در تب اول، نتیجه نهایی اعمال همه این مفاهیم است. پیشنهاد می‌شود ابتدا "نوع مصرف‌کننده" و "نرخ پایه سالانه" را تنظیم کنید، سپس "تعرفه" را تعریف کنید و در نهایت صورتحساب را محاسبه نمایید.</div>
             </div>
             <div class="bll-mf"><button class="bll-btn bll-btn-outline" @onclick="() => _showHelp = false">متوجه شدم</button></div>
         </div>
@@ -389,7 +460,7 @@
             <div class="bll-mb">
                 <div class="bll-modal-grid">
                     <div class="bll-fg"><label class="bll-fl">نام تعرفه</label><input class="bll-fi" @bind="_form.Name" /></div>
-                    <div class="bll-fg"><label class="bll-fl">وضعیت</label><select class="bll-fi" @bind="_form.IsActive"><option value="true">فعال</option><option value="false">غیرفعال</option></select></div>
+                    <div class="bll-fg"><label class="bll-fl">وضعیت</label><select class="bll-fi" @bind="_form.IsActive"><option value="@true">فعال</option><option value="@false">غیرفعال</option></select></div>
                     <div class="bll-fg"><label class="bll-fl">توضیحات</label><input class="bll-fi" @bind="_form.Description" /></div>
                     <div class="bll-fg"><label class="bll-fl">روش محاسبه</label><select class="bll-fi" @bind="_form.RateDerivationMode"><option value="Manual">دستی (ثابت)</option><option value="ECA">خودکار (ECA)</option></select></div>
                     @if (_form.RateDerivationMode == "ECA")
@@ -397,7 +468,7 @@
                         <div class="bll-fg"><label class="bll-fl">نوع مصرف‌کننده</label><select class="bll-fi" @bind="_form.ConsumerTypeCode"><option value="">انتخاب کنید</option>@foreach (var ct in _consumerTypes) { <option value="@ct.Code">@ct.Name</option> }</select></div>
                         <div class="bll-fg"><label class="bll-fl">سال</label><select class="bll-fi" @bind="_form.Year"><option value="">انتخاب کنید</option>@foreach (var yr in _yearlyRates) { <option value="@yr.Year">@yr.Year</option> }</select></div>
                     }
-                    <div class="bll-fg"><label class="bll-fl">ولتاژ (kV)</label><input class="bll-fi" @bind="_form.VoltageLevelKV" /></div>
+
                 </div>
 
                 <div class="bll-modal-sub">تابستان (ماه ۴ تا ۹)</div>
@@ -801,7 +872,7 @@
     private TariffForm MapToForm(TariffItem t) => new()
     {
         Name = t.Name, IsActive = t.IsActive, Description = t.Description, RateDerivationMode = t.RateDerivationMode,
-        ConsumerTypeCode = t.ConsumerTypeCode, Year = t.Year, VoltageLevelKV = t.VoltageLevelKV,
+        ConsumerTypeCode = t.ConsumerTypeCode, Year = t.Year,
         SummerOffPeakStart = t.SummerOffPeakStart, SummerOffPeakEnd = t.SummerOffPeakEnd,
         SummerMidPeakStart = t.SummerMidPeakStart, SummerMidPeakEnd = t.SummerMidPeakEnd,
         SummerPeakStart = t.SummerPeakStart, SummerPeakEnd = t.SummerPeakEnd,
@@ -830,7 +901,6 @@
         public string RateDerivationMode { get; set; } = "Manual";
         public string? ConsumerTypeCode { get; set; }
         public int? Year { get; set; }
-        public decimal? VoltageLevelKV { get; set; }
         public string? SummerOffPeakStart { get; set; }
         public string? SummerOffPeakEnd { get; set; }
         public string? SummerMidPeakStart { get; set; }
@@ -870,7 +940,6 @@
         public string RateDerivationMode { get; set; } = "Manual";
         public string? ConsumerTypeCode { get; set; }
         public int? Year { get; set; }
-        public decimal? VoltageLevelKV { get; set; }
         public string SummerOffPeakStart { get; set; } = "23:00";
         public string SummerOffPeakEnd { get; set; } = "07:00";
         public string SummerMidPeakStart { get; set; } = "07:00";
@@ -1002,18 +1071,22 @@
 /* ── Invoice display ── */
 .inv-area{margin-top:8px}
 .inv-bill{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.inv-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-.inv-logo{display:flex;align-items:center;gap:8px}
+.inv-hdr{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+.inv-hdr-left{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.inv-consumer-type{font-size:11px;font-weight:600;color:#64748b;white-space:nowrap}
+.inv-hdr-center{text-align:center;flex:1}
+.inv-logo{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .inv-logo-icon{font-size:32px}
 .inv-logo-t{font-size:15px;font-weight:800;color:#1e293b}
 .inv-logo-s{font-size:10px;color:#94a3b8}
-.inv-title{font-size:16px;font-weight:800;color:#1e293b}
-.inv-badge{font-size:11px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:3px 12px;border-radius:20px;margin-top:4px;display:inline-block}
-.inv-meta{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
-.inv-meta-c{display:flex;align-items:flex-start;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;flex:1}
-.inv-meta-i{font-size:18px;margin-top:2px}
-.inv-meta-l{font-size:10px;color:#94a3b8}
-.inv-meta-v{font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap}
+.inv-title{font-size:18px;font-weight:800;color:#1e293b}
+.inv-badge{font-size:11px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:3px 12px;border-radius:20px;display:inline-block}
+.inv-meta{display:flex;gap:16px;margin-bottom:16px;flex-wrap:nowrap}
+.inv-meta-c{display:flex;align-items:flex-start;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;flex:1 1 0;min-width:0}
+.inv-meta-duo{display:flex;gap:16px;flex:2 1 0;min-width:0}
+.inv-meta-i{font-size:18px;margin-top:2px;flex-shrink:0}
+.inv-meta-l{font-size:10px;color:#94a3b8;white-space:nowrap}
+.inv-meta-v{font-size:13px;font-weight:600;color:#1e293b}
 .inv-section{margin-bottom:14px}
 .inv-section-t{font-size:13px;font-weight:700;color:#334155;margin-bottom:8px;padding-right:10px;border-right:3px solid var(--blue)}
 .inv-tariff-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px}
@@ -1029,8 +1102,8 @@
 .inv-rate-mp .inv-rate-d{width:8px;height:8px;border-radius:50%;background:var(--gold)}
 .inv-rate-p .inv-rate-d{width:8px;height:8px;border-radius:50%;background:var(--red)}
 .inv-tou{font-size:11px;color:#64748b;margin-top:4px}
-.inv-table-wr{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid #e2e8f0}
-.inv-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+.inv-table-wr{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid #e2e8f0;width:100%}
+.inv-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:12px;display:table}
 .inv-table th{padding:8px 10px;text-align:center;background:#f8fafc;color:#64748b;font-weight:600;font-size:11px;white-space:nowrap;border-bottom:1px solid #e2e8f0}
 .inv-table td{padding:7px 10px;text-align:center;color:#334155;border-bottom:1px solid #f1f5f9}
 .inv-table tfoot td{padding:8px 10px;background:#f8fafc;border-top:1px solid #e2e8f0}
@@ -1047,7 +1120,7 @@
 .inv-pf-i{display:flex;align-items:center;gap:4px;font-size:12px;color:#475569}
 .inv-pf-v{font-size:14px}
 .inv-pf-avg{font-weight:700;color:#1e293b;margin-right:8px}
-.inv-scroll{max-height:260px;overflow-y:auto;border-radius:8px;border:1px solid #e2e8f0}
+.inv-scroll{max-height:260px;overflow:auto;border-radius:8px;border:1px solid #e2e8f0;width:100%}
 .inv-saved{display:flex;flex-wrap:wrap;gap:6px}
 .inv-saved-c{display:flex;gap:6px;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:11px}
 .inv-saved-b{font-size:10px;font-weight:700;padding:1px 7px;border-radius:12px;background:#e2e8f0;color:#64748b}
@@ -1094,6 +1167,11 @@
 .bll-hlp-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
 .bll-hlp-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
 .bll-hlp-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.bll-hlp-sep{border-top:1px dashed var(--border);margin:16px 0}
+.bll-hlp-tab-t{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--blue)}
+.bll-hlp-tab-i{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.bll-hlp-sub{margin:0 0 10px 32px;padding:10px 14px;background:var(--bg-alt);border-radius:10px;font-size:12px;line-height:2;color:var(--text-secondary)}
+.bll-hlp-sub strong{color:var(--text)}
 
 /* ── Responsive ── */
 @@media(max-width:768px){
@@ -1111,16 +1189,17 @@
     .bll-modal-grid{grid-template-columns:1fr 1fr;gap:8px}
     .bll-modal-grid--6{grid-template-columns:1fr 1fr}
     .inv-bill{width:100%!important;padding:14px 10px;border-radius:10px;overflow:hidden}
-    .inv-hdr{flex-direction:column;gap:6px}
+    .inv-hdr{flex-direction:row;flex-wrap:wrap;gap:6px}
     .inv-meta{flex-direction:column;gap:6px}
+    .inv-meta-duo{flex-direction:row;gap:6px}
     .inv-meta-c{padding:6px 8px}
     .inv-section{width:100%!important}
-    .inv-table-wr{width:100%!important;overflow:hidden;border-radius:6px;border:1px solid #e2e8f0}
-    .inv-table{width:100%!important;min-width:0!important;border-collapse:separate;border-spacing:0}
+    .inv-table-wr{width:100%!important;overflow-x:auto;border-radius:6px;border:1px solid #e2e8f0}
+    .inv-table{width:100%!important;table-layout:fixed;min-width:0!important;border-collapse:separate;border-spacing:0;display:table}
     .inv-table td,.inv-table th{padding:4px 5px;white-space:normal;word-break:keep-all}
     .inv-table-sm td,.inv-table-sm th{padding:3px 4px;font-size:10px}
     .inv-table-xs td,.inv-table-xs th{padding:2px 3px;font-size:9px}
-    .inv-scroll{width:100%!important;overflow:hidden;border:1px solid #e2e8f0;border-radius:6px}
+    .inv-scroll{width:100%!important;overflow:auto;border:1px solid #e2e8f0;border-radius:6px}
     .inv-summary{width:100%!important;max-width:none!important}
     .inv-override-r{flex-direction:column;align-items:stretch}
     .inv-override-l{min-width:auto}
@@ -1138,7 +1217,7 @@
     .bll-filter-bar .bll-fg-act{grid-column:1/-1}
     .bll-modal-grid{grid-template-columns:1fr}
     .bll-modal-grid--6{grid-template-columns:1fr 1fr}
-    .inv-table{width:100%!important;min-width:0!important;font-size:10px}
+    .inv-table{width:100%!important;table-layout:fixed;min-width:0!important;font-size:10px;display:table}
     .inv-table td,.inv-table th{padding:2px 4px;white-space:normal;word-break:keep-all}
     .inv-table-sm td,.inv-table-sm th{padding:2px 3px;font-size:9px}
     .inv-table-xs td,.inv-table-xs th{padding:1px 2px;font-size:8px}
@@ -1159,14 +1238,14 @@
     .bll-filter-bar .bll-fg-act{grid-column:1/-1}
     .bll-modal-grid{grid-template-columns:1fr}
     .bll-modal-grid--6{grid-template-columns:1fr 1fr}
-    .inv-table{font-size:10px;width:100%}
+    .inv-table{width:100%!important;table-layout:fixed;font-size:10px;display:table}
     .inv-table td,.inv-table th{padding:2px 4px;white-space:normal;word-break:keep-all}
     .inv-table-sm td,.inv-table-sm th{padding:2px 3px;font-size:9px}
     .inv-table-xs td,.inv-table-xs th{padding:1px 2px;font-size:8px}
     .inv-title{font-size:14px}
     .inv-meta-v{font-size:12px}
     .bll-tab{padding:7px 10px;font-size:11px}
-    .inv-scroll{overflow-x:hidden}
+    .inv-scroll{overflow:auto}
     .bll-bm-desc{flex-direction:column;gap:6px;padding:8px 10px}
     .bll-bm-icon{font-size:22px}
     .bll-bm-title{font-size:11px}
@@ -1180,15 +1259,61 @@
 @@media print{
     .bll-tabs,.bll-filter-bar,.inv-toolbar,.inv-override,.bll-bar,.bll-invoices,.bll-btn{display:none!important}
     .bll-wrap{padding:0;max-width:100%!important}
-    .inv-bill{width:100%!important;border:none;box-shadow:none;padding:0;border-radius:0;overflow:visible}
-    .inv-table-wr{width:100%!important;overflow:visible!important;border:none!important;border-radius:0!important}
-    .inv-table{width:100%!important;min-width:0!important}
-    .inv-table td,.inv-table th{padding:4px 6px;white-space:normal}
-    .inv-scroll{width:100%!important;overflow:visible!important;border:none!important;border-radius:0!important;max-height:none!important}
-    .inv-section{width:100%!important}
-    .inv-summary{width:100%!important;max-width:none!important}
-    .inv-pf{width:100%!important}
-    .inv-saved{width:100%!important}
+    .inv-bill{width:100%!important;border:1px solid #e2e8f0!important;box-shadow:none!important;padding:24px 20px!important;border-radius:8px!important;overflow:visible!important;background:#fff!important;color:inherit!important}
+    .inv-bill *{color:inherit!important;background:inherit!important;border-color:inherit!important}
+    .inv-table-wr{width:100%!important;overflow:visible!important;border:1px solid #e2e8f0!important;border-radius:6px!important}
+    .inv-table{width:100%!important;table-layout:fixed;min-width:0!important;display:table;border-collapse:separate!important;border-spacing:0!important}
+    .inv-table th{padding:8px 10px!important;text-align:center!important;background:#f8fafc!important;color:#64748b!important;font-weight:600!important;font-size:11px!important;border-bottom:1px solid #e2e8f0!important;white-space:nowrap!important}
+    .inv-table td{padding:7px 10px!important;text-align:center!important;color:#334155!important;border-bottom:1px solid #f1f5f9!important}
+    .inv-table tfoot td{padding:8px 10px!important;background:#f8fafc!important;border-top:1px solid #e2e8f0!important;color:#1e293b!important}
+    .inv-table-sm td,.inv-table-sm th{padding:5px 8px!important;font-size:11px!important}
+    .inv-table-xs td,.inv-table-xs th{padding:4px 6px!important;font-size:10px!important}
+    .inv-scroll{width:100%!important;overflow:visible!important;border:1px solid #e2e8f0!important;border-radius:6px!important;max-height:none!important}
+    .inv-section{width:100%!important;margin-bottom:14px!important}
+    .inv-section-t{font-size:13px!important;font-weight:700!important;color:#334155!important;margin-bottom:8px!important;padding-right:10px!important;border-right:3px solid #3b82f6!important}
+    .inv-summary{border-top:2px solid #1e293b!important;padding-top:12px!important;margin-top:14px!important;max-width:360px!important;margin-right:auto!important;width:auto!important}
+    .inv-sum-r{display:flex!important;justify-content:space-between!important;font-size:12px!important;padding:4px 0!important;color:#475569!important}
+    .inv-sum-grand{font-size:15px!important;font-weight:800!important;color:#1e293b!important;padding-top:6px!important;border-top:1px solid #e2e8f0!important;margin-top:4px!important}
+    .inv-pf{width:100%!important;display:flex!important;gap:16px!important;flex-wrap:wrap!important}
+    .inv-pf-i{display:flex!important;align-items:center!important;gap:4px!important;font-size:12px!important;color:#475569!important}
+    .inv-pf-v{font-size:14px!important}
+    .inv-pf-avg{font-weight:700!important;color:#1e293b!important}
+    .inv-saved{width:100%!important;display:flex!important;flex-wrap:wrap!important;gap:6px!important}
+    .inv-hdr{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:12px!important;margin-bottom:18px!important}
+    .inv-hdr-left{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:4px!important;min-width:0!important}
+    .inv-consumer-type{font-size:11px!important;font-weight:600!important;color:#64748b!important;white-space:nowrap!important}
+    .inv-hdr-center{text-align:center!important;flex:1!important}
+    .inv-logo{display:flex!important;align-items:center!important;gap:8px!important;flex-shrink:0!important}
+    .inv-logo-icon{font-size:32px!important}
+    .inv-logo-t{font-size:15px!important;font-weight:800!important;color:#1e293b!important}
+    .inv-logo-s{font-size:10px!important;color:#94a3b8!important}
+    .inv-title{font-size:18px!important;font-weight:800!important;color:#1e293b!important}
+    .inv-badge{font-size:11px!important;font-weight:700!important;color:#3b82f6!important;background:#eff6ff!important;padding:3px 12px!important;border-radius:20px!important;display:inline-block!important}
+    .inv-meta{display:flex!important;gap:16px!important;margin-bottom:16px!important;flex-wrap:nowrap!important}
+    .inv-meta-c{display:flex!important;align-items:flex-start!important;gap:8px!important;background:#f8fafc!important;border:1px solid #e2e8f0!important;border-radius:10px!important;padding:10px 12px!important;flex:1 1 0!important;min-width:0!important}
+    .inv-meta-duo{display:flex!important;gap:16px!important;flex:2 1 0!important;min-width:0!important}
+    .inv-meta-i{font-size:18px!important;flex-shrink:0!important}
+    .inv-meta-l{font-size:10px!important;color:#94a3b8!important;white-space:nowrap!important}
+    .inv-meta-v{font-size:13px!important;font-weight:600!important;color:#1e293b!important}
+    .inv-tariff-card{background:#f8fafc!important;border:1px solid #e2e8f0!important;border-radius:10px!important;padding:12px 14px!important}
+    .inv-tariff-row{display:flex!important;gap:20px!important;flex-wrap:wrap!important;margin-bottom:8px!important}
+    .inv-tariff-i{display:flex!important;gap:6px!important;font-size:12px!important}
+    .inv-tariff-l{color:#64748b!important}
+    .inv-tariff-v{font-weight:600!important;color:#1e293b!important}
+    .inv-tariff-formula{display:flex!important;align-items:center!important;gap:8px!important;font-size:12px!important;flex-wrap:wrap!important;margin-bottom:8px!important;color:#475569!important}
+    .inv-formula-op{color:#94a3b8!important;font-weight:700!important}
+    .inv-tariff-rates{display:flex!important;gap:12px!important;flex-wrap:wrap!important;margin-bottom:8px!important}
+    .inv-rate{display:flex!important;align-items:center!important;gap:6px!important;font-size:12px!important;color:#475569!important;padding:5px 10px!important;border-radius:8px!important;background:#fff!important;border:1px solid #e2e8f0!important}
+    .inv-rate-op .inv-rate-d{width:8px!important;height:8px!important;border-radius:50%!important;background:#059669!important}
+    .inv-rate-mp .inv-rate-d{width:8px!important;height:8px!important;border-radius:50%!important;background:#f59e0b!important}
+    .inv-rate-p .inv-rate-d{width:8px!important;height:8px!important;border-radius:50%!important;background:#dc2626!important}
+    .inv-tou{font-size:11px!important;color:#64748b!important;margin-top:4px!important}
+    .inv-total{font-weight:600!important;color:#3b82f6!important}
+    .inv-grand{font-weight:800!important;color:#1e293b!important}
+    .inv-highlight td{background:#f0fdf4!important;font-weight:700!important;color:#166534!important}
+    .inv-penalty td{color:#dc2626!important;font-weight:600!important;background:#fef2f2!important}
+    .inv-discount td{color:#059669!important;font-weight:600!important;background:#f0fdf4!important}
+    .inv-ftr{display:flex!important;justify-content:space-between!important;font-size:10px!important;color:#94a3b8!important;margin-top:16px!important;padding-top:10px!important;border-top:1px solid #e2e8f0!important}
     .page-break-before{page-break-before:always}
 }
 </style>

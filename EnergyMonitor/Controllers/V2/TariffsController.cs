@@ -43,7 +43,6 @@ public class TariffsController : ControllerBase
             RateDerivationMode = mode,
             ConsumerTypeCode = string.IsNullOrEmpty(dto.ConsumerTypeCode) ? null : dto.ConsumerTypeCode,
             Year = dto.Year > 0 ? dto.Year : null,
-            VoltageLevelKV = (decimal?)dto.VoltageLevelKV,
             OffPeakRate = dto.OffPeakRate,
             MidPeakRate = dto.MidPeakRate,
             PeakRate = dto.PeakRate,
@@ -80,7 +79,6 @@ public class TariffsController : ControllerBase
         tariff.RateDerivationMode = dto.RateDerivationMode == "Automatic" ? RateDerivationMode.Automatic : RateDerivationMode.Manual;
         tariff.ConsumerTypeCode = string.IsNullOrEmpty(dto.ConsumerTypeCode) ? null : dto.ConsumerTypeCode;
         tariff.Year = dto.Year > 0 ? dto.Year : null;
-        tariff.VoltageLevelKV = (decimal?)dto.VoltageLevelKV;
         if (tariff.RateDerivationMode != RateDerivationMode.Automatic)
         {
             tariff.OffPeakRate = dto.OffPeakRate;
@@ -125,11 +123,10 @@ public class TariffsController : ControllerBase
 public class CreateTariffRequest
 {
     [Required] public string Name { get; set; } = "";
-    public string Description { get; set; } = "";
+    public string? Description { get; set; }
     public string RateDerivationMode { get; set; } = "Manual";
     public string? ConsumerTypeCode { get; set; }
-    public int Year { get; set; }
-    public decimal? VoltageLevelKV { get; set; }
+    public int? Year { get; set; }
     public decimal OffPeakRate { get; set; }
     public decimal MidPeakRate { get; set; }
     public decimal PeakRate { get; set; }

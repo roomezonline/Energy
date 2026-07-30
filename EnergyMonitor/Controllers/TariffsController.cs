@@ -81,7 +81,6 @@ public class TariffsController : ControllerBase
             RateDerivationMode = mode,
             ConsumerTypeCode = string.IsNullOrEmpty(dto.ConsumerTypeCode) ? null : dto.ConsumerTypeCode,
             Year = dto.Year > 0 ? dto.Year : null,
-            VoltageLevelKV = dto.VoltageLevelKV,
             SummerOffPeakStart = dto.SummerOffPeakStart,
             SummerOffPeakEnd = dto.SummerOffPeakEnd,
             SummerMidPeakStart = dto.SummerMidPeakStart,
@@ -124,7 +123,6 @@ public class TariffsController : ControllerBase
             ? RateDerivationMode.Manual : RateDerivationMode.Automatic;
         tariff.ConsumerTypeCode = string.IsNullOrEmpty(dto.ConsumerTypeCode) ? null : dto.ConsumerTypeCode;
         tariff.Year = dto.Year > 0 ? dto.Year : null;
-        tariff.VoltageLevelKV = dto.VoltageLevelKV;
         tariff.SummerOffPeakStart = dto.SummerOffPeakStart;
         tariff.SummerOffPeakEnd = dto.SummerOffPeakEnd;
         tariff.SummerMidPeakStart = dto.SummerMidPeakStart;
@@ -178,7 +176,6 @@ public class TariffDto
     public string RateDerivationMode { get; set; } = "Manual";
     public string? ConsumerTypeCode { get; set; }
     public int Year { get; set; }
-    public decimal? VoltageLevelKV { get; set; }
     public string SummerOffPeakStart { get; set; } = "23:00";
     public string SummerOffPeakEnd { get; set; } = "06:00";
     public string SummerMidPeakStart { get; set; } = "06:00";

@@ -23,7 +23,6 @@ public class TariffConfiguration : IEntityTypeConfiguration<Tariff>
         // New fields
         builder.Property(x => x.RateDerivationMode).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.ConsumerTypeCode).HasMaxLength(20);
-        builder.Property(x => x.VoltageLevelKV).HasColumnType("decimal(8,2)");
 
         builder.HasMany(x => x.Rates).WithOne(x => x.Tariff).HasForeignKey(x => x.TariffId);
         builder.HasMany(x => x.Overrides).WithOne(x => x.Tariff).HasForeignKey(x => x.TariffId);

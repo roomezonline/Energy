@@ -538,7 +538,11 @@ public class BillingService : IBillingService
 
             var rate = tier.Coefficient.HasValue && supplyCost > 0
                 ? tier.Coefficient.Value * supplyCost
-                : tier.RatePerKwh;
+                : tier.RatePerKwh > 0
+                    ? tier.RatePerKwh
+                    : supplyCost > 0
+                        ? supplyCost
+                        : 0;
             var cost = kwh * rate;
             tierKWh.Add(kwh);
             tierCosts.Add(Math.Round(cost, 0));
@@ -582,7 +586,11 @@ public class BillingService : IBillingService
 
             var rate = tier.Coefficient.HasValue && supplyCost > 0
                 ? tier.Coefficient.Value * supplyCost
-                : tier.RatePerKwh;
+                : tier.RatePerKwh > 0
+                    ? tier.RatePerKwh
+                    : supplyCost > 0
+                        ? supplyCost
+                        : 0;
             var cost = kwh * rate;
             tierKWh.Add(kwh);
             tierCosts.Add(Math.Round(cost, 0));

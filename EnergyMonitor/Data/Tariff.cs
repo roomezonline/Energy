@@ -10,8 +10,6 @@ public class Tariff
     public Domain.Enums.RateDerivationMode RateDerivationMode { get; set; } = Domain.Enums.RateDerivationMode.Manual;
     public string? ConsumerTypeCode { get; set; }
     public int? Year { get; set; }
-    public decimal? VoltageLevelKV { get; set; }
-
     [Required(ErrorMessage = "نام الزامی است")]
     public string Name { get; set; } = "";
 

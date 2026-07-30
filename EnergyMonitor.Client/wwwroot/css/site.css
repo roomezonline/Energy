@@ -1651,40 +1651,9 @@ input,select,textarea{font-family:var(--font);outline:none}
   .page-container{max-width:100%!important;padding:0!important;margin:0!important}
   .bll-calc-card{border:none!important;padding:0!important;box-shadow:none!important;background:none!important;border-radius:0!important}
   .inv-wrapper{padding:0!important;max-width:100%!important}
-  .inv-bill{border:none!important;padding:0!important;box-shadow:none!important;color:#000!important;font-size:11px!important;font-weight:700!important}
-  .inv-bill *{color:#000!important;background:transparent!important;border-color:#000!important}
-
-  .inv-table th{background:#000!important;color:#fff!important;border:1px solid #000!important;font-weight:700!important;font-size:10px!important;letter-spacing:0!important;padding:5px 8px!important}
-  .inv-table td{color:#000!important;border:1px solid #000!important;font-weight:700!important;font-size:10px!important;padding:5px 8px!important}
-  .inv-table tbody tr:nth-child(even){background:#f3f4f6!important}
-  .inv-table .inv-grand{color:#000!important;font-weight:900!important;font-size:12px!important}
-  .inv-table .inv-ridx{color:#000!important;font-weight:700!important}
-
-  .inv-summary{background:#f3f4f6!important;border:1px solid #000!important}
-  .inv-summary *{color:#000!important;font-weight:700!important}
-  .inv-summary-grand{color:#000!important;font-weight:900!important;font-size:13px!important}
-  .inv-highlight,.inv-table .inv-highlight td{background:#fef3c7!important;color:#000!important;font-weight:700!important}
-  .inv-penalty,.inv-table .inv-penalty td{background:#fee2e2!important;color:#000!important;font-weight:700!important}
-  .inv-discount,.inv-table .inv-discount td{background:#d1fae5!important;color:#000!important;font-weight:700!important}
-
-  .inv-logo-title{-webkit-text-fill-color:#000!important;color:#000!important;background:none!important;font-weight:900!important}
-  .inv-info-card{background:#f3f4f6!important;border:1px solid #000!important}
-  .inv-info-card *{color:#000!important;font-weight:700!important}
-  .inv-info-icon{background:#d1d5db!important;color:#000!important}
-  .inv-badge{background:#000!important;color:#fff!important;font-weight:700!important;border:1px solid #000!important}
-
-  .inv-rates span,.inv-tou span,.inv-pf-item span{font-weight:700!important;color:#000!important}
-
-  .inv-barcode{border:2px solid #000!important}
-  .inv-barcode-text{color:#000!important;font-weight:700!important}
-
-  .inv-footer{color:#000!important;font-weight:700!important;border-top:2px solid #000!important}
-  .inv-footer *{color:#000!important;font-weight:700!important}
-
   .inv-section{page-break-inside:avoid}
   .inv-footer{page-break-after:avoid}
   table{border-collapse:collapse!important}
-  table td,table th{border:1px solid #000!important}
 }
 
 /* ── HelpBox ── */

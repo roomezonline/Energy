@@ -15,7 +15,6 @@ public class Center
     // Consumer type override at center level
     public string? ConsumerTypeCode { get; set; }
     public decimal? ContractCapacityMW { get; set; }
-    public decimal? VoltageLevelKV { get; set; }
     public decimal? ConsumptionPatternKWh { get; set; }
 
     public ICollection<User> Users { get; set; } = new List<User>();
