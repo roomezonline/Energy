@@ -52,6 +52,7 @@ public class AuthenticationService : IAuthenticationService
             UserId = user.Id,
             Username = user.Username,
             Role = user.Role.ToString(),
+            FullName = user.FullName,
             CenterId = user.CenterId,
             CenterIds = centerIds
         };

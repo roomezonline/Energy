@@ -1,4 +1,4 @@
-﻿@page "/monitoring"
+@page "/monitoring"
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.Components.Rendering
 @implements IDisposable
@@ -15,8 +15,8 @@
         <div class="modal-overlay" @onclick="() => _showCenterModal = false">
             <div class="selector-modal" @onclick:stopPropagation>
                 <div class="selector-modal-header">
-                    <h2>╪º┘å╪¬╪«╪º╪¿ ┘à╪▒┌⌐╪▓</h2>
-                    <button class="modal-close" @onclick="() => _showCenterModal = false">Γ£ò</button>
+                    <h2>انتخاب مرکز</h2>
+                    <button class="modal-close" @onclick="() => _showCenterModal = false">✕</button>
                 </div>
                 <div class="selector-modal-list">
                     @foreach (var c in _centers)
@@ -24,7 +24,7 @@
                         <div class="selector-modal-item @(c.Id == _selectedCenterId ? "selected" : "")"
                              @onclick="() => SelectCenter(c.Id)">
                             <div class="sel-item-icon">
-                                <span class="sel-icon-center">≡ƒÅó</span>
+                                <span class="sel-icon-center">🏢</span>
                             </div>
                             <div class="sel-item-info">
                                 <div class="sel-item-name">@c.Name</div>
@@ -33,7 +33,7 @@
                                 </div>
                             </div>
                             @if (c.Id == _selectedCenterId)
-                            { <span class="sel-check">Γ£ô</span> }
+                            { <span class="sel-check">✓</span> }
                         </div>
                     }
                 </div>
@@ -46,8 +46,8 @@
         <div class="modal-overlay" @onclick="() => _showDeviceModal = false">
             <div class="selector-modal" @onclick:stopPropagation>
                 <div class="selector-modal-header">
-                    <h2>╪º┘å╪¬╪«╪º╪¿ ┌⌐╪º╪▒┌»╪º┘ç</h2>
-                    <button class="modal-close" @onclick="() => _showDeviceModal = false">Γ£ò</button>
+                    <h2>انتخاب کارگاه</h2>
+                    <button class="modal-close" @onclick="() => _showDeviceModal = false">✕</button>
                 </div>
                 <div class="selector-modal-list">
                     @foreach (var d in _devices)
@@ -64,11 +64,11 @@
                                     @if (!string.IsNullOrEmpty(d.MacAddress))
                                     { <span class="sel-tag outline">@d.MacAddress</span> }
                                     @if (!string.IsNullOrEmpty(d.Location))
-                                    { <span class="sel-tag outline">≡ƒôì @d.Location</span> }
+                                    { <span class="sel-tag outline">📍 @d.Location</span> }
                                 </div>
                             </div>
                             @if (d.DeviceId == _selectedDeviceId)
-                            { <span class="sel-check">Γ£ô</span> }
+                            { <span class="sel-check">✓</span> }
                         </div>
                     }
                 </div>
@@ -82,7 +82,7 @@
         <div class="dash-loader-overlay">
             <div class="dash-loader-box">
                 <div class="dash-loader-spinner"></div>
-                <div class="dash-loader-text">╪»╪▒ ╪¡╪º┘ä ╪¿╪▒┘ê╪▓╪▒╪│╪º┘å█î...</div>
+                <div class="dash-loader-text">در حال بروزرسانی...</div>
             </div>
         </div>
     }
@@ -91,7 +91,7 @@
     {
         <div class="loading-state">
             <div class="spinner"></div>
-            <p>╪»╪▒ ╪¡╪º┘ä ╪¿╪º╪▒┌»╪░╪º╪▒█î ╪º╪╖┘ä╪º╪╣╪º╪¬...</p>
+            <p>در حال بارگذاری اطلاعات...</p>
         </div>
     }
     else
@@ -104,7 +104,7 @@
                 </div>
                 <div class="ht-right">
                     <span class="status-dot"></span>
-                    <span class="ht-status-text">@(_data.Connected ? "┘à╪¬╪╡┘ä" : "┘é╪╖╪╣")</span>
+                    <span class="ht-status-text">@(_data.Connected ? "متصل" : "قطع")</span>
                 </div>
             </div>
             <div class="ht-main">
@@ -112,15 +112,15 @@
                     <div class="ht-selectors">
                         <div class="sel-chip sel-chip-center @(_centers.Count <= 1 ? "disabled" : "")"
                              @onclick="() => { if (_centers.Count > 1) _showCenterModal = true; }">
-                            <span class="sel-chip-icon">≡ƒÅó</span>
-                            <span class="sel-chip-label">@(_centers.FirstOrDefault(c => c.Id == _selectedCenterId)?.Name ?? "╪º┘å╪¬╪«╪º╪¿ ┘à╪▒┌⌐╪▓")</span>
-                            <span class="sel-chip-arrow">Γû╛</span>
+                            <span class="sel-chip-icon">🏢</span>
+                            <span class="sel-chip-label">@(_centers.FirstOrDefault(c => c.Id == _selectedCenterId)?.Name ?? "انتخاب مرکز")</span>
+                            <span class="sel-chip-arrow">▾</span>
                         </div>
                         <div class="sel-chip sel-chip-device @(_devices.Count == 0 ? "disabled" : "")"
                              @onclick="() => { if (_devices.Count > 0) _showDeviceModal = true; }">
-                            <span class="sel-chip-icon">≡ƒôƒ</span>
-                            <span class="sel-chip-label">@(_devices.FirstOrDefault(d => d.DeviceId == _selectedDeviceId)?.DisplayName ?? "╪º┘å╪¬╪«╪º╪¿ ┌⌐╪º╪▒┌»╪º┘ç")</span>
-                            <span class="sel-chip-arrow">Γû╛</span>
+                            <span class="sel-chip-icon">📟</span>
+                            <span class="sel-chip-label">@(_devices.FirstOrDefault(d => d.DeviceId == _selectedDeviceId)?.DisplayName ?? "انتخاب کارگاه")</span>
+                            <span class="sel-chip-arrow">▾</span>
                         </div>
                     </div>
                     <div class="ht-meta">
@@ -135,7 +135,7 @@
                     { <img src="/uploads/@_data.Center.ImageFileName" class="center-avatar-img" alt="" /> }
                     else
                     {
-                        var _initial = _data.Center?.Name?[..1] ?? "≡ƒÅ¡";
+                        var _initial = _data.Center?.Name?[..1] ?? "🏭";
                         <div class="center-avatar-fallback">@_initial</div>
                     }
                 </div>
@@ -145,7 +145,7 @@
                     var _updClass = !_data.Connected ? "upd-red" :
                         (DateTime.UtcNow - (_data.LatestSnapshot?.Timestamp ?? DateTime.UtcNow)).TotalSeconds > 60 ? "upd-orange" : "upd-green";
                 }
-                <span class="ht-update @_updClass">≡ƒòÉ ╪ó╪«╪▒█î┘å ╪¿╪▒┘ê╪▓╪▒╪│╪º┘å█î: @_data.LastUpdateText</span>
+                <span class="ht-update @_updClass">🕐 آخرین بروزرسانی: @_data.LastUpdateText</span>
             </div>
         </div>
 
@@ -206,8 +206,8 @@
         @if (!isOnline)
         {
             <div class="offline-banner">
-                <span class="offline-icon">ΓÜá</span>
-                <span>╪»╪│╪¬┌»╪º┘ç ╪ó┘ü┘ä╪º█î┘å ╪º╪│╪¬ ΓÇö ╪ó╪«╪▒█î┘å ╪º╪▒╪¬╪¿╪º╪╖: @_data.LastUpdateText</span>
+                <span class="offline-icon">⚠</span>
+                <span>دستگاه آفلاین است — آخرین ارتباط: @_data.LastUpdateText</span>
             </div>
         }
 
@@ -286,7 +286,7 @@
                     <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
                         @if (_sparklinePower is not null) { <path d="@_sparklinePower.Area" fill="url(#grad-red)" /> <path d="@_sparklinePower.Line" class="sp-line" /> }
                     </svg>
-                    <div class="card-label">╪¬┘ê╪º┘å ┘à█î╪º┘å┌»█î┘å</div>
+                    <div class="card-label">توان میانگین</div>
                 </div>
                 <div class="card reactive">
                     <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
@@ -299,7 +299,7 @@
                     <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
                         @if (_sparklineReactive is not null) { <path d="@_sparklineReactive.Area" fill="url(#grad-gold)" /> <path d="@_sparklineReactive.Line" class="sp-line" /> }
                     </svg>
-                    <div class="card-label">╪▒╪º┌⌐╪¬█î┘ê ┘à█î╪º┘å┌»█î┘å</div>
+                    <div class="card-label">راکتیو میانگین</div>
                 </div>
                 <div class="card voltage">
                     <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
@@ -312,7 +312,7 @@
                     <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
                         @if (_sparklineVoltage is not null) { <path d="@_sparklineVoltage.Area" fill="url(#grad-blue)" /> <path d="@_sparklineVoltage.Line" class="sp-line" /> }
                     </svg>
-                    <div class="card-label">┘ê┘ä╪¬╪º┌ÿ ┘à█î╪º┘å┌»█î┘å</div>
+                    <div class="card-label">ولتاژ میانگین</div>
                 </div>
                 <div class="card current">
                     <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
@@ -325,7 +325,7 @@
                     <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
                         @if (_sparklineCurrent is not null) { <path d="@_sparklineCurrent.Area" fill="url(#grad-green)" /> <path d="@_sparklineCurrent.Line" class="sp-line" /> }
                     </svg>
-                    <div class="card-label">╪¼╪▒█î╪º┘å ┘à█î╪º┘å┌»█î┘å</div>
+                    <div class="card-label">جریان میانگین</div>
                 </div>
                 <div class="card pf">
                     <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
@@ -338,27 +338,27 @@
                     <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
                         @if (_sparklinePf is not null) { <path d="@_sparklinePf.Area" fill="url(#grad-purple)" /> <path d="@_sparklinePf.Line" class="sp-line" /> }
                     </svg>
-                    <div class="card-label">╪╢╪▒█î╪¿ ╪¬┘ê╪º┘å</div>
+                    <div class="card-label">ضریب توان</div>
                 </div>
                 <div class="card temperature">
                     <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
                         <circle class="ring-track" cx="54" cy="54" r="42"/>
                         <circle class="ring-fill" cx="54" cy="54" r="42"
                             stroke-dasharray="263.9"                             stroke-dashoffset="@(263.9m * (1 - (decimal)tempPct / 100))" />
-                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@(ambientTemp is null ? "ΓÇö" : ambientTemp.Value.ToString("F1"))</text>
-                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">┬░C</text>
+                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@(ambientTemp is null ? "—" : ambientTemp.Value.ToString("F1"))</text>
+                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">°C</text>
                     </svg>
                     <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
                         @if (_sparklineTemp is not null) { <path d="@_sparklineTemp.Area" fill="url(#grad-pink)" /> <path d="@_sparklineTemp.Line" class="sp-line" /> }
                     </svg>
-                    <div class="card-label">╪»┘à╪º█î ┘à╪¡█î╪╖</div>
+                    <div class="card-label">دمای محیط</div>
                 </div>
             </div>
 
             <div class="collapse-section @(_expandPhaseStatus ? "expanded" : "")">
                 <button class="collapse-hdr" @onclick="() => _expandPhaseStatus = !_expandPhaseStatus">
-                    <h2 class="section-title">┘ê╪╢╪╣█î╪¬ ┘ü╪º╪▓┘ç╪º</h2>
-                    <span class="collapse-arrow">Γû╛</span>
+                    <h2 class="section-title">وضعیت فازها</h2>
+                    <span class="collapse-arrow">▾</span>
                 </button>
                 @if (_expandPhaseStatus)
                 {
@@ -370,7 +370,7 @@
                                 @if (pc >= 3) { @RenderGauge("C", phaseCOn, s, hasLoadC, avgPf) }
                             </div>
                             <div class="chart-panel">
-                                <h3>┘å┘à┘ê╪»╪º╪▒ ┘ê┘ä╪¬╪º┌ÿ (V)</h3>
+                                <h3>نمودار ولتاژ (V)</h3>
                                 <div class="chart-panel-wrap">
                                     @if (_data.ChartSnapshots != null && _data.ChartSnapshots.Count > 0)
                                     {
@@ -378,7 +378,7 @@
                                     }
                                     else
                                     {
-                                        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:12px;">╪»╪º╪»┘çΓÇî╪º█î ┘à┘ê╪¼┘ê╪» ┘å█î╪│╪¬</div>
+                                        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:12px;">داده‌ای موجود نیست</div>
                                     }
                                 </div>
                             </div>
@@ -389,8 +389,8 @@
 
             <div class="collapse-section @(_expandPhaseInfo ? "expanded" : "")">
                 <button class="collapse-hdr" @onclick="() => _expandPhaseInfo = !_expandPhaseInfo">
-                    <h2 class="section-title">╪º╪╖┘ä╪º╪╣╪º╪¬ ┘ü╪º╪▓┘ç╪º</h2>
-                    <span class="collapse-arrow">Γû╛</span>
+                    <h2 class="section-title">اطلاعات فازها</h2>
+                    <span class="collapse-arrow">▾</span>
                 </button>
                 @if (_expandPhaseInfo)
                 {
@@ -412,32 +412,32 @@
 
             <div class="collapse-section @(_expandEnergy ? "expanded" : "")">
                 <button class="collapse-hdr" @onclick="() => _expandEnergy = !_expandEnergy">
-                    <h2 class="section-title">┘à╪╡╪▒┘ü ╪º┘å╪▒┌ÿ█î</h2>
-                    <span class="collapse-arrow">Γû╛</span>
+                    <h2 class="section-title">مصرف انرژی</h2>
+                    <span class="collapse-arrow">▾</span>
                 </button>
                 @if (_expandEnergy)
                 {
                     <div class="collapse-body">
                         <div class="cons-grid">
-                            <div class="cons-card"><div class="cons-lbl">╪º┘à╪▒┘ê╪▓</div><div class="cons-val">@SmartEnergy(_data.Consumption?.TodayKWh ?? 0)</div></div>
-                            <div class="cons-card"><div class="cons-lbl">┘à╪º┘ç ╪¼╪º╪▒█î</div><div class="cons-val">@SmartEnergy(_data.Consumption?.MonthKWh ?? 0)</div></div>
-                            <div class="cons-card"><div class="cons-lbl">┘╛█î┌⌐ ╪¼╪▒█î╪º┘å A</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentA ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">امروز</div><div class="cons-val">@SmartEnergy(_data.Consumption?.TodayKWh ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">ماه جاری</div><div class="cons-val">@SmartEnergy(_data.Consumption?.MonthKWh ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">پیک جریان A</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentA ?? 0)</div></div>
                             @if (pc >= 2)
                             {
-                            <div class="cons-card"><div class="cons-lbl">┘╛█î┌⌐ ╪¼╪▒█î╪º┘å B</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentB ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">پیک جریان B</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentB ?? 0)</div></div>
                             }
                             @if (pc >= 3)
                             {
-                            <div class="cons-card"><div class="cons-lbl">┘╛█î┌⌐ ╪¼╪▒█î╪º┘å C</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentC ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">پیک جریان C</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentC ?? 0)</div></div>
                             }
-                            <div class="cons-card"><div class="cons-lbl">┘╛█î┌⌐ ╪¬┘ê╪º┘å A</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerA ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">پیک توان A</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerA ?? 0)</div></div>
                             @if (pc >= 2)
                             {
-                            <div class="cons-card"><div class="cons-lbl">┘╛█î┌⌐ ╪¬┘ê╪º┘å B</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerB ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">پیک توان B</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerB ?? 0)</div></div>
                             }
                             @if (pc >= 3)
                             {
-                            <div class="cons-card"><div class="cons-lbl">┘╛█î┌⌐ ╪¬┘ê╪º┘å C</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerC ?? 0)</div></div>
+                            <div class="cons-card"><div class="cons-lbl">پیک توان C</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerC ?? 0)</div></div>
                             }
                         </div>
                     </div>
@@ -448,16 +448,16 @@
             {
                 <div class="collapse-section @(_expandCharts ? "expanded" : "")">
                     <button class="collapse-hdr" @onclick="() => _expandCharts = !_expandCharts">
-                        <h2 class="section-title">┘å┘à┘ê╪»╪º╪▒┘ç╪º</h2>
-                        <span class="collapse-arrow">Γû╛</span>
+                        <h2 class="section-title">نمودارها</h2>
+                        <span class="collapse-arrow">▾</span>
                     </button>
                     @if (_expandCharts)
                     {
                         <div class="collapse-body">
                             <div class="chart-grid">
-                                <div class="chart-card"><h3>╪¼╪▒█î╪º┘å (A)</h3><div class="chart-wrap"><canvas id="chartCurrent"></canvas></div></div>
-                                <div class="chart-card"><h3>╪¬┘ê╪º┘å (W)</h3><div class="chart-wrap"><canvas id="chartPower"></canvas></div></div>
-                                <div class="chart-card"><h3>╪╢╪▒█î╪¿ ╪¬┘ê╪º┘å</h3><div class="chart-wrap"><canvas id="chartPf"></canvas></div></div>
+                                <div class="chart-card"><h3>جریان (A)</h3><div class="chart-wrap"><canvas id="chartCurrent"></canvas></div></div>
+                                <div class="chart-card"><h3>توان (W)</h3><div class="chart-wrap"><canvas id="chartPower"></canvas></div></div>
+                                <div class="chart-card"><h3>ضریب توان</h3><div class="chart-wrap"><canvas id="chartPf"></canvas></div></div>
                             </div>
                         </div>
                     }
@@ -468,10 +468,10 @@
             {
                 <div class="collapse-section @(_expandAlarms ? "expanded" : "")">
                     <button class="collapse-hdr" @onclick="() => _expandAlarms = !_expandAlarms">
-                        <h2 class="section-title">┘ç╪┤╪»╪º╪▒┘ç╪º█î ┘ü╪╣╪º┘ä <span class="count-badge red">@_data.ActiveAlarms.Count</span></h2>
+                        <h2 class="section-title">هشدارهای فعال <span class="count-badge red">@_data.ActiveAlarms.Count</span></h2>
                         <div>
-                            <button class="alarm-stop-all-btn" @onclick:stopPropagation="true" @onclick="StopAllAlarmSounds" title="┘é╪╖╪╣ ╪╡╪»╪º">≡ƒöç ┘é╪╖╪╣ ╪╡╪»╪º</button>
-                            <span class="collapse-arrow">Γû╛</span>
+                            <button class="alarm-stop-all-btn" @onclick:stopPropagation="true" @onclick="StopAllAlarmSounds" title="قطع صدا">🔇 قطع صدا</button>
+                            <span class="collapse-arrow">▾</span>
                         </div>
                     </button>
                     @if (_expandAlarms)
@@ -485,17 +485,17 @@
                                         <span class="alarm-sev-dot"></span>
                                         <div class="alarm-row-body">
                                             <div class="alarm-row-title">@a.Title</div>
-                                            @if (!string.IsNullOrEmpty(a.Phase)) { <span class="alarm-phase-badge">┘ü╪º╪▓ @a.Phase</span> }
+                                            @if (!string.IsNullOrEmpty(a.Phase)) { <span class="alarm-phase-badge">فاز @a.Phase</span> }
                                             @if (!string.IsNullOrEmpty(a.Message)) { <div class="alarm-row-msg">@a.Message</div> }
                                         </div>
-                                        <button class="alarm-resolve-btn" @onclick="() => ResolveAlarm(a.Id)" title="╪¡┘ä ╪┤╪»">Γ£ô</button>
-                                        <button class="alarm-mute-btn @(silenced ? "muted" : "")" @onclick="() => ToggleMute(a.Id)" title="@(silenced ? "┘ü╪╣╪º┘ä ┌⌐╪▒╪»┘å ╪╡╪»╪º" : "┘é╪╖╪╣ ╪╡╪»╪º")">
-                                            @(silenced ? "≡ƒöç" : "≡ƒöö")
+                                        <button class="alarm-resolve-btn" @onclick="() => ResolveAlarm(a.Id)" title="حل شد">✓</button>
+                                        <button class="alarm-mute-btn @(silenced ? "muted" : "")" @onclick="() => ToggleMute(a.Id)" title="@(silenced ? "فعال کردن صدا" : "قطع صدا")">
+                                            @(silenced ? "🔇" : "🔔")
                                         </button>
                                     </div>
                                 }
                             </div>
-                            <a href="/alarms" class="btn-link">┘à╪┤╪º┘ç╪»┘ç ┘ç┘à┘ç ┘ç╪┤╪»╪º╪▒┘ç╪º</a>
+                            <a href="/alarms" class="btn-link">مشاهده همه هشدارها</a>
                         </div>
                     }
                 </div>
@@ -505,8 +505,8 @@
             {
                 <div class="collapse-section @(_expandResolved ? "expanded" : "")">
                     <button class="collapse-hdr" @onclick="() => _expandResolved = !_expandResolved">
-                        <h2 class="section-title resolved-title">╪▒┘ê█î╪»╪º╪»┘ç╪º█î ╪º╪«█î╪▒</h2>
-                        <span class="collapse-arrow">Γû╛</span>
+                        <h2 class="section-title resolved-title">رویدادهای اخیر</h2>
+                        <span class="collapse-arrow">▾</span>
                     </button>
                     @if (_expandResolved)
                     {
@@ -515,10 +515,10 @@
                                 @foreach (var a in _data.RecentResolvedAlarms.Take(3))
                                 {
                                     <div class="resolved-item">
-                                        <span class="resolved-icon">@(a.Title.Contains("╪º╪¬╪╡╪º┘ä") ? "≡ƒöù" : "Γ£à")</span>
+                                        <span class="resolved-icon">@(a.Title.Contains("اتصال") ? "🔗" : "✅")</span>
                                         <div class="resolved-body">
                                             <div class="resolved-title">@a.Title</div>
-                                            @if (!string.IsNullOrEmpty(a.Phase)) { <span class="resolved-phase">┘ü╪º╪▓ @a.Phase</span> }
+                                            @if (!string.IsNullOrEmpty(a.Phase)) { <span class="resolved-phase">فاز @a.Phase</span> }
                                         </div>
                                     </div>
                                 }
@@ -530,14 +530,14 @@
 
             <div class="collapse-section @(_expandQuickActions ? "expanded" : "")">
                 <button class="collapse-hdr" @onclick="() => _expandQuickActions = !_expandQuickActions">
-                    <h2 class="section-title">╪»╪│╪¬╪▒╪│█î ╪│╪▒█î╪╣</h2>
-                    <span class="collapse-arrow">Γû╛</span>
+                    <h2 class="section-title">دسترسی سریع</h2>
+                    <span class="collapse-arrow">▾</span>
                 </button>
                 @if (_expandQuickActions)
                 {
                     <div class="collapse-body">
                         <div class="qa-grid">
-                            <a href="/news" class="qa-card">╪º╪«╪¿╪º╪▒ ┘ê ╪º╪╖┘ä╪º╪╣█î┘çΓÇî┘ç╪º</a>
+                            <a href="/news" class="qa-card">اخبار و اطلاعیه‌ها</a>
                         </div>
                     </div>
                 }
@@ -545,8 +545,8 @@
     }
 
     <div class="app-footer">
-        <span>┬⌐ @DateTime.UtcNow.Year ΓÇö ╪º┘å╪▒┌ÿ█îΓÇî┌⌐╪º┘ä</span>
-        <span>┘å╪│╪«┘ç █▓.█░</span>
+        <span>© @DateTime.UtcNow.Year — انرژی‌کال</span>
+        <span>نسخه ۲.۰</span>
     </div>
 
     @if (_showSummary)
@@ -554,7 +554,7 @@
         <div class="summary-overlay" @onclick="() => _showSummary = false"></div>
         <div class="summary-drawer">
             <div class="summary-header">
-                <h3>╪╡┘ê╪▒╪¬╪¡╪│╪º╪¿ ┘ê ╪¬╪╣╪▒┘ü┘ç</h3>
+                <h3>صورتحساب و تعرفه</h3>
                 <button class="summary-close" @onclick="() => _showSummary = false">&times;</button>
             </div>
             <div class="summary-body">
@@ -569,7 +569,7 @@
                             @if (!string.IsNullOrEmpty(_data?.Center?.ImageFileName))
                             { <img src="/uploads/@_data.Center.ImageFileName" class="sum-avatar-img" alt="" /> }
                             else
-                            { <div class="sum-avatar-fallback">≡ƒÅ¡</div> }
+                            { <div class="sum-avatar-fallback">🏭</div> }
                         </div>
                         <div class="sum-info">
                             <div class="sum-name">@(_data?.Center?.Name ?? "")</div>
@@ -582,39 +582,39 @@
                         </div>
                     </div>
 
-                    @* --- ╪¿╪º╪▓┘ç ╪¬╪º╪▒█î╪« (┘╛█î╪┤ΓÇî┘ü╪▒╪╢ █î┌⌐ ┘à╪º┘ç┘ç) --- *@
+                    @* --- بازه تاریخ (پیش‌فرض یک ماهه) --- *@
                     <div class="sum-section">
-                        <div class="sum-section-title">╪¿╪º╪▓┘ç ╪╡┘ê╪▒╪¬╪¡╪│╪º╪¿</div>
+                        <div class="sum-section-title">بازه صورتحساب</div>
                         <div class="sum-grid two">
                             <div class="sum-item">
-                                <div class="sum-item-label">╪º╪▓ ╪¬╪º╪▒█î╪«</div>
+                                <div class="sum-item-label">از تاریخ</div>
                                 <input data-jdp class="sum-date-input" id="billFrom" value="@_billFrom" />
                             </div>
                             <div class="sum-item">
-                                <div class="sum-item-label">╪¬╪º ╪¬╪º╪▒█î╪«</div>
+                                <div class="sum-item-label">تا تاریخ</div>
                                 <input data-jdp class="sum-date-input" id="billTo" value="@_billTo" />
                             </div>
                         </div>
                     </div>
 
-                    @* --- ╪º┘å╪¬╪«╪º╪¿ ╪¬╪╣╪▒┘ü┘ç --- *@
+                    @* --- انتخاب تعرفه --- *@
                     <div class="sum-section">
-                        <div class="sum-section-title">╪¬╪╣╪▒┘ü┘ç</div>
+                        <div class="sum-section-title">تعرفه</div>
                         <select class="form-select" @bind="_selectedTariffId">
-                            <option value="@Guid.Empty">╪¬╪╣╪▒┘ü┘ç ╪▒╪º ╪º┘å╪¬╪«╪º╪¿ ┌⌐┘å█î╪»</option>
+                            <option value="@Guid.Empty">تعرفه را انتخاب کنید</option>
                             @foreach (var t in _tariffs)
                             {
                                 var label = t.RateDerivationMode == "Automatic"
-                                    ? $"{t.Name} (╪«┘ê╪»┌⌐╪º╪▒)"
-                                    : $"{t.Name} (╪½╪º╪¿╪¬)";
+                                    ? $"{t.Name} (خودکار)"
+                                    : $"{t.Name} (ثابت)";
                                 <option value="@t.Id">@label</option>
                             }
                         </select>
                     </div>
 
-                    <button class="sum-calc-btn" @onclick="CalcBill" disabled="@(_tariffs.Count == 0)">┘à╪¡╪º╪│╪¿┘ç ╪╡┘ê╪▒╪¬╪¡╪│╪º╪¿</button>
+                    <button class="sum-calc-btn" @onclick="CalcBill" disabled="@(_tariffs.Count == 0)">محاسبه صورتحساب</button>
 
-                    @* --- ┘å╪¬╪º█î╪¼ --- *@
+                    @* --- نتایج --- *@
                     @if (!string.IsNullOrEmpty(_billResult))
                     {
                         <div class="sum-bill-result">@_billResult</div>
@@ -624,128 +624,128 @@
                     {
                         <div class="bill-result-card">
                             <div class="bill-result-hdr">@_billData.CenterName</div>
-                            <div class="bill-result-subhdr">╪¬╪╣╪▒┘ü┘ç: @_billData.TariffName | @_billData.FromDate ╪¬╪º @_billData.ToDate (@_billData.Days ╪▒┘ê╪▓)</div>
+                            <div class="bill-result-subhdr">تعرفه: @_billData.TariffName | @_billData.FromDate تا @_billData.ToDate (@_billData.Days روز)</div>
 
-                            @* ╪º╪╖┘ä╪º╪╣╪º╪¬ ╪¬╪╣╪▒┘ü┘ç ╪«┘ê╪»┌⌐╪º╪▒ *@
+                            @* اطلاعات تعرفه خودکار *@
                             @if (!string.IsNullOrEmpty(_billData.ConsumerTypeName))
                             {
                                 <div class="bill-section">
-                                    <div class="bill-section-title">╪º╪╖┘ä╪º╪╣╪º╪¬ ╪¬╪╣╪▒┘ü┘ç ╪«┘ê╪»┌⌐╪º╪▒</div>
+                                    <div class="bill-section-title">اطلاعات تعرفه خودکار</div>
                                     <div class="bill-grid">
-                                        <div class="bill-item"><span>┘å┘ê╪╣ ┘à╪╡╪▒┘üΓÇî┌⌐┘å┘å╪»┘ç</span><span>@_billData.ConsumerTypeName</span></div>
-                                        @if (_billData.Year.HasValue) { <div class="bill-item"><span>╪│╪º┘ä</span><span>@_billData.Year</span></div> }
-                                        @if (_billData.EcaCoefficient.HasValue) { <div class="bill-item"><span>╪╢╪▒█î╪¿ ECA</span><span>@_billData.EcaCoefficient?.ToString("F4")</span></div> }
-                                        @if (_billData.BaseEcaRate.HasValue) { <div class="bill-item"><span>┘å╪▒╪« ┘╛╪º█î┘ç</span><span>@_billData.BaseEcaRate?.ToString("N0") ╪▒█î╪º┘ä/kWh</span></div> }
+                                        <div class="bill-item"><span>نوع مصرف‌کننده</span><span>@_billData.ConsumerTypeName</span></div>
+                                        @if (_billData.Year.HasValue) { <div class="bill-item"><span>سال</span><span>@_billData.Year</span></div> }
+                                        @if (_billData.EcaCoefficient.HasValue) { <div class="bill-item"><span>ضریب ECA</span><span>@_billData.EcaCoefficient?.ToString("F4")</span></div> }
+                                        @if (_billData.BaseEcaRate.HasValue) { <div class="bill-item"><span>نرخ پایه</span><span>@_billData.BaseEcaRate?.ToString("N0") ریال/kWh</span></div> }
                                         @if (_billData.TouOffPeakMultiplier.HasValue && _billData.EffectiveOffPeakRate.HasValue)
                                         {
-                                            <div class="bill-item"><span>┘å╪▒╪« ┘à╪ñ╪½╪▒ ┌⌐┘àΓÇî╪¿╪º╪▒█î</span><span>@_billData.EffectiveOffPeakRate?.ToString("N0") ╪▒█î╪º┘ä/kWh</span></div>
-                                            <div class="bill-item"><span>┘å╪▒╪« ┘à╪ñ╪½╪▒ ┘à█î╪º┘åΓÇî╪¿╪º╪▒█î</span><span>@_billData.EffectiveMidPeakRate?.ToString("N0") ╪▒█î╪º┘ä/kWh</span></div>
-                                            <div class="bill-item"><span>┘å╪▒╪« ┘à╪ñ╪½╪▒ ╪º┘ê╪¼ΓÇî╪¿╪º╪▒█î</span><span>@_billData.EffectivePeakRate?.ToString("N0") ╪▒█î╪º┘ä/kWh</span></div>
+                                            <div class="bill-item"><span>نرخ مؤثر کم‌باری</span><span>@_billData.EffectiveOffPeakRate?.ToString("N0") ریال/kWh</span></div>
+                                            <div class="bill-item"><span>نرخ مؤثر میان‌باری</span><span>@_billData.EffectiveMidPeakRate?.ToString("N0") ریال/kWh</span></div>
+                                            <div class="bill-item"><span>نرخ مؤثر اوج‌باری</span><span>@_billData.EffectivePeakRate?.ToString("N0") ریال/kWh</span></div>
                                         }
                                         else if (_billData.SupplyCostPerKwh.HasValue)
                                         {
-                                            <div class="bill-item"><span>┘å╪▒╪« ╪¬╪ú┘à█î┘å ╪¿╪▒┘é</span><span>@_billData.SupplyCostPerKwh?.ToString("N0") ╪▒█î╪º┘ä/kWh</span></div>
+                                            <div class="bill-item"><span>نرخ تأمین برق</span><span>@_billData.SupplyCostPerKwh?.ToString("N0") ریال/kWh</span></div>
                                         }
                                     </div>
                                 </div>
                             }
 
-                            @* ┘à╪╡╪▒┘ü ╪¿┘ç ╪¬┘ü┌⌐█î┌⌐ ┘ü╪º╪▓ ┘ê ╪¿╪º╪▓┘ç *@
+                            @* مصرف به تفکیک فاز و بازه *@
                             <div class="bill-section">
-                                <div class="bill-section-title">┘à╪╡╪▒┘ü ╪¿┘ç ╪¬┘ü┌⌐█î┌⌐ ┘ü╪º╪▓ (kWh)</div>
+                                <div class="bill-section-title">مصرف به تفکیک فاز (kWh)</div>
                                 <div class="bill-phase-grid">
-                                    <div class="bill-phase-hdr"><span></span><span>┌⌐┘àΓÇî╪¿╪º╪▒█î</span><span>┘à█î╪º┘åΓÇî╪¿╪º╪▒█î</span><span>╪º┘ê╪¼ΓÇî╪¿╪º╪▒█î</span><span>╪¼┘à╪╣</span></div>
-                                    <div class="bill-phase-row"><span>┘ü╪º╪▓ A</span><span>@_billData.PhaseA.OffPeak.ToString("N3")</span><span>@_billData.PhaseA.MidPeak.ToString("N3")</span><span>@_billData.PhaseA.Peak.ToString("N3")</span><span>@_billData.PhaseA.Total.ToString("N3")</span></div>
-                                    <div class="bill-phase-row"><span>┘ü╪º╪▓ B</span><span>@_billData.PhaseB.OffPeak.ToString("N3")</span><span>@_billData.PhaseB.MidPeak.ToString("N3")</span><span>@_billData.PhaseB.Peak.ToString("N3")</span><span>@_billData.PhaseB.Total.ToString("N3")</span></div>
-                                    <div class="bill-phase-row"><span>┘ü╪º╪▓ C</span><span>@_billData.PhaseC.OffPeak.ToString("N3")</span><span>@_billData.PhaseC.MidPeak.ToString("N3")</span><span>@_billData.PhaseC.Peak.ToString("N3")</span><span>@_billData.PhaseC.Total.ToString("N3")</span></div>
-                                    <div class="bill-phase-row total"><span>╪¼┘à╪╣ ┌⌐┘ä</span><span>@_billData.OffPeakKWh.ToString("N3")</span><span>@_billData.MidPeakKWh.ToString("N3")</span><span>@_billData.PeakKWh.ToString("N3")</span><span>@_billData.TotalKWh.ToString("N3")</span></div>
+                                    <div class="bill-phase-hdr"><span></span><span>کم‌باری</span><span>میان‌باری</span><span>اوج‌باری</span><span>جمع</span></div>
+                                    <div class="bill-phase-row"><span>فاز A</span><span>@_billData.PhaseA.OffPeak.ToString("N3")</span><span>@_billData.PhaseA.MidPeak.ToString("N3")</span><span>@_billData.PhaseA.Peak.ToString("N3")</span><span>@_billData.PhaseA.Total.ToString("N3")</span></div>
+                                    <div class="bill-phase-row"><span>فاز B</span><span>@_billData.PhaseB.OffPeak.ToString("N3")</span><span>@_billData.PhaseB.MidPeak.ToString("N3")</span><span>@_billData.PhaseB.Peak.ToString("N3")</span><span>@_billData.PhaseB.Total.ToString("N3")</span></div>
+                                    <div class="bill-phase-row"><span>فاز C</span><span>@_billData.PhaseC.OffPeak.ToString("N3")</span><span>@_billData.PhaseC.MidPeak.ToString("N3")</span><span>@_billData.PhaseC.Peak.ToString("N3")</span><span>@_billData.PhaseC.Total.ToString("N3")</span></div>
+                                    <div class="bill-phase-row total"><span>جمع کل</span><span>@_billData.OffPeakKWh.ToString("N3")</span><span>@_billData.MidPeakKWh.ToString("N3")</span><span>@_billData.PeakKWh.ToString("N3")</span><span>@_billData.TotalKWh.ToString("N3")</span></div>
                                 </div>
                             </div>
 
-                            @* ┘ç╪▓█î┘å┘ç ┘ç╪▒ ┘ü╪º╪▓ *@
+                            @* هزینه هر فاز *@
                             @if (_billData.PhaseACost > 0 || _billData.PhaseBCost > 0 || _billData.PhaseCCost > 0)
                             {
                                 <div class="bill-section">
-                                    <div class="bill-section-title">┘ç╪▓█î┘å┘ç ╪¿┘ç ╪¬┘ü┌⌐█î┌⌐ ┘ü╪º╪▓ (╪▒█î╪º┘ä)</div>
+                                    <div class="bill-section-title">هزینه به تفکیک فاز (ریال)</div>
                                     <div class="bill-grid">
-                                        <div class="bill-item"><span>┘ü╪º╪▓ A (@_billData.PhaseA.Total.ToString("N3") kWh)</span><span>@_billData.PhaseACost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>┘ü╪º╪▓ B (@_billData.PhaseB.Total.ToString("N3") kWh)</span><span>@_billData.PhaseBCost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>┘ü╪º╪▓ C (@_billData.PhaseC.Total.ToString("N3") kWh)</span><span>@_billData.PhaseCCost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>فاز A (@_billData.PhaseA.Total.ToString("N3") kWh)</span><span>@_billData.PhaseACost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>فاز B (@_billData.PhaseB.Total.ToString("N3") kWh)</span><span>@_billData.PhaseBCost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>فاز C (@_billData.PhaseC.Total.ToString("N3") kWh)</span><span>@_billData.PhaseCCost.ToString("N0")</span></div>
                                     </div>
                                 </div>
                             }
 
-                            @* ┘ç╪▓█î┘å┘ç ╪º┘å╪▒┌ÿ█î *@
+                            @* هزینه انرژی *@
                             <div class="bill-section">
-                                <div class="bill-section-title">┘ç╪▓█î┘å┘ç ╪º┘å╪▒┌ÿ█î (╪▒█î╪º┘ä)</div>
+                                <div class="bill-section-title">هزینه انرژی (ریال)</div>
                                 <div class="bill-grid">
                                     @if (_billData.HasTieredRates)
                                     {
                                         @if (_billData.Tier1Cost > 0)
                                         {
-                                            <div class="bill-item"><span>┘╛┘ä┘ç ╪º┘ê┘ä (@_billData.Tier1Rate.ToString("N0") ╪▒█î╪º┘ä/kWh)</span><span>@_billData.Tier1Cost.ToString("N0")</span></div>
+                                            <div class="bill-item"><span>پله اول (@_billData.Tier1Rate.ToString("N0") ریال/kWh)</span><span>@_billData.Tier1Cost.ToString("N0")</span></div>
                                         }
                                         @if (_billData.Tier2Cost > 0)
                                         {
-                                            <div class="bill-item"><span>┘╛┘ä┘ç ╪»┘ê┘à (@_billData.Tier2Rate.ToString("N0") ╪▒█î╪º┘ä/kWh)</span><span>@_billData.Tier2Cost.ToString("N0")</span></div>
+                                            <div class="bill-item"><span>پله دوم (@_billData.Tier2Rate.ToString("N0") ریال/kWh)</span><span>@_billData.Tier2Cost.ToString("N0")</span></div>
                                         }
                                         @if (_billData.Tier3Cost > 0)
                                         {
-                                            <div class="bill-item"><span>┘╛┘ä┘ç ╪│┘ê┘à (@_billData.Tier3Rate.ToString("N0") ╪▒█î╪º┘ä/kWh)</span><span>@_billData.Tier3Cost.ToString("N0")</span></div>
+                                            <div class="bill-item"><span>پله سوم (@_billData.Tier3Rate.ToString("N0") ریال/kWh)</span><span>@_billData.Tier3Cost.ToString("N0")</span></div>
                                         }
                                     }
                                     else
                                     {
-                                        <div class="bill-item"><span>┌⌐┘àΓÇî╪¿╪º╪▒█î (@_billData.OffPeakRate.ToString("N0") ╪▒█î╪º┘ä/kWh)</span><span>@_billData.OffPeakCost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>┘à█î╪º┘åΓÇî╪¿╪º╪▒█î (@_billData.MidPeakRate.ToString("N0") ╪▒█î╪º┘ä/kWh)</span><span>@_billData.MidPeakCost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>╪º┘ê╪¼ΓÇî╪¿╪º╪▒█î (@_billData.PeakRate.ToString("N0") ╪▒█î╪º┘ä/kWh)</span><span>@_billData.PeakCost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>کم‌باری (@_billData.OffPeakRate.ToString("N0") ریال/kWh)</span><span>@_billData.OffPeakCost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>میان‌باری (@_billData.MidPeakRate.ToString("N0") ریال/kWh)</span><span>@_billData.MidPeakCost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>اوج‌باری (@_billData.PeakRate.ToString("N0") ریال/kWh)</span><span>@_billData.PeakCost.ToString("N0")</span></div>
                                     }
-                                    <div class="bill-item total"><span>╪¼┘à╪╣</span><span>@_billData.EnergyCost.ToString("N0")</span></div>
+                                    <div class="bill-item total"><span>جمع</span><span>@_billData.EnergyCost.ToString("N0")</span></div>
                                 </div>
                             </div>
 
-                            @* ╪│╪º█î╪▒ ┘ç╪▓█î┘å┘çΓÇî┘ç╪º *@
+                            @* سایر هزینه‌ها *@
                             <div class="bill-section">
-                                <div class="bill-section-title">╪│╪º█î╪▒ ┘ç╪▓█î┘å┘çΓÇî┘ç╪º</div>
+                                <div class="bill-section-title">سایر هزینه‌ها</div>
                                 <div class="bill-grid">
-                                    <div class="bill-item"><span>╪ó╪¿┘ê┘å┘à╪º┘å (@_billData.Months ┘à╪º┘ç)</span><span>@_billData.MonthlyFixedFeeTotal.ToString("N0")</span></div>
+                                    <div class="bill-item"><span>آبونمان (@_billData.Months ماه)</span><span>@_billData.MonthlyFixedFeeTotal.ToString("N0")</span></div>
                                     @if (_billData.DemandCost > 0)
                                     {
-                                        <div class="bill-item"><span>┘ç╪▓█î┘å┘ç ╪»█î┘à╪º┘å╪» (@_billData.MaxDemandKW.ToString("N2") kW)</span><span>@_billData.DemandCost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>هزینه دیماند (@_billData.MaxDemandKW.ToString("N2") kW)</span><span>@_billData.DemandCost.ToString("N0")</span></div>
                                     }
                                     @if (_billData.PeakPenalty > 0)
                                     {
-                                        <div class="bill-item penalty"><span>╪¼╪▒█î┘à┘ç ╪º┘ê╪¼ ┘à╪╡╪▒┘ü</span><span>@_billData.PeakPenalty.ToString("N0")</span></div>
+                                        <div class="bill-item penalty"><span>جریمه اوج مصرف</span><span>@_billData.PeakPenalty.ToString("N0")</span></div>
                                     }
                                     @if (_billData.OffPeakDiscount > 0)
                                     {
-                                        <div class="bill-item discount"><span>╪¬╪«┘ü█î┘ü ┌⌐┘àΓÇî╪¿╪º╪▒█î</span><span>@_billData.OffPeakDiscount.ToString("N0")</span></div>
+                                        <div class="bill-item discount"><span>تخفیف کم‌باری</span><span>@_billData.OffPeakDiscount.ToString("N0")</span></div>
                                     }
                                     @if (_billData.Article16Cost > 0)
                                     {
-                                        <div class="bill-item"><span>┘é╪º┘å┘ê┘å ┘à╪º╪»┘ç █▒█╢</span><span>@_billData.Article16Cost.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>قانون ماده ۱۶</span><span>@_billData.Article16Cost.ToString("N0")</span></div>
                                     }
                                     @if (_billData.TollAmount > 0)
                                     {
-                                        <div class="bill-item"><span>╪╣┘ê╪º╪▒╪╢</span><span>@_billData.TollAmount.ToString("N0")</span></div>
+                                        <div class="bill-item"><span>عوارض</span><span>@_billData.TollAmount.ToString("N0")</span></div>
                                     }
                                     @if (_billData.HasReactivePenalty)
                                     {
-                                        <div class="bill-item penalty"><span>╪¼╪▒█î┘à┘ç ╪▒╪º┌⌐╪¬█î┘ê (PF: @_billData.AveragePfA.ToString("F3"))</span><span>@_billData.ReactivePenalty.ToString("N0")</span></div>
+                                        <div class="bill-item penalty"><span>جریمه راکتیو (PF: @_billData.AveragePfA.ToString("F3"))</span><span>@_billData.ReactivePenalty.ToString("N0")</span></div>
                                     }
                                     @if (_billData.HasReactiveBonus)
                                     {
-                                        <div class="bill-item discount"><span>┘╛╪º╪»╪º╪┤ ╪▒╪º┌⌐╪¬█î┘ê</span><span>@_billData.ReactiveBonus.ToString("N0")</span></div>
+                                        <div class="bill-item discount"><span>پاداش راکتیو</span><span>@_billData.ReactiveBonus.ToString("N0")</span></div>
                                     }
                                 </div>
                             </div>
 
-                            @* ╪¼┘à╪╣ ┘å┘ç╪º█î█î *@
+                            @* جمع نهایی *@
                             <div class="bill-section">
                                 <div class="bill-grid">
-                                    <div class="bill-item"><span>╪¼┘à╪╣ ┘é╪¿┘ä ╪º╪▓ ┘à╪º┘ä█î╪º╪¬</span><span>@_billData.SubTotal.ToString("N0")</span></div>
-                                    <div class="bill-item"><span>┘à╪º┘ä█î╪º╪¬ (@_billData.TaxPercent%)</span><span>@_billData.TaxAmount.ToString("N0")</span></div>
-                                    <div class="bill-item grand-total"><span>┘é╪º╪¿┘ä ┘╛╪▒╪»╪º╪«╪¬</span><span>@_billData.GrandTotal.ToString("N0") ╪▒█î╪º┘ä</span></div>
+                                    <div class="bill-item"><span>جمع قبل از مالیات</span><span>@_billData.SubTotal.ToString("N0")</span></div>
+                                    <div class="bill-item"><span>مالیات (@_billData.TaxPercent%)</span><span>@_billData.TaxAmount.ToString("N0")</span></div>
+                                    <div class="bill-item grand-total"><span>قابل پرداخت</span><span>@_billData.GrandTotal.ToString("N0") ریال</span></div>
                                 </div>
                             </div>
                         </div>
@@ -760,13 +760,13 @@
         <div class="phase-alarm-overlay" @onclick="() => _showPhaseAlarms = false"></div>
         <div class="phase-alarm-drawer">
             <div class="phase-alarm-drawer-header">
-                <h3>┘ç╪┤╪»╪º╪▒┘ç╪º█î ┘ü╪º╪▓ @_selectedPhaseName</h3>
+                <h3>هشدارهای فاز @_selectedPhaseName</h3>
                 <button class="phase-alarm-drawer-close" @onclick="() => _showPhaseAlarms = false">&times;</button>
             </div>
             <div class="phase-alarm-drawer-body">
                 @if (_selectedPhaseAlarms.Count == 0)
                 {
-                    <div class="phase-alarm-empty">┘ç╪┤╪»╪º╪▒ ┘ü╪╣╪º┘ä█î ┘ê╪¼┘ê╪» ┘å╪»╪º╪▒╪»</div>
+                    <div class="phase-alarm-empty">هشدار فعالی وجود ندارد</div>
                 }
                 else
                 {
@@ -782,9 +782,9 @@
                                     <div class="phase-alarm-row-msg">@a.Message</div>
                                 }
                             </div>
-                            <button class="alarm-resolve-btn" @onclick="() => ResolveAlarm(a.Id)" title="╪¡┘ä ╪┤╪»">Γ£ô</button>
-                            <button class="alarm-mute-btn @(silenced ? "muted" : "")" @onclick="() => ToggleMute(a.Id)" title="@(silenced ? "┘ü╪╣╪º┘ä ┌⌐╪▒╪»┘å ╪╡╪»╪º" : "┘é╪╖╪╣ ╪╡╪»╪º")">
-                                @(silenced ? "≡ƒöç" : "≡ƒöö")
+                            <button class="alarm-resolve-btn" @onclick="() => ResolveAlarm(a.Id)" title="حل شد">✓</button>
+                            <button class="alarm-mute-btn @(silenced ? "muted" : "")" @onclick="() => ToggleMute(a.Id)" title="@(silenced ? "فعال کردن صدا" : "قطع صدا")">
+                                @(silenced ? "🔇" : "🔔")
                             </button>
                         </div>
                     }
@@ -794,7 +794,7 @@
     }
 </div>
 
-<button class="summary-fab" @onclick="OpenSummary">≡ƒôè</button>
+<button class="summary-fab" @onclick="OpenSummary">📊</button>
 
 @code {
     private DashboardDataDto? _data;
@@ -926,13 +926,13 @@
         builder.AddAttribute(18, "d", "M13 2L3 14h9l-1 8 10-12h-9l1-8z");
         builder.CloseElement();
         builder.CloseElement();
-        builder.AddContent(19, $" ┘ü╪º╪▓ {phase}");
+        builder.AddContent(19, $" فاز {phase}");
         if (hasAlarm)
         {
             builder.OpenElement(20, "button");
             builder.AddAttribute(21, "class", "phase-alarm-badge");
             builder.AddAttribute(22, "onclick", EventCallback.Factory.Create(this, () => ShowPhaseAlarms(alarmList, phase)));
-            builder.AddContent(23, "ΓÜá");
+            builder.AddContent(23, "⚠");
             builder.CloseElement();
         }
         builder.CloseElement();
@@ -940,26 +940,26 @@
         {
             builder.OpenElement(24, "div");
             builder.AddAttribute(25, "class", "phase-stats");
-            RenderStat(builder, "┘ê┘ä╪¬╪º┌ÿ", voltage.ToString("F1") + " V", "var(--text)");
-            RenderStat(builder, "╪¼╪▒█î╪º┘å", SmartCurrent(current), "var(--text)");
-            RenderStat(builder, "╪¬┘ê╪º┘å", SmartPower(power) + " " + SmartPowerUnit(power), "var(--text)");
-            RenderStat(builder, "╪¬┘ê╪º┘å ╪▒╪º┌⌐╪¬█î┘ê", SmartReactive(q) + " " + SmartReactiveUnit(q), "var(--text)");
-            RenderStat(builder, "╪╢╪▒█î╪¿ ╪¬┘ê╪º┘å", pf.ToString("F2"), "var(--text)");
+            RenderStat(builder, "ولتاژ", voltage.ToString("F1") + " V", "var(--text)");
+            RenderStat(builder, "جریان", SmartCurrent(current), "var(--text)");
+            RenderStat(builder, "توان", SmartPower(power) + " " + SmartPowerUnit(power), "var(--text)");
+            RenderStat(builder, "توان راکتیو", SmartReactive(q) + " " + SmartReactiveUnit(q), "var(--text)");
+            RenderStat(builder, "ضریب توان", pf.ToString("F2"), "var(--text)");
             builder.CloseElement();
         }
         else
         {
             builder.OpenElement(24, "div");
             builder.AddAttribute(25, "class", "phase-stats");
-            RenderStat(builder, "┘ê┘ä╪¬╪º┌ÿ", "ΓÇö", "var(--text)");
-            RenderStat(builder, "╪¼╪▒█î╪º┘å", "ΓÇö", "var(--text)");
-            RenderStat(builder, "╪¬┘ê╪º┘å", "ΓÇö", "var(--text)");
-            RenderStat(builder, "╪¬┘ê╪º┘å ╪▒╪º┌⌐╪¬█î┘ê", "ΓÇö", "var(--text)");
-            RenderStat(builder, "╪╢╪▒█î╪¿ ╪¬┘ê╪º┘å", "ΓÇö", "var(--text)");
+            RenderStat(builder, "ولتاژ", "—", "var(--text)");
+            RenderStat(builder, "جریان", "—", "var(--text)");
+            RenderStat(builder, "توان", "—", "var(--text)");
+            RenderStat(builder, "توان راکتیو", "—", "var(--text)");
+            RenderStat(builder, "ضریب توان", "—", "var(--text)");
             builder.CloseElement();
             builder.OpenElement(26, "div");
             builder.AddAttribute(27, "class", "phase-offline-badge");
-            builder.AddContent(28, "┘é╪╖╪╣");
+            builder.AddContent(28, "قطع");
             builder.CloseElement();
         }
         builder.CloseElement();
@@ -983,7 +983,7 @@
     private string PhaseBgGrad(string phase) => phase == "A" ? "#fff7ed" : phase == "B" ? "#dbeafe" : "#fef2f2";
     private string PhaseColor(string phase) => phase == "A" ? "#f97316" : phase == "B" ? "#3b82f6" : "#ef4444";
     private string PhaseGlow(string phase) => phase == "A" ? "rgba(249,115,22,.35)" : phase == "B" ? "rgba(59,130,246,.3)" : "rgba(239,68,68,.3)";
-    private string PhaseLabel(string phase) => phase == "A" ? "┘ü╪º╪▓ A" : phase == "B" ? "┘ü╪º╪▓ B" : "┘ü╪º╪▓ C";
+    private string PhaseLabel(string phase) => phase == "A" ? "فاز A" : phase == "B" ? "فاز B" : "فاز C";
     private string PhaseNormBg(string phase) => phase == "A" ? "#fff7ed" : phase == "B" ? "#eff6ff" : "#fef2f2";
     private string PhaseNormClr(string phase) => phase == "A" ? "#f97316" : phase == "B" ? "#2563eb" : "#dc2626";
 
@@ -1033,7 +1033,7 @@
         builder.AddAttribute(25, "font-weight", "900");
         builder.AddAttribute(26, "font-size", "20");
         builder.AddAttribute(27, "font-family", "var(--font)");
-        builder.AddContent(28, phaseOn ? voltage.ToString("F1") : "ΓÇö");
+        builder.AddContent(28, phaseOn ? voltage.ToString("F1") : "—");
         builder.CloseElement();
         builder.OpenElement(29, "text");
         builder.AddAttribute(30, "x", "50");
@@ -1056,16 +1056,16 @@
             builder.OpenElement(41, "span");
             builder.AddAttribute(42, "class", "gauge-norm-badge");
             builder.AddAttribute(43, "style", $"background:{PhaseNormBg(phase)};color:var(--text)");
-            builder.AddContent(44, "┘å╪▒┘à╪º┘ä");
+            builder.AddContent(44, "نرمال");
             builder.CloseElement();
         }
         if (phaseOn)
         {
             builder.OpenElement(45, "div");
             builder.AddAttribute(46, "class", "gauge-params");
-            RenderGaugeParam(builder, "╪¼╪▒█î╪º┘å", current.ToString("F2") + " A", "var(--text)");
-            RenderGaugeParam(builder, "╪¬┘ê╪º┘å", SmartPower(power) + " " + SmartPowerUnit(power), "var(--text)");
-            RenderGaugeParam(builder, "╪╢╪▒█î╪¿ ╪¬┘ê╪º┘å", pf.ToString("F2"), "var(--text)");
+            RenderGaugeParam(builder, "جریان", current.ToString("F2") + " A", "var(--text)");
+            RenderGaugeParam(builder, "توان", SmartPower(power) + " " + SmartPowerUnit(power), "var(--text)");
+            RenderGaugeParam(builder, "ضریب توان", pf.ToString("F2"), "var(--text)");
             builder.CloseElement();
         }
         builder.CloseElement();
@@ -1293,24 +1293,24 @@
             var pA = snapshots.Select(s => s.PowerA).ToArray();
             var pfA = snapshots.Select(s => s.PfA).ToArray();
 
-            var volDs = new List<object> { new { label = "┘ü╪º╪▓ A", data = vA } };
-            var curDs = new List<object> { new { label = "┘ü╪º╪▓ A", data = cA } };
-            var pwrDs = new List<object> { new { label = "┘ü╪º╪▓ A", data = pA } };
-            var pfDs = new List<object> { new { label = "┘ü╪º╪▓ A", data = pfA } };
+            var volDs = new List<object> { new { label = "فاز A", data = vA } };
+            var curDs = new List<object> { new { label = "فاز A", data = cA } };
+            var pwrDs = new List<object> { new { label = "فاز A", data = pA } };
+            var pfDs = new List<object> { new { label = "فاز A", data = pfA } };
 
             if (pc >= 2)
             {
-                volDs.Add(new { label = "┘ü╪º╪▓ B", data = snapshots.Select(s => s.VoltageB).ToArray() });
-                curDs.Add(new { label = "┘ü╪º╪▓ B", data = snapshots.Select(s => s.CurrentB).ToArray() });
-                pwrDs.Add(new { label = "┘ü╪º╪▓ B", data = snapshots.Select(s => s.PowerB).ToArray() });
-                pfDs.Add(new { label = "┘ü╪º╪▓ B", data = snapshots.Select(s => s.PfB).ToArray() });
+                volDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.VoltageB).ToArray() });
+                curDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.CurrentB).ToArray() });
+                pwrDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.PowerB).ToArray() });
+                pfDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.PfB).ToArray() });
             }
             if (pc >= 3)
             {
-                volDs.Add(new { label = "┘ü╪º╪▓ C", data = snapshots.Select(s => s.VoltageC).ToArray() });
-                curDs.Add(new { label = "┘ü╪º╪▓ C", data = snapshots.Select(s => s.CurrentC).ToArray() });
-                pwrDs.Add(new { label = "┘ü╪º╪▓ C", data = snapshots.Select(s => s.PowerC).ToArray() });
-                pfDs.Add(new { label = "┘ü╪º╪▓ C", data = snapshots.Select(s => s.PfC).ToArray() });
+                volDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.VoltageC).ToArray() });
+                curDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.CurrentC).ToArray() });
+                pwrDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.PowerC).ToArray() });
+                pfDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.PfC).ToArray() });
             }
 
             await JS.InvokeVoidAsync("createOrUpdateChart", "chartVoltage", labels, volDs, "V");
@@ -1438,20 +1438,20 @@
             var to = await JS.InvokeAsync<string>("getDateInput", "billTo");
             if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to))
             {
-                _billResult = "┘ä╪╖┘ü╪º ╪¿╪º╪▓┘ç ╪¬╪º╪▒█î╪« ╪▒╪º ╪º┘å╪¬╪«╪º╪¿ ┌⌐┘å█î╪»";
+                _billResult = "لطفا بازه تاریخ را انتخاب کنید";
                 return;
             }
             if (_data?.Center?.Id == null)
             {
-                _billResult = "┘à╪▒┌⌐╪▓ ╪º┘å╪¬╪«╪º╪¿ ┘å╪┤╪»┘ç ╪º╪│╪¬";
+                _billResult = "مرکز انتخاب نشده است";
                 return;
             }
             if (_selectedTariffId == Guid.Empty)
             {
-                _billResult = "┘ä╪╖┘ü╪º █î┌⌐ ╪¬╪╣╪▒┘ü┘ç ╪º┘å╪¬╪«╪º╪¿ ┌⌐┘å█î╪»";
+                _billResult = "لطفا یک تعرفه انتخاب کنید";
                 return;
             }
-            _billResult = "╪»╪▒ ╪¡╪º┘ä ┘à╪¡╪º╪│╪¿┘ç...";
+            _billResult = "در حال محاسبه...";
             _billData = null;
             StateHasChanged();
 
@@ -1471,10 +1471,10 @@
             else
             {
                 var err = await resp.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-                _billResult = err?.GetValueOrDefault("error") ?? "╪«╪╖╪º ╪»╪▒ ┘à╪¡╪º╪│╪¿┘ç";
+                _billResult = err?.GetValueOrDefault("error") ?? "خطا در محاسبه";
             }
         }
-        catch { _billResult = "╪«╪╖╪º ╪»╪▒ ╪º╪▒╪¬╪¿╪º╪╖ ╪¿╪º ╪│╪▒┘ê╪▒"; }
+        catch { _billResult = "خطا در ارتباط با سرور"; }
     }
 
     public class CenterRef { public Guid Id { get; set; } public string Name { get; set; } = ""; }

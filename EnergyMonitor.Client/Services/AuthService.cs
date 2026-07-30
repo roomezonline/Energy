@@ -33,7 +33,7 @@ public class AuthService
 
             await _storage.SetTokenAsync(json.Token);
             _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", json.Token);
-            CurrentUser = new UserInfo { UserId = json.UserId, Username = json.Username, Role = json.Role, CenterId = json.CenterId, CenterIds = json.CenterIds };
+            CurrentUser = new UserInfo { UserId = json.UserId, Username = json.Username, FullName = json.FullName, Role = json.Role, CenterId = json.CenterId, CenterIds = json.CenterIds };
             StateChanged?.Invoke();
             return true;
         }
@@ -57,6 +57,7 @@ public class AuthService
             {
                 UserId = me.GetProperty("id").GetGuid(),
                 Username = me.GetProperty("username").GetString() ?? "",
+                FullName = me.TryGetProperty("fullName", out var fn) ? fn.GetString() ?? "" : "",
                 Role = me.GetProperty("role").GetString() ?? "",
             };
             if (me.TryGetProperty("centerId", out var cid) && cid.ValueKind == JsonValueKind.String)
@@ -92,6 +93,7 @@ public class UserInfo
 {
     public Guid UserId { get; set; }
     public string Username { get; set; } = "";
+    public string FullName { get; set; } = "";
     public string Role { get; set; } = "";
     public Guid? CenterId { get; set; }
     public List<Guid> CenterIds { get; set; } = new();
@@ -102,6 +104,7 @@ public class LoginResponse
     public string Token { get; set; } = "";
     public Guid UserId { get; set; }
     public string Username { get; set; } = "";
+    public string FullName { get; set; } = "";
     public string Role { get; set; } = "";
     public Guid? CenterId { get; set; }
     public List<Guid> CenterIds { get; set; } = new();

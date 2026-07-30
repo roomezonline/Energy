@@ -33,6 +33,7 @@ public class AuthController : ControllerBase
             Token = result.Token!,
             UserId = result.UserId!.Value,
             Username = result.Username!,
+            FullName = result.FullName ?? "",
             Role = result.Role!,
             CenterId = result.CenterId,
             CenterIds = result.CenterIds
@@ -78,6 +79,7 @@ public class LoginResponse
     public string Token { get; set; } = "";
     public Guid UserId { get; set; }
     public string Username { get; set; } = "";
+    public string FullName { get; set; } = "";
     public string Role { get; set; } = "";
     public Guid? CenterId { get; set; }
     public List<Guid> CenterIds { get; set; } = new();

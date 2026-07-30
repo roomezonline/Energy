@@ -10,9 +10,9 @@
     <div class="dash-welcome">
         <div class="dash-welcome-bg"></div>
         <div class="dash-welcome-content">
-            <div class="dash-welcome-avatar">@(Auth.CurrentUser?.Username is { Length: >0 } u ? u[..1].ToUpper() : "?")</div>
+            <div class="dash-welcome-avatar">@(Auth.CurrentUser?.FullName is { Length: >0 } n ? n[..1].ToUpper() : "?")</div>
             <div class="dash-welcome-text">
-                <h1 class="dash-welcome-title">خوش آمدید، @(Auth.CurrentUser?.Username ?? "کاربر")</h1>
+                <h1 class="dash-welcome-title">خوش آمدید، @(Auth.CurrentUser?.FullName ?? Auth.CurrentUser?.Username ?? "کاربر")</h1>
                 <p class="dash-welcome-sub">به سامانه هوشمند مدیریت انرژی <strong>انرژی‌کال</strong> خوش آمدید. از طریق کارت‌های زیر به بخش‌های مختلف دسترسی پیدا کنید.</p>
             </div>
             <div class="dash-welcome-role">

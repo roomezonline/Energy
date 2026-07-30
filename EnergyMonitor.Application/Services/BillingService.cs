@@ -66,11 +66,32 @@ public class BillingService : IBillingService
                 if (tariff.RateDerivationMode == RateDerivationMode.Automatic && !string.IsNullOrEmpty(tariff.ConsumerTypeCode))
                 {
                     consumerType = await _tariffRepo.GetConsumerTypeAsync(tariff.ConsumerTypeCode, ct);
-                    if (tariff.Year.HasValue)
+
+                    // Auto-resolve yearly base rate:
+                    // 1. Try tariff's selected year
+                    // 2. Fall back to current Persian year
+                    // 3. Fall back to latest available year
+                    var iranNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, iranTz);
+                    var currentYear = pc.GetYear(iranNow);
+                    int? resolvedYear = tariff.Year;
+
+                    if (resolvedYear.HasValue)
+                        yearlyBaseRate = await _tariffRepo.GetYearlyBaseRateAsync(resolvedYear.Value, ct);
+
+                    if (yearlyBaseRate is null)
                     {
-                        yearlyBaseRate = await _tariffRepo.GetYearlyBaseRateAsync(tariff.Year.Value, ct);
-                        typeConfig = await _tariffRepo.GetConsumerTypeYearlyConfigAsync(tariff.ConsumerTypeCode, tariff.Year.Value, ct);
+                        yearlyBaseRate = await _tariffRepo.GetYearlyBaseRateAsync(currentYear, ct);
+                        if (yearlyBaseRate is not null) resolvedYear = currentYear;
                     }
+
+                    if (yearlyBaseRate is null)
+                    {
+                        yearlyBaseRate = await _tariffRepo.GetLatestYearlyBaseRateAsync(currentYear, ct);
+                        if (yearlyBaseRate is not null) resolvedYear = yearlyBaseRate.Year;
+                    }
+
+                    if (resolvedYear.HasValue)
+                        typeConfig = await _tariffRepo.GetConsumerTypeYearlyConfigAsync(tariff.ConsumerTypeCode, resolvedYear.Value, ct);
                 }
             }
         }
@@ -300,6 +321,12 @@ public class BillingService : IBillingService
                     if (typeConfig.TieredRates.Count > 0)
                     {
                         ApplyTieredRates(result, typeConfig.TieredRates.ToList(), supplyCost);
+                        if (totalKWh > 0 && result.EnergyCost > 0)
+                        {
+                            result.OffPeakCost = Math.Round(result.EnergyCost * offPeakTotal / totalKWh, 0);
+                            result.MidPeakCost = Math.Round(result.EnergyCost * midPeakTotal / totalKWh, 0);
+                            result.PeakCost = result.EnergyCost - result.OffPeakCost - result.MidPeakCost;
+                        }
                     }
                     else
                     {
@@ -418,7 +445,7 @@ public class BillingService : IBillingService
             result.AveragePf = Math.Min(Math.Min(result.AveragePfA, result.AveragePfB), result.AveragePfC);
 
             var minPf = Math.Min(Math.Min(result.AveragePfA, result.AveragePfB), result.AveragePfC);
-            var isTiered = consumerType?.BillingModel == BillingModel.Tiered;
+            var isTiered = consumerType?.BillingModel == BillingModel.Tiered || consumerType?.BillingModel == BillingModel.TOU_Tiered;
             if (!isTiered && minPf < result.ReactivePenaltyThreshold && totalKWh > 0)
             {
                 var pfShortfall = result.ReactivePenaltyThreshold - minPf;

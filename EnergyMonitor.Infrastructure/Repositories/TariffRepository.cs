@@ -40,4 +40,10 @@ public class TariffRepository : ITariffRepository
     public async Task<YearlyBaseRate?> GetYearlyBaseRateAsync(int year, CancellationToken ct = default)
         => await _db.Set<YearlyBaseRate>()
             .FirstOrDefaultAsync(r => r.Year == year, ct);
+
+    public async Task<YearlyBaseRate?> GetLatestYearlyBaseRateAsync(int upToYear, CancellationToken ct = default)
+        => await _db.Set<YearlyBaseRate>()
+            .Where(r => r.Year <= upToYear)
+            .OrderByDescending(r => r.Year)
+            .FirstOrDefaultAsync(ct);
 }

@@ -12,4 +12,5 @@ public interface ITariffRepository
     Task<ConsumerType?> GetConsumerTypeAsync(string code, CancellationToken ct = default);
     Task<ConsumerTypeYearlyConfig?> GetConsumerTypeYearlyConfigAsync(string code, int year, CancellationToken ct = default);
     Task<YearlyBaseRate?> GetYearlyBaseRateAsync(int year, CancellationToken ct = default);
+    Task<YearlyBaseRate?> GetLatestYearlyBaseRateAsync(int upToYear, CancellationToken ct = default);
 }

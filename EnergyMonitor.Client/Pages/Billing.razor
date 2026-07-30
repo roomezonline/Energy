@@ -26,7 +26,7 @@
         <div class="bll-panel">
             <div class="bll-filter-bar">
                 <div class="bll-fg"><label class="bll-fl">مرکز</label><select class="bll-fi" @bind="_selectedCenterId"><option value="@Guid.Empty">انتخاب کنید</option>@foreach (var c in _centers) { <option value="@c.Id">@c.Name</option> }</select></div>
-                <div class="bll-fg"><label class="bll-fl">دستگاه</label><select class="bll-fi" @bind="_selectedDeviceId"><option value="">همه دستگاه‌ها</option>@foreach (var d in _devices) { <option value="@d.Id">@d.Name</option> }</select></div>
+                <div class="bll-fg"><label class="bll-fl">دستگاه</label><select class="bll-fi" @bind="_selectedDeviceId"><option value="">همه دستگاه‌ها</option>@foreach (var d in _devices) { <option value="@d.DeviceId">@d.Name</option> }</select></div>
                 <div class="bll-fg"><label class="bll-fl">از تاریخ</label><input class="bll-fi bll-fi-ltr" @bind="_billFrom" placeholder="۱۴۰۴/۰۱/۰۱" /></div>
                 <div class="bll-fg"><label class="bll-fl">تا تاریخ</label><input class="bll-fi bll-fi-ltr" @bind="_billTo" placeholder="۱۴۰۴/۰۳/۳۱" /></div>
                 <div class="bll-fg"><label class="bll-fl">تعرفه</label><select class="bll-fi" @bind="_selectedTariffId"><option value="@Guid.Empty">انتخاب کنید</option>@foreach (var t in _tariffs) { <option value="@t.Id">@t.Name</option> }</select></div>
@@ -300,7 +300,7 @@
                             <div class="bll-card-b">
                                 <div class="bll-card-top">
                                     <div><div class="bll-card-t">@ct.Name <span class="bll-code">@ct.Code</span></div><div class="bll-card-d">@ct.Category</div></div>
-                                    <span class="bll-badge bll-badge-info">@ct.BillingModel</span>
+                                    <span class="bll-badge bll-badge-info">@GetBillingModelLabel(ct.BillingModel)</span>
                                 </div>
                                 <div class="bll-card-body">
                                     <div class="bll-chip @(ct.HasTOU ? "bll-chip-on" : "bll-chip-off")">@(ct.HasTOU ? "✅ TOU" : "❌ TOU")</div>
@@ -482,6 +482,54 @@
                     <div class="bll-fg"><label class="bll-fl">نام</label><input class="bll-fi" @bind="_consumerTypeForm.Name" /></div>
                     <div class="bll-fg"><label class="bll-fl">دسته‌بندی</label><select class="bll-fi" @bind="_consumerTypeForm.Category"><option value="Residential">خانگی</option><option value="Commercial">تجاری</option><option value="Industrial">صنعتی</option><option value="Agricultural">کشاورزی</option><option value="Other">سایر</option></select></div>
                     <div class="bll-fg"><label class="bll-fl">مدل محاسبه</label><select class="bll-fi" @bind="_consumerTypeForm.BillingModel"><option value="TOU">سه‌زمانه (TOU)</option><option value="Tiered">پلکانی</option><option value="Flat">تخت</option><option value="TOU_Tiered">TOU + پلکانی</option></select></div>
+                    <div class="bll-bm-desc">
+                        <div class="bll-bm-icon">@GetBillingModelIcon()</div>
+                        <div class="bll-bm-body">
+                            <div class="bll-bm-title">@GetBillingModelTitle()</div>
+                            @if (_consumerTypeForm.BillingModel == "Tiered")
+                            {
+                                <div class="bll-bm-text">مصرف خانگی به <strong>۵ پله</strong> تقسیم می‌شود. نرخ هر پله = ضریب پله × قیمت تمام‌شده (<strong>۹,۵۳۷ ریال</strong>). الگوی مصرف عادی <strong>۲۰۰ kWh</strong> در ماه است.</div>
+                                <div class="bll-bm-tbl">
+                                    <div class="bll-bm-tr bll-bm-th"><span>پله</span><span>محدوده (kWh)</span><span>ضریب</span><span>نرخ (ریال)</span></div>
+                                    <div class="bll-bm-tr"><span>۱</span><span>۰ — ۱۰۰</span><span>۰.۱۴۶</span><span>۱,۳۹۲</span></div>
+                                    <div class="bll-bm-tr"><span>۲</span><span>۱۰۰ — ۲۰۰</span><span>۰.۱۷</span><span>۱,۶۲۱</span></div>
+                                    <div class="bll-bm-tr"><span>۳</span><span>۲۰۰ — ۳۰۰</span><span>۰.۳۶۵</span><span>۳,۴۸۱</span></div>
+                                    <div class="bll-bm-tr"><span>۴</span><span>۳۰۰ — ۵۰۰</span><span>۲.۵</span><span>۲۳,۸۴۳</span></div>
+                                    <div class="bll-bm-tr"><span>۵</span><span>بالای ۵۰۰</span><span>۵.۰</span><span>۴۷,۶۸۵</span></div>
+                                </div>
+                                <div class="bll-bm-example">💡 مصرف ۲۵۰ kWh در ماه: پله ۱ (۱۰۰×۱,۳۹۲) + پله ۲ (۱۰۰×۱,۶۲۱) + پله ۳ (۵۰×۳,۴۸۱) = <strong>۴۷۶,۱۵۰ ریال</strong></div>
+                            }
+                            else if (_consumerTypeForm.BillingModel == "TOU")
+                            {
+                                <div class="bll-bm-text">شبانه‌روز به <strong>۳ بازه زمانی</strong> با ضرایب متفاوت تقسیم می‌شود. نرخ نهایی = نرخ پایه ECA (<strong>۱۴,۴۲۰ ریال</strong>) × ضریب ECA × ضریب TOU.</div>
+                                <div class="bll-bm-tbl">
+                                    <div class="bll-bm-tr bll-bm-th"><span>بازه</span><span>ساعت تابستان</span><span>ساعت زمستان</span><span>ضریب</span></div>
+                                    <div class="bll-bm-tr bll-bm-td-green"><span>کم‌باری</span><span>۲۳ — ۶</span><span>۲۳ — ۶</span><span>۰.۵</span></div>
+                                    <div class="bll-bm-tr bll-bm-td-blue"><span>میان‌باری</span><span>۶ — ۱۲</span><span>۶ — ۱۷</span><span>۱.۰</span></div>
+                                    <div class="bll-bm-tr bll-bm-td-red"><span>اوج‌باری</span><span>۱۲ — ۲۳</span><span>۱۷ — ۲۳</span><span>۲.۰</span></div>
+                                </div>
+                                <div class="bll-bm-example">💡 مصرف ۱۰۰ kWh در اوج‌باری تابستان با ضریب ECA ۱.۲: ۱۰۰ × (۱۴,۴۲۰ × ۱.۲ × ۲.۰) = <strong>۳,۴۶۰,۸۰۰ ریال</strong></div>
+                            }
+                            else if (_consumerTypeForm.BillingModel == "Flat")
+                            {
+                                <div class="bll-bm-text">کل مصرف با <strong>یک نرخ ثابت</strong> محاسبه می‌شود. ساده‌ترین روش، مناسب برای مصرف‌کنندگان خاص (سایر).</div>
+                                <div class="bll-bm-example">💡 نرخ ۱۲,۰۰۰ ریال با مصرف ۵۰۰ kWh: ۵۰۰ × ۱۲,۰۰۰ = <strong>۶,۰۰۰,۰۰۰ ریال</strong></div>
+                            }
+                            else if (_consumerTypeForm.BillingModel == "TOU_Tiered")
+                            {
+                                <div class="bll-bm-text">ترکیب <strong>TOU</strong> و <strong>پلکانی</strong>: نرخ پایه با ضریب ECA و ضرایب TOU (کم‌باری <strong>۰.۵</strong>، میان‌باری <strong>۱.۰</strong>، اوج‌باری <strong>۲.۰</strong>) محاسبه می‌شود، سپس پله‌های مصرف روی کل مصرف اعمال می‌شود. هزینه بین بازه‌ها به نسبت سهم هر بازه توزیع می‌شود.</div>
+                                <div class="bll-bm-tbl">
+                                    <div class="bll-bm-tr bll-bm-th"><span>پله</span><span>محدوده (kWh)</span><span>ضریب</span><span>نرخ پایه (ریال)</span></div>
+                                    <div class="bll-bm-tr"><span>۱</span><span>۰ — ۱۰۰</span><span>۰.۱۴۶</span><span>۱,۳۹۲</span></div>
+                                    <div class="bll-bm-tr"><span>۲</span><span>۱۰۰ — ۲۰۰</span><span>۰.۱۷</span><span>۱,۶۲۱</span></div>
+                                    <div class="bll-bm-tr"><span>۳</span><span>۲۰۰ — ۳۰۰</span><span>۰.۳۶۵</span><span>۳,۴۸۱</span></div>
+                                    <div class="bll-bm-tr"><span>۴</span><span>۳۰۰ — ۵۰۰</span><span>۲.۵</span><span>۲۳,۸۴۳</span></div>
+                                    <div class="bll-bm-tr"><span>۵</span><span>بالای ۵۰۰</span><span>۵.۰</span><span>۴۷,۶۸۵</span></div>
+                                </div>
+                                <div class="bll-bm-example">💡 مثال: مصرف ۳۰۰ kWh در تابستان با ضریب ECA ۱.۰ — هزینه با پله‌ها محاسبه و به نسبت سهم هر بازه توزیع می‌شود. سهم اوج‌باری با ضریب ۲.۰ در نرخ پله‌ها لحاظ می‌شود.</div>
+                            }
+                        </div>
+                    </div>
                     <div class="bll-fg"><label class="bll-fl">ضریب ECA</label><input class="bll-fi" type="number" step="0.0001" @bind="_consumerTypeForm.EcaCoefficient" /></div>
                     <div class="bll-fg"><label class="bll-fl">ترتیب نمایش</label><input class="bll-fi" type="number" @bind="_consumerTypeForm.SortOrder" /></div>
                     <div class="bll-fg"><label class="bll-fl">توضیحات</label><input class="bll-fi" @bind="_consumerTypeForm.Description" /></div>
@@ -573,10 +621,58 @@
         return sb.ToString();
     }
 
+    private static string GetBillingModelLabel(string model)
+    {
+        return model switch
+        {
+            "TOU" => "سه‌زمانه",
+            "Tiered" => "پلکانی",
+            "Flat" => "تخت",
+            "TOU_Tiered" => "ترکیبی",
+            _ => model
+        };
+    }
+
+    private string GetBillingModelIcon()
+    {
+        return _consumerTypeForm.BillingModel switch
+        {
+            "TOU" => "⏰",
+            "Tiered" => "📊",
+            "Flat" => "📐",
+            "TOU_Tiered" => "⚡",
+            _ => "❓"
+        };
+    }
+
+    private string GetBillingModelTitle()
+    {
+        return _consumerTypeForm.BillingModel switch
+        {
+            "TOU" => "مدل سه‌زمانه (TOU) — قیمت متفاوت در ساعت‌های مختلف روز",
+            "Tiered" => "مدل پلکانی — افزایش قیمت با افزایش مصرف",
+            "Flat" => "مدل تخت — نرخ یکسان برای تمام مصرف",
+            "TOU_Tiered" => "مدل ترکیبی TOU + پلکانی — دقیق‌ترین روش محاسبه",
+            _ => "مدل نامشخص"
+        };
+    }
+
+    private string GetBillingModelDescription() => "";
+
+    private string GetBillingModelExample() => "";
+
     protected override async Task OnInitializedAsync()
     {
         _authorized = Auth.IsInRole("Admin") || Auth.IsInRole("SuperAdmin");
         if (_authorized) await Load();
+    }
+
+    private int GetCurrentPersianYear()
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        var iranTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran");
+        var iranNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, iranTz);
+        return pc.GetYear(iranNow);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -602,6 +698,8 @@
             _centers = await Http.GetFromJsonAsync<List<CenterRef>>("/api/v2/centers") ?? new();
             _consumerTypes = await Http.GetFromJsonAsync<List<ConsumerTypeItem>>("/api/v2/consumer-types") ?? new();
             _yearlyRates = await Http.GetFromJsonAsync<List<YearlyRateItem>>("/api/v2/yearly-base-rates") ?? new();
+            var deviceJson = await Http.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v2/devices");
+            _devices = deviceJson.EnumerateArray().Select(d => new DeviceRef { DeviceId = d.GetProperty("deviceId").GetString() ?? "", Name = d.GetProperty("displayName").GetString() ?? "" }).ToList();
         }
         catch (Exception ex) { _billResult = $"خطا در بارگذاری: {ex.Message}"; }
         _loading = false;
@@ -620,7 +718,7 @@
         _calculating = true; _billData = null;
         try
         {
-            var req = new BillingCalculationRequest { CenterId = _selectedCenterId, FromDate = _billFrom, ToDate = _billTo, TariffId = _selectedTariffId == Guid.Empty ? null : _selectedTariffId };
+            var req = new BillingCalculationRequest { CenterId = _selectedCenterId, DeviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId, FromDate = _billFrom, ToDate = _billTo, TariffId = _selectedTariffId == Guid.Empty ? null : _selectedTariffId };
             var res = await Http.PostAsJsonAsync("/api/v2/billing/calculate", req);
             if (res.IsSuccessStatusCode) { _billData = await res.Content.ReadFromJsonAsync<BillingResultDto>(); _saveInvoice = false; _lastCalcFrom = _billFrom; _lastCalcTo = _billTo; }
             else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
@@ -642,7 +740,7 @@
     private void OnOverrideChange(string field, decimal value) { var item = _billData?.EditableItems?.FirstOrDefault(i => i.FieldName == field); if (item is not null) item.OverrideValue = value; }
     private void OnOverrideReasonChange(string field, string? reason) { var item = _billData?.EditableItems?.FirstOrDefault(i => i.FieldName == field); if (item is not null) item.OverrideReason = reason ?? ""; }
 
-    private void OpenCreateTariff() { _editingId = Guid.Empty; _form = new(); _showModal = true; }
+    private void OpenCreateTariff() { _editingId = Guid.Empty; _form = new(); _form.Year = GetCurrentPersianYear(); _showModal = true; }
     private void EditTariff(TariffItem t) { _editingId = t.Id; _form = MapToForm(t); _showModal = true; }
     private void ConfirmDelete(TariffItem t) { _deleteTarget = t; }
     private void CloseModal() { _showModal = false; _deleteTarget = null; }
@@ -695,8 +793,9 @@
     private string GetBaseRateDisplay()
     {
         if (_form.RateDerivationMode != "ECA" || string.IsNullOrEmpty(_form.ConsumerTypeCode) || !_form.Year.HasValue) return "—";
-        var rate = _yearlyRates.FirstOrDefault(r => r.Year == _form.Year.Value);
-        return rate != null ? rate.BaseRatePerKwh.ToString("N0") + " ریال" : "—";
+        var rate = _yearlyRates.FirstOrDefault(r => r.Year == _form.Year.Value)
+                   ?? _yearlyRates.OrderByDescending(r => r.Year).FirstOrDefault(r => r.Year <= GetCurrentPersianYear());
+        return rate != null ? $"{rate.BaseRatePerKwh:N0} ریال ({rate.Year})" : "—";
     }
 
     private TariffForm MapToForm(TariffItem t) => new()
@@ -761,7 +860,7 @@
     public class ConsumerTypeItem { public string Code { get; set; } = ""; public string Name { get; set; } = ""; public string Category { get; set; } = ""; public string BillingModel { get; set; } = "TOU"; public decimal EcaCoefficient { get; set; } public int SortOrder { get; set; } public string? Description { get; set; } public bool HasTOU { get; set; } public bool HasTieredRates { get; set; } }
     public class YearlyRateItem { public int Year { get; set; } public decimal BaseRatePerKwh { get; set; } public string? SourceDocument { get; set; } public string? Description { get; set; } }
     public class CenterRef { public Guid Id { get; set; } public string Name { get; set; } = ""; }
-    public class DeviceRef { public string Id { get; set; } = ""; public string Name { get; set; } = ""; }
+    public class DeviceRef { public string DeviceId { get; set; } = ""; public string Name { get; set; } = ""; }
 
     public class TariffForm
     {
@@ -794,7 +893,7 @@
 
     public class ConsumerTypeForm { public string Code { get; set; } = ""; public string Name { get; set; } = ""; public string Category { get; set; } = "Residential"; public string BillingModel { get; set; } = "TOU"; public decimal EcaCoefficient { get; set; } = 1; public int SortOrder { get; set; } public string? Description { get; set; } }
     public class YearlyRateForm { public int Year { get; set; } public decimal BaseRatePerKwh { get; set; } public string? SourceDocument { get; set; } public string? Description { get; set; } }
-    public class BillingCalculationRequest { public Guid CenterId { get; set; } public string FromDate { get; set; } = ""; public string ToDate { get; set; } = ""; public Guid? TariffId { get; set; } }
+    public class BillingCalculationRequest { public Guid CenterId { get; set; } public string? DeviceId { get; set; } public string FromDate { get; set; } = ""; public string ToDate { get; set; } = ""; public Guid? TariffId { get; set; } }
     public class InvoiceItem { public Guid Id { get; set; } public string FromDate { get; set; } = ""; public string ToDate { get; set; } = ""; public int Days { get; set; } public decimal TotalKWh { get; set; } public decimal EnergyCost { get; set; } public decimal ReactivePenalty { get; set; } public decimal GrandTotal { get; set; } public string Status { get; set; } = ""; public DateTime CreatedAt { get; set; } }
 }
 
@@ -804,6 +903,19 @@
    ═══════════════════════════════════════════ */
 .bll-wrap{max-width:1100px;margin:0 auto;padding:20px 16px}
 .bll-panel{animation:bll-fade .25s ease}
+.bll-bm-desc{grid-column:1/-1;display:flex;gap:10px;padding:10px 12px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-radius:10px;border:1px solid #bae6fd;align-items:flex-start;margin-top:2px}
+.bll-bm-icon{font-size:26px;flex-shrink:0;line-height:1}
+.bll-bm-body{flex:1;min-width:0}
+.bll-bm-title{font-size:12px;font-weight:700;color:#0369a1;margin-bottom:3px;line-height:1.4}
+.bll-bm-text{font-size:11px;color:#0c4a6e;line-height:1.6;margin-bottom:3px}
+.bll-bm-text strong{color:#075985}
+.bll-bm-tbl{display:grid;gap:2px;margin:4px 0 6px;font-size:11px;direction:ltr;text-align:center}
+.bll-bm-tr{display:grid;grid-template-columns:1fr 1.6fr 0.7fr 1fr;align-items:center;padding:3px 6px;border-radius:4px;background:rgba(255,255,255,.5);gap:4px}
+.bll-bm-th{background:rgba(2,132,199,.12);font-weight:700;color:#0369a1;padding:4px 6px}
+.bll-bm-td-green{background:rgba(34,197,94,.08)}
+.bll-bm-td-blue{background:rgba(59,130,246,.08)}
+.bll-bm-td-red{background:rgba(239,68,68,.08)}
+.bll-bm-example{font-size:11px;color:#075985;background:rgba(255,255,255,.7);padding:5px 8px;border-radius:6px;border:1px dashed #7dd3fc;line-height:1.5}
 
 /* ── Tabs ── */
 .bll-tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--bg);padding:4px;border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -815,7 +927,7 @@
 .bll-tab--help.bll-tab--on{background:var(--bg-alt);color:var(--text)}
 
 /* ── Filter bar (calc tab) ── */
-.bll-filter-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:18px;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px}
+.bll-filter-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:18px;padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px}
 .bll-fg{min-width:0}
 .bll-fg-act{display:flex;align-items:flex-end}
 .bll-fl{display:block;font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
@@ -875,7 +987,7 @@
 .bll-tr-l{color:var(--text-secondary);min-width:45px}
 .bll-tr-v{font-weight:700;color:var(--text);direction:ltr}
 .bll-tr-tm{font-size:10px;color:var(--text-muted);background:var(--bg);padding:1px 6px;border-radius:4px}
-.bll-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.bll-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;line-height:1.4}
 .bll-badge-on{background:var(--green-bg);color:var(--green)}
 .bll-badge-off{background:var(--red-bg);color:var(--red)}
 .bll-badge-info{background:var(--blue-bg);color:var(--blue)}
@@ -965,9 +1077,9 @@
 /* ── Overlay + Modal ── */
 .bll-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:bll-fade .2s ease}
 @@keyframes bll-fade{from{opacity:0}to{opacity:1}}
-.bll-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:bll-up .35s cubic-bezier(.34,1.56,.64,1)}
+.bll-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:bll-up .35s cubic-bezier(.34,1.56,.64,1)}
 @@keyframes bll-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-.bll-modal--wide{max-width:600px}
+.bll-modal--wide{max-width:800px}
 .bll-mh{display:flex;align-items:center;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
 .bll-mh-i{font-size:18px}
 .bll-mh-t{flex:1;font-size:14px;font-weight:700;color:var(--text)}
@@ -977,8 +1089,8 @@
 .bll-mb p{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
 .bll-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px 16px;border-top:1px solid var(--border)}
 .bll-modal-sub{font-size:12px;font-weight:700;color:var(--text);margin:14px 0 8px;padding-right:8px;border-right:3px solid var(--blue)}
-.bll-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
-.bll-modal-grid--6{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.bll-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.bll-modal-grid--6{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
 .bll-hlp-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
 .bll-hlp-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
 .bll-hlp-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
@@ -1024,6 +1136,13 @@
     .inv-title{font-size:14px}
     .inv-meta-v{font-size:12px}
     .bll-tab{padding:7px 10px;font-size:11px}
+    .bll-bm-desc{flex-direction:column;gap:6px;padding:8px 10px}
+    .bll-bm-icon{font-size:22px}
+    .bll-bm-title{font-size:11px}
+    .bll-bm-text{font-size:10px}
+    .bll-bm-tbl{overflow-x:auto;font-size:10px}
+    .bll-bm-tr{grid-template-columns:0.8fr 1.4fr 0.6fr 1fr;padding:2px 4px}
+    .bll-bm-example{font-size:10px;padding:4px 6px}
 }
 
 /* ── Print ── */

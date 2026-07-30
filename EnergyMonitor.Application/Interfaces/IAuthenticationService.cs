@@ -8,6 +8,7 @@ public class LoginResult
     public Guid? UserId { get; set; }
     public string? Username { get; set; }
     public string? Role { get; set; }
+    public string? FullName { get; set; }
     public Guid? CenterId { get; set; }
     public List<Guid> CenterIds { get; set; } = new();
 }
