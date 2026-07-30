@@ -8,61 +8,101 @@
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>مدیریت دستگاه‌ها</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ دستگاه جدید</button>
+<div class="dev-container">
+    <div class="dev-top">
+        <div class="dev-top-l">
+            <span class="dev-icon">📡</span>
+            <h2 class="dev-title">مدیریت دستگاه‌ها</h2>
+        </div>
+        <div class="dev-top-r">
+            <button class="dev-btn dev-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="dev-btn dev-btn-add" @onclick="OpenCreate">+ دستگاه جدید</button>
+        </div>
     </div>
 
-    <PrereqAlert Met="(_centers.Count > 0)"
-        Title="هنوز مرکزی ثبت نشده"
-        Text="برای ثبت دستگاه، ابتدا باید یک مرکز ایجاد کنید. دستگاه به مرکز متصل می‌شود."
-        LinkText="رفتن به مدیریت مراکز"
-        LinkHref="/centers" />
-
-    <HelpBox>
-        <p><strong>دستگاه اندازه‌گیری</strong> سخت‌افزاری است که در یک مرکز نصب می‌شود و مصرف انرژی را ثبت می‌کند.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>مرکز</strong> مربوطه را ایجاد کرده باشید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">شناسه یکتا به صورت خودکار تولید می‌شود — در صورت نیاز می‌توانید آن را تغییر دهید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">مرکز مربوطه را انتخاب کنید — دستگاه به آن مرکز متصل می‌شود.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۴</span><span class="hlp-step-text">تعداد فازها را انتخاب کنید (۱ یا ۳ فاز).</span></div>
-        <div class="hlp-tip">💡 دستگاه‌های فعال در داشبورد و محاسبه صورتحساب استفاده می‌شوند.</div>
-        <div class="hlp-warn">⚠️ شناسه دستگاه باید با شناسه فیزیکی دستگاه یکسان باشد — می‌توانید مقدار پیش‌فرض را تغییر دهید.</div>
-    </HelpBox>
+    @if (_centers.Count == 0)
+    {
+        <div class="dev-prereq">
+            <div class="dev-prereq-icon">⚠️</div>
+            <div class="dev-prereq-b">
+                <div class="dev-prereq-t">هنوز مرکزی ثبت نشده</div>
+                <div class="dev-prereq-d">برای ثبت دستگاه، ابتدا باید یک مرکز ایجاد کنید. دستگاه به مرکز متصل می‌شود.</div>
+                <a class="dev-prereq-a" href="/centers">← رفتن به مدیریت مراکز</a>
+            </div>
+        </div>
+    }
 
     @if (_loading)
     {
-        <div class="loading-state"><div class="spinner"></div></div>
+        <div class="dev-loading"><div class="dev-spinner"></div></div>
     }
-    else if (_devices.Count == 0)
+    else if (_devices.Count == 0 && _centers.Count > 0)
     {
-        <div class="empty-state">
-            <div class="empty-icon">📡</div>
-            <div class="empty-title">دستگاهی ثبت نشده</div>
-            <div class="empty-hint">با کلیک روی «+ دستگاه جدید» اولین دستگاه را اضافه کنید.</div>
+        <div class="dev-empty">
+            <div class="dev-empty-icon">📡</div>
+            <div class="dev-empty-t">دستگاهی ثبت نشده</div>
+            <div class="dev-empty-d">روی «+ دستگاه جدید» کلیک کنید تا اولین دستگاه را اضافه کنید.</div>
         </div>
     }
     else
     {
-        <div class="card-list">
+        <div class="dev-grid">
             @foreach (var d in _devices)
             {
-                <div class="card-item">
-                    <div class="card-hdr">
-                        <h3>@d.DisplayName</h3>
-                        <span class="card-tag @(d.IsActive ? "active" : "inactive")">@(d.IsActive ? "فعال" : "غیرفعال")</span>
+                string lastSeenClass = "";
+                if (d.LastSeenAt.HasValue)
+                {
+                    var ago = DateTime.UtcNow - d.LastSeenAt.Value.ToUniversalTime();
+                    lastSeenClass = ago.TotalMinutes < 5 ? "dev-ls-ok" : ago.TotalHours < 2 ? "dev-ls-warn" : "dev-ls-old";
+                }
+                <div class="dev-card @(d.IsActive ? "dev-card--on" : "dev-card--off")">
+                    <div class="dev-card-bar"></div>
+                    <div class="dev-card-body">
+                        <div class="dev-card-top">
+                            <div class="dev-card-id">@d.DeviceId</div>
+                            <span class="dev-card-badge @(d.IsActive ? "dev-badge-on" : "dev-badge-off")">@(d.IsActive ? "فعال" : "غیرفعال")</span>
+                        </div>
+                        <div class="dev-card-name">@d.DisplayName</div>
+                        <div class="dev-card-info">
+                            @if (!string.IsNullOrEmpty(d.MacAddress))
+                            {
+                                <div class="dev-card-i">
+                                    <span class="dev-card-il">MAC</span>
+                                    <span class="dev-card-iv ltr">@d.MacAddress</span>
+                                </div>
+                            }
+                            <div class="dev-card-i">
+                                <span class="dev-card-il">مرکز</span>
+                                <span class="dev-card-iv">@d.CenterName</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(d.Location))
+                            {
+                                <div class="dev-card-i">
+                                    <span class="dev-card-il">موقعیت</span>
+                                    <span class="dev-card-iv">@d.Location</span>
+                                </div>
+                            }
+                            <div class="dev-card-i">
+                                <span class="dev-card-il">فاز</span>
+                                <span class="dev-card-iv">@d.PhaseCount</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="card-row"><span>شناسه</span><span class="ltr">@d.DeviceId</span></div>
-                        <div class="card-row"><span>MAC</span><span class="ltr">@(d.MacAddress ?? "---")</span></div>
-                        <div class="card-row"><span>مرکز</span><span>@d.CenterName</span></div>
-                        <div class="card-row"><span>موقعیت</span><span>@(d.Location ?? "---")</span></div>
-                        <div class="card-row"><span>فازها</span><span>@d.PhaseCount</span></div>
-                        <div class="card-row"><span>آخرین ارتباط</span><span>@(d.LastSeenAt?.ToPersianDateTime() ?? "---")</span></div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="card-btn primary" @onclick="() => OpenEdit(d)">ویرایش</button>
-                        <button class="card-btn danger" @onclick="() => ConfirmDelete(d)">حذف</button>
+                    <div class="dev-card-ftr">
+                        <div class="dev-card-ls @lastSeenClass">
+                            @if (d.LastSeenAt.HasValue)
+                            {
+                                <span>@d.LastSeenAt.Value.ToPersianDateTime()</span>
+                            }
+                            else
+                            {
+                                <span class="dev-ls-na">بدون ارتباط</span>
+                            }
+                        </div>
+                        <div class="dev-card-acts">
+                            <button class="dev-btn-sm dev-btn-edit" @onclick="() => OpenEdit(d)">ویرایش</button>
+                            <button class="dev-btn-sm dev-btn-del" @onclick="() => ConfirmDelete(d)">حذف</button>
+                        </div>
                     </div>
                 </div>
             }
@@ -70,95 +110,128 @@
     }
 </div>
 
-    @* Create / Edit modal *@
-    @if (_showForm)
-    {
-        <div class="modal-overlay" @onclick="CloseForm">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr">
-                    <h3>@(_editing is null ? "دستگاه جدید" : "ویرایش دستگاه")</h3>
-                    <button class="modal-close" @onclick="CloseForm">&times;</button>
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="dev-overlay" @onclick="() => _showHelp = false">
+        <div class="dev-modal dev-modal-help" @onclick:stopPropagation>
+            <div class="dev-mh">
+                <span class="dev-mh-icon">📘</span>
+                <span class="dev-mh-t">راهنمای مدیریت دستگاه‌ها</span>
+                <button class="dev-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="dev-mb">
+                <p class="dev-mb-intro"><strong>دستگاه اندازه‌گیری</strong> سخت‌افزاری است که در یک مرکز نصب می‌شود و مصرف انرژی را ثبت می‌کند.</p>
+                <div class="dev-mb-step"><span class="dev-step-n">۱</span><span>ابتدا <strong>مرکز</strong> مربوطه را ایجاد کرده باشید.</span></div>
+                <div class="dev-mb-step"><span class="dev-step-n">۲</span><span>شناسه یکتا به صورت خودکار تولید می‌شود — در صورت نیاز می‌توانید آن را تغییر دهید.</span></div>
+                <div class="dev-mb-step"><span class="dev-step-n">۳</span><span>مرکز مربوطه را انتخاب کنید — دستگاه به آن مرکز متصل می‌شود.</span></div>
+                <div class="dev-mb-step"><span class="dev-step-n">۴</span><span>تعداد فازها را انتخاب کنید (۱ یا ۳ فاز).</span></div>
+                <div class="dev-mb-tip">💡 دستگاه‌های فعال در داشبورد و محاسبه صورتحساب استفاده می‌شوند.</div>
+                <div class="dev-mb-warn">⚠️ شناسه دستگاه باید با شناسه فیزیکی دستگاه یکسان باشد — می‌توانید مقدار پیش‌فرض را تغییر دهید.</div>
+            </div>
+            <div class="dev-mf">
+                <button class="dev-btn dev-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Create / Edit modal *@
+@if (_showForm)
+{
+    <div class="dev-overlay" @onclick="CloseForm">
+        <div class="dev-modal dev-modal-form" @onclick:stopPropagation>
+            <div class="dev-mh">
+                <span class="dev-mh-t">@(_editing is null ? "دستگاه جدید" : "ویرایش دستگاه")</span>
+                <button class="dev-mh-x" @onclick="CloseForm">&times;</button>
+            </div>
+            <div class="dev-mb">
+                <div class="dev-fg">
+                    <label class="dev-fl">شناسه دستگاه</label>
+                    <input @bind="_form.DeviceId" class="dev-fi dev-fi-ltr" placeholder="مثلاً DEV-001" />
                 </div>
-                <div class="modal-body">
-                    <div class="form-row">
-                        <label>شناسه</label>
-                        <input @bind="_form.DeviceId" class="form-input ltr" placeholder="مثلاً DEV-001" />
+                <div class="dev-fg">
+                    <label class="dev-fl">نام نمایشی</label>
+                    <input @bind="_form.DisplayName" class="dev-fi" placeholder="نام دستگاه" />
+                </div>
+                <div class="dev-fg">
+                    <label class="dev-fl">MAC Address</label>
+                    <input @bind="_form.MacAddress" class="dev-fi dev-fi-ltr" placeholder="اختیاری" />
+                </div>
+                <div class="dev-fg">
+                    <label class="dev-fl">مرکز</label>
+                    <select class="dev-fi" @bind="_form.CenterId">
+                        <option value="@Guid.Empty">انتخاب مرکز</option>
+                        @foreach (var c in _centers)
+                        {
+                            <option value="@c.Id">@c.Name (@c.Code)</option>
+                        }
+                    </select>
+                </div>
+                <div class="dev-row">
+                    <div class="dev-fg" style="flex:1">
+                        <label class="dev-fl">موقعیت</label>
+                        <input @bind="_form.Location" class="dev-fi" placeholder="اختیاری" />
                     </div>
-                    <div class="form-row">
-                        <label>نام</label>
-                        <input @bind="_form.DisplayName" class="form-input" placeholder="نام نمایشی" />
-                    </div>
-                    <div class="form-row">
-                        <label>MAC</label>
-                        <input @bind="_form.MacAddress" class="form-input ltr" placeholder="اختیاری" />
-                    </div>
-                    <div class="form-row">
-                        <label>مرکز</label>
-                        <select @bind="_form.CenterId" class="form-input">
-                            <option value="@Guid.Empty">انتخاب مرکز</option>
-                            @foreach (var c in _centers)
-                            {
-                                <option value="@c.Id">@c.Name (@c.Code)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label>موقعیت</label>
-                        <input @bind="_form.Location" class="form-input" placeholder="اختیاری" />
-                    </div>
-                    <div class="form-row">
-                        <label>تعداد فاز</label>
-                        <select @bind="_form.PhaseCount" class="form-input inline">
+                    <div class="dev-fg" style="flex:0 0 120px">
+                        <label class="dev-fl">تعداد فاز</label>
+                        <select class="dev-fi" @bind="_form.PhaseCount">
                             <option value="1">1 فاز</option>
                             <option value="3">3 فاز</option>
                         </select>
                     </div>
-                    <div class="form-row">
-                        <label>فعال</label>
-                        <label class="tgl">
-                            <input type="checkbox" @bind="_form.IsActive" />
-                            <span class="sl"></span>
-                        </label>
-                    </div>
                 </div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="CloseForm">انصراف</button>
-                    <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || string.IsNullOrWhiteSpace(_form.DeviceId) || string.IsNullOrWhiteSpace(_form.DisplayName) || _form.CenterId == Guid.Empty)">@(_saving ? "..." : "ذخیره")</button>
+                <div class="dev-fg">
+                    <label class="dev-fl">وضعیت</label>
+                    <label class="dev-tgl">
+                        <input type="checkbox" @bind="_form.IsActive" />
+                        <span class="dev-tgl-sl"></span>
+                        <span class="dev-tgl-lbl">@(_form.IsActive ? "فعال" : "غیرفعال")</span>
+                    </label>
                 </div>
             </div>
+            <div class="dev-mf">
+                <button class="dev-btn dev-btn-cancel" @onclick="CloseForm">انصراف</button>
+                <button class="dev-btn dev-btn-save" @onclick="Save" disabled="@(_saving || string.IsNullOrWhiteSpace(_form.DeviceId) || string.IsNullOrWhiteSpace(_form.DisplayName) || _form.CenterId == Guid.Empty)">@(_saving ? "..." : "ذخیره")</button>
+            </div>
         </div>
-    }
+    </div>
+}
 
-    @* Delete confirm *@
-    @if (_deleteTarget is not null)
-    {
-        <div class="modal-overlay" @onclick="() => _deleteTarget = null">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr"><h3>حذف دستگاه</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
-                <div class="modal-body">
-                    <p>آیا از حذف دستگاه <strong>@_deleteTarget.DisplayName</strong> اطمینان دارید؟</p>
-                </div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
-                    <button class="btn btn-danger" @onclick="DeleteDevice">حذف</button>
-                </div>
+@* Delete confirm modal *@
+@if (_deleteTarget is not null)
+{
+    <div class="dev-overlay" @onclick="() => _deleteTarget = null">
+        <div class="dev-modal dev-modal-form" @onclick:stopPropagation>
+            <div class="dev-mh">
+                <span class="dev-mh-t dev-mh-t-del">حذف دستگاه</span>
+                <button class="dev-mh-x" @onclick="() => _deleteTarget = null">&times;</button>
+            </div>
+            <div class="dev-mb">
+                <p class="dev-del-msg">آیا از حذف دستگاه <strong>@_deleteTarget.DisplayName</strong> اطمینان دارید؟</p>
+            </div>
+            <div class="dev-mf">
+                <button class="dev-btn dev-btn-cancel" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="dev-btn dev-btn-danger" @onclick="DeleteDevice">حذف</button>
             </div>
         </div>
-    }
+    </div>
+}
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="dev-denied">
+        <div class="dev-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>شما به این بخش دسترسی ندارید.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="dev-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
     private List<RawDevice> _devices = new();
     private List<CenterRef> _centers = new();
-    private bool _loading = true, _saving, _showForm;
+    private bool _loading = true, _saving, _showForm, _showHelp;
     private RawDevice? _editing;
     private DeviceForm _form = new();
     private RawDevice? _deleteTarget;
@@ -278,3 +351,155 @@ else
         public int PhaseCount { get; set; } = 3;
     }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Devices page — modern card grid
+   ═══════════════════════════════════════════ */
+.dev-container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.dev-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.dev-top-l{display:flex;align-items:center;gap:10px}
+.dev-icon{font-size:24px}
+.dev-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.dev-top-r{display:flex;gap:8px}
+.dev-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.dev-btn:active{transform:scale(.95)}
+.dev-btn-add{background:var(--grad-blue);color:#fff}
+.dev-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.dev-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.dev-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.dev-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.dev-btn-cancel:hover{background:var(--bg-alt)}
+.dev-btn-save{background:var(--grad-blue);color:#fff}
+.dev-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.dev-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.dev-btn-danger{background:var(--red);color:#fff}
+.dev-btn-danger:hover{box-shadow:var(--shadow-red);transform:translateY(-1px)}
+.dev-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.dev-btn-sm:active{transform:scale(.93)}
+.dev-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.dev-btn-edit:hover{background:var(--blue);color:#fff}
+.dev-btn-del{background:var(--red-bg);color:var(--red)}
+.dev-btn-del:hover{background:var(--red);color:#fff}
+
+/* Prereq alert */
+.dev-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.dev-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.dev-prereq-b{flex:1}
+.dev-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.dev-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.dev-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none;transition:color .2s}
+.dev-prereq-a:hover{text-decoration:underline}
+
+/* Loading */
+.dev-loading{text-align:center;padding:80px 20px}
+.dev-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:dev-spin .7s linear infinite;margin:0 auto}
+@@keyframes dev-spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.dev-empty{text-align:center;padding:60px 20px}
+.dev-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.dev-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.dev-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.dev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.dev-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.dev-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.dev-card:active{transform:scale(.97)}
+.dev-card-bar{height:4px;flex-shrink:0}
+.dev-card--on .dev-card-bar{background:var(--grad-green)}
+.dev-card--off .dev-card-bar{background:#d1d5db}
+.dev-card-body{padding:16px 16px 12px;flex:1}
+.dev-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.dev-card-id{direction:ltr;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:.3px;background:var(--blue-bg);padding:2px 10px;border-radius:6px}
+.dev-card-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.dev-badge-on{background:var(--green-bg);color:var(--green)}
+.dev-badge-off{background:var(--red-bg);color:var(--red)}
+.dev-card-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:10px}
+.dev-card-info{display:flex;flex-direction:column;gap:5px}
+.dev-card-i{display:flex;align-items:center;gap:6px;font-size:12px}
+.dev-card-il{color:var(--text-secondary);min-width:50px}
+.dev-card-iv{color:var(--text);font-weight:500}
+.dev-card-iv.ltr{direction:ltr}
+.dev-card-ftr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+.dev-card-ls{font-size:11px;color:var(--text-muted);direction:ltr}
+.dev-card-ls.dev-ls-ok{color:var(--green)}
+.dev-card-ls.dev-ls-warn{color:var(--gold)}
+.dev-card-ls.dev-ls-old{color:var(--text-muted)}
+.dev-ls-na{color:var(--red);font-weight:600}
+.dev-card-acts{display:flex;gap:6px}
+
+/* Overlay + modal */
+.dev-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:dev-fade .2s ease}
+@@keyframes dev-fade{from{opacity:0}to{opacity:1}}
+.dev-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:dev-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes dev-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.dev-modal-form{max-width:480px}
+.dev-modal-help{max-width:500px}
+.dev-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.dev-mh-icon{font-size:18px}
+.dev-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.dev-mh-t-del{color:var(--red)}
+.dev-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.dev-mh-x:hover{background:var(--bg);color:var(--text)}
+.dev-mb{padding:16px 20px}
+.dev-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.dev-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.dev-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.dev-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.dev-mb-warn{background:var(--red-bg);border-right:3px solid var(--red);padding:10px 14px;border-radius:10px;margin-top:8px;font-size:12px;color:#991b1b;line-height:1.6}
+.dev-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.dev-fg{margin-bottom:16px}
+.dev-fg:last-child{margin-bottom:0}
+.dev-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.dev-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.dev-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.dev-fi::placeholder{color:var(--text-muted)}
+.dev-fi-ltr{direction:ltr;text-align:right}
+.dev-fi[disabled]{background:var(--bg);color:var(--text-muted);cursor:not-allowed}
+.dev-row{display:flex;gap:12px}
+.dev-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.dev-tgl input{opacity:0;width:0;height:0}
+.dev-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.dev-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.dev-tgl input:checked+.dev-tgl-sl{background:var(--grad-blue)}
+.dev-tgl input:checked+.dev-tgl-sl::before{transform:translateX(18px)}
+.dev-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.dev-del-msg{font-size:14px;line-height:1.7;color:var(--text)}
+
+/* Access denied */
+.dev-denied{text-align:center;padding:80px 20px;color:#888}
+.dev-denied-icon{font-size:48px;margin-bottom:12px}
+.dev-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.dev-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.dev-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.dev-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .dev-container{padding:16px 12px}
+    .dev-top{flex-direction:column;align-items:stretch;gap:10px}
+    .dev-top-r{justify-content:space-between}
+    .dev-title{font-size:16px}
+    .dev-grid{grid-template-columns:1fr;gap:10px}
+    .dev-card-body{padding:14px 14px 10px}
+    .dev-card-name{font-size:15px}
+    .dev-card-id{font-size:12px}
+    .dev-card-ftr{flex-direction:column;align-items:stretch;gap:6px;padding:8px 14px}
+    .dev-card-acts{justify-content:flex-end}
+    .dev-btn{padding:8px 14px;font-size:12px}
+    .dev-row{flex-direction:column;gap:0}
+    .dev-modal-form,.dev-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .dev-mh{padding:14px 16px 12px}
+    .dev-mb{padding:12px 16px}
+    .dev-mf{padding:10px 16px 14px}
+    .dev-mb-step{font-size:12px}
+    .dev-empty{padding:40px 16px}
+    .dev-prereq{padding:14px;border-radius:12px}
+    .dev-prereq-t{font-size:13px}
+    .dev-prereq-d{font-size:11px}
+}
+</style>

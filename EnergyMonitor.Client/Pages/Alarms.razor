@@ -4,94 +4,198 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject AuthService Auth
+@inject ToastService Toast
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container alarms-page">
-    <div class="page-toolbar">
-        <h2>مدیریت هشدارها</h2>
-        <button class="btn-sm" @onclick="Load">🔄 بروزرسانی</button>
-    </div>
-
-    <PrereqAlert Met="(_devices.Count > 0)"
-        Title="هنوز دستگاهی ثبت نشده"
-        Text="برای مشاهده هشدارها، ابتدا باید یک دستگاه ایجاد کنید. به صفحه دستگاه‌ها بروید."
-        LinkText="رفتن به مدیریت دستگاه‌ها"
-        LinkHref="/devices" />
-
-    <HelpBox>
-        <p><strong>هشدارها</strong> رویدادهای غیرعادی ثبت‌شده توسط دستگاه‌های اندازه‌گیری را نمایش می‌دهند.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">برای فیلتر کردن، دستگاه مورد نظر را انتخاب کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">هشدارهای فعال را بررسی و اقدام کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">دکمه بروزرسانی را بزنید تا آخرین هشدارها را ببینید.</span></div>
-        <div class="hlp-tip">💡 هشدارها می‌توانند شامل قطعی ارتباط، مصرف غیرمجاز و خطاهای سخت‌افزاری باشند.</div>
-    </HelpBox>
-
-    <div class="filters" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
-        <select class="form-select" @bind="_selectedDeviceId" style="width:auto;min-width:140px">
-            <option value="">همه دستگاه‌ها</option>
-            @foreach (var d in _devices)
+<div class="alm-container">
+    <div class="alm-top">
+        <div class="alm-top-l">
+            <span class="alm-icon">🔔</span>
+            <h2 class="alm-title">مدیریت هشدارها</h2>
+            @if (_alarms.Any(a => !a.IsResolved))
             {
-                <option value="@d.DeviceId">@d.DisplayName (@d.DeviceId)</option>
+                <span class="alm-count">@_alarms.Count(a => !a.IsResolved) فعال</span>
             }
-        </select>
-        <select class="form-select" value="@_filterSeverity" @onchange="OnSeverityChanged" style="width:auto">
-            <option value="">همه سطوح</option>
-            <option value="Critical">بحرانی</option>
-            <option value="Warning">هشدار</option>
-            <option value="Info">اطلاع</option>
-        </select>
-        <select class="form-select" value="@_filterResolved" @onchange="OnResolvedChanged" style="width:auto">
-            <option value="">همه</option>
-            <option value="false">فعال</option>
-            <option value="true">رفع شده</option>
-        </select>
-        @if (_alarms.Any(a => !a.IsResolved))
-        {
-            <button class="btn-sm danger" @onclick="ClearAll">پاک کردن همه</button>
-        }
+        </div>
+        <div class="alm-top-r">
+            <button class="alm-btn alm-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="alm-btn alm-btn-ref" @onclick="Load" title="بروزرسانی">🔄</button>
+        </div>
     </div>
-    <div class="card-list">
-        @foreach (var a in _alarms)
+
+    @if (_devices.Count == 0)
+    {
+        <div class="alm-prereq">
+            <div class="alm-prereq-icon">⚠️</div>
+            <div class="alm-prereq-b">
+                <div class="alm-prereq-t">هنوز دستگاهی ثبت نشده</div>
+                <div class="alm-prereq-d">برای مشاهده هشدارها، ابتدا باید یک دستگاه ایجاد کنید.</div>
+                <a class="alm-prereq-a" href="/devices">← رفتن به مدیریت دستگاه‌ها</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* Filters *@
+        <div class="alm-filters">
+            <div class="alm-fil">
+                <span class="alm-fil-icon">📡</span>
+                <select class="alm-fil-sl" @bind="_selectedDeviceId" @bind:after="Load">
+                    <option value="">همه دستگاه‌ها</option>
+                    @foreach (var d in _devices)
+                    {
+                        <option value="@d.DeviceId">@d.DisplayName (@d.DeviceId)</option>
+                    }
+                </select>
+            </div>
+            <div class="alm-fil">
+                <span class="alm-fil-icon">🏷️</span>
+                <select class="alm-fil-sl" @bind="_filterSeverity" @bind:after="Load">
+                    <option value="">همه سطوح</option>
+                    <option value="Critical">بحرانی</option>
+                    <option value="Warning">هشدار</option>
+                    <option value="Info">اطلاع</option>
+                </select>
+            </div>
+            <div class="alm-fil">
+                <span class="alm-fil-icon">✅</span>
+                <select class="alm-fil-sl" @bind="_filterResolved" @bind:after="Load">
+                    <option value="">همه</option>
+                    <option value="false">فعال</option>
+                    <option value="true">رفع شده</option>
+                </select>
+            </div>
+            @if (_alarms.Any(a => !a.IsResolved))
+            {
+                <button class="alm-btn alm-btn-clear" @onclick="ClearAll" title="پاک کردن همه هشدارهای فعال">✕ پاک کردن همه</button>
+            }
+        </div>
+
+        @if (_loading)
         {
-            <div class="card-item @(a.IsResolved ? "resolved" : "")">
-                <div class="alarm-dot alarm-@a.Severity?.ToLower()"></div>
-                <div class="card-hdr">
-                    <strong>@a.Title</strong>
-                    <span class="alarm-severity alarm-@a.Severity?.ToLower()">@a.Severity</span>
-                </div>
-                <div class="card-body">
-                    @if (!string.IsNullOrEmpty(a.Message)) { <p>@a.Message</p> }
-                    <div class="card-row"><span>دستگاه</span><span>@(a.DeviceId ?? "---")</span></div>
-                    <div class="card-row"><span>فاز</span><span>@(a.Phase ?? "---")</span></div>
-                    <div class="card-row"><span>زمان</span><span>@a.OccurredAt.ToPersianDateTime()</span></div>
-                    @if (a.IsResolved && a.ResolvedAt.HasValue) { <div class="card-row"><span>رفع شده</span><span>@a.ResolvedAt.Value.ToPersianDateTime()</span></div> }
-                </div>
-                @if (!a.IsResolved)
+            <div class="alm-loading"><div class="alm-spinner"></div></div>
+        }
+        else if (_alarms.Count == 0)
+        {
+            <div class="alm-empty">
+                <div class="alm-empty-icon">🔔</div>
+                <div class="alm-empty-t">هشدار یافت نشد</div>
+                <div class="alm-empty-d">هیچ هشدار فعال یا ثبت شده‌ای با فیلترهای فعلی وجود ندارد.</div>
+            </div>
+        }
+        else
+        {
+            <div class="alm-list">
+                @foreach (var a in _alarms)
                 {
-                    <div class="card-actions">
-                        <button class="btn-sm" @onclick="() => Resolve(a.Id)">رفع</button>
+                    var sev = a.Severity ?? "";
+                    var sevClass = sev.ToLower() switch { "critical" => "alm-sev-crit", "warning" => "alm-sev-warn", _ => "alm-sev-info" };
+                    <div class="alm-card @(a.IsResolved ? "alm-card--done" : "")">
+                        <div class="alm-card-bar @sevClass"></div>
+                        <div class="alm-card-body">
+                            <div class="alm-card-top">
+                                <div class="alm-card-ttl">
+                                    <span class="alm-sev-dot @sevClass"></span>
+                                    <strong>@a.Title</strong>
+                                </div>
+                                <div class="alm-card-badges">
+                                    @if (a.IsResolved)
+                                    {
+                                        <span class="alm-badge alm-badge-done">رفع شده</span>
+                                    }
+                                    <span class="alm-badge alm-badge-@sev.ToLower()">@(sev switch { "Critical" => "بحرانی", "Warning" => "هشدار", _ => "اطلاع" })</span>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(a.Message))
+                            {
+                                <div class="alm-card-msg">@a.Message</div>
+                            }
+                            <div class="alm-card-meta">
+                                <div class="alm-meta-i">
+                                    <span class="alm-meta-l">دستگاه</span>
+                                    <span class="alm-meta-v">@(a.DeviceId ?? "---")</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(a.Phase))
+                                {
+                                    <div class="alm-meta-i">
+                                        <span class="alm-meta-l">فاز</span>
+                                        <span class="alm-meta-v">@a.Phase</span>
+                                    </div>
+                                }
+                                <div class="alm-meta-i">
+                                    <span class="alm-meta-l">زمان</span>
+                                    <span class="alm-meta-v ltr">@a.OccurredAt.ToPersianDateTime()</span>
+                                </div>
+                                @if (a.IsResolved && a.ResolvedAt.HasValue)
+                                {
+                                    <div class="alm-meta-i">
+                                        <span class="alm-meta-l">رفع شده</span>
+                                        <span class="alm-meta-v ltr">@a.ResolvedAt.Value.ToPersianDateTime()</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        @if (!a.IsResolved)
+                        {
+                            <div class="alm-card-act">
+                                <button class="alm-btn alm-btn-resolve" @onclick="() => Resolve(a.Id)">
+                                    <span>✓</span>
+                                    <span>رفع</span>
+                                </button>
+                            </div>
+                        }
                     </div>
                 }
             </div>
+            @if (_alarms.Any(a => !a.IsResolved))
+            {
+                <div class="alm-bulk-bar">
+                    <button class="alm-btn alm-btn-clear" @onclick="ClearAll">✕ رفع همه هشدارهای فعال</button>
+                </div>
+            }
         }
-        @if (_alarms.Count == 0) { <p style="text-align:center;color:#666;padding:2rem">هیچ هشدار یافت نشد</p> }
-    </div>
+    }
 </div>
+
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="alm-overlay" @onclick="() => _showHelp = false">
+        <div class="alm-modal" @onclick:stopPropagation>
+            <div class="alm-mh">
+                <span class="alm-mh-icon">📘</span>
+                <span class="alm-mh-t">راهنمای مدیریت هشدارها</span>
+                <button class="alm-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="alm-mb">
+                <p class="alm-mb-intro"><strong>هشدارها</strong> رویدادهای غیرعادی ثبت‌شده توسط دستگاه‌های اندازه‌گیری را نمایش می‌دهند.</p>
+                <div class="alm-mb-step"><span class="alm-step-n">۱</span><span>برای فیلتر کردن، دستگاه مورد نظر را انتخاب کنید.</span></div>
+                <div class="alm-mb-step"><span class="alm-step-n">۲</span><span>هشدارهای فعال (بحرانی / هشدار / اطلاعات) را بررسی کنید.</span></div>
+                <div class="alm-mb-step"><span class="alm-step-n">۳</span><span>پس از بررسی، دکمه «رفع» را بزنید یا همه را یکباره پاک کنید.</span></div>
+                <div class="alm-mb-tip">💡 هشدارها به‌صورت خودکار توسط دستگاه‌ها ثبت می‌شوند و نیاز به بررسی دارند.</div>
+            </div>
+            <div class="alm-mf">
+                <button class="alm-btn alm-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
+            </div>
+        </div>
+    </div>
+}
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="alm-denied">
+        <div class="alm-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="alm-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
     private List<AlarmItem> _alarms = new();
     private List<DeviceRef> _devices = new();
-    private bool _loading = true;
+    private bool _loading = true, _showHelp;
     private string _filterSeverity = "";
     private string _filterResolved = "";
     private string _selectedDeviceId = "";
@@ -107,9 +211,6 @@ else
         await Load();
     }
 
-    private async Task OnSeverityChanged(ChangeEventArgs e) { _filterSeverity = e.Value?.ToString() ?? ""; await Load(); }
-    private async Task OnResolvedChanged(ChangeEventArgs e) { _filterResolved = e.Value?.ToString() ?? ""; await Load(); }
-
     private async Task Load()
     {
         _loading = true; StateHasChanged();
@@ -123,19 +224,28 @@ else
             else if (_filterResolved == "false") { url += $"{sep}resolved=false"; }
             _alarms = await Http.GetFromJsonAsync<List<AlarmItem>>(url) ?? new();
         }
-        catch { }
+        catch { Toast.ShowError("خطا در دریافت هشدارها"); }
         finally { _loading = false; StateHasChanged(); }
     }
 
     private async Task Resolve(int id)
     {
-        try { await Http.PostAsync($"api/v2/alarms/{id}/resolve", null); await Load(); } catch { }
+        try
+        {
+            var resp = await Http.PostAsync($"api/v2/alarms/{id}/resolve", null);
+            if (resp.IsSuccessStatusCode) { Toast.ShowSuccess("هشدار رفع شد"); await Load(); }
+            else { Toast.ShowError("خطا در رفع هشدار"); }
+        }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
     }
 
     private async Task ClearAll()
     {
         foreach (var a in _alarms.Where(x => !x.IsResolved))
+        {
             try { await Http.PostAsync($"api/v2/alarms/{a.Id}/resolve", null); } catch { }
+        }
+        Toast.ShowSuccess("همه هشدارهای فعال رفع شدند");
         await Load();
     }
 
@@ -158,3 +268,147 @@ else
         public string DisplayName { get; set; } = "";
     }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Alarms page — alert management
+   ═══════════════════════════════════════════ */
+.alm-container{max-width:900px;margin:0 auto;padding:24px 16px}
+.alm-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.alm-top-l{display:flex;align-items:center;gap:10px}
+.alm-icon{font-size:22px}
+.alm-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.alm-count{font-size:11px;font-weight:700;color:#fff;background:var(--red);padding:2px 10px;border-radius:20px;line-height:1.5}
+.alm-top-r{display:flex;gap:8px}
+
+/* Shared buttons */
+.alm-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.alm-btn:active{transform:scale(.95)}
+.alm-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:9px 11px}
+.alm-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.alm-btn-ref{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:9px 11px;font-size:15px}
+.alm-btn-ref:hover{background:var(--bg-alt);color:var(--text)}
+.alm-btn-clear{background:var(--red-bg);color:var(--red);font-size:12px}
+.alm-btn-clear:hover{background:var(--red);color:#fff}
+.alm-btn-resolve{background:var(--green-bg);color:var(--green);padding:7px 14px;font-size:12px;border-radius:8px}
+.alm-btn-resolve:hover{background:var(--green);color:#fff}
+
+/* Prereq */
+.alm-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.alm-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.alm-prereq-b{flex:1}
+.alm-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.alm-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.alm-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none}
+.alm-prereq-a:hover{text-decoration:underline}
+
+/* Filters */
+.alm-filters{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+.alm-fil{position:relative;flex:0 1 auto;min-width:130px}
+.alm-fil-icon{position:absolute;right:11px;top:50%;transform:translateY(-50%);z-index:1;font-size:13px;pointer-events:none}
+.alm-fil-sl{width:100%;padding:9px 34px 9px 30px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:12px;font-weight:500;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font);appearance:none;-webkit-appearance:none;cursor:pointer;min-height:38px}
+.alm-fil-sl:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+
+/* Loading */
+.alm-loading{text-align:center;padding:60px 20px}
+.alm-spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:alm-spin .7s linear infinite;margin:0 auto}
+@@keyframes alm-spin{to{transform:rotate(360deg)}}
+
+/* Empty */
+.alm-empty{text-align:center;padding:60px 20px}
+.alm-empty-icon{font-size:42px;margin-bottom:12px;opacity:.4}
+.alm-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.alm-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Alarm list */
+.alm-list{display:flex;flex-direction:column;gap:10px}
+.alm-card{display:flex;overflow:hidden;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;transition:border-color .2s,box-shadow .2s}
+.alm-card:hover{border-color:#cbd5e1;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.alm-card--done{opacity:.72}
+.alm-card--done:hover{opacity:.85}
+.alm-card-bar{width:4px;flex-shrink:0}
+.alm-card-body{padding:14px 16px;flex:1;min-width:0}
+.alm-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+.alm-card-ttl{display:flex;align-items:center;gap:8px;min-width:0}
+.alm-card-ttl strong{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alm-card-badges{display:flex;gap:5px;flex-shrink:0}
+.alm-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;letter-spacing:.2px}
+.alm-badge-done{background:var(--green-bg);color:var(--green)}
+.alm-badge-critical{background:var(--red-bg);color:var(--red)}
+.alm-badge-warning{background:var(--gold-bg);color:#92400e}
+.alm-badge-info{background:var(--blue-bg);color:var(--blue)}
+
+/* Severity */
+.alm-sev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.alm-card-bar.alm-sev-crit,.alm-sev-dot.alm-sev-crit{background:var(--red)}
+.alm-card-bar.alm-sev-warn,.alm-sev-dot.alm-sev-warn{background:var(--gold)}
+.alm-card-bar.alm-sev-info,.alm-sev-dot.alm-sev-info{background:var(--blue)}
+
+/* Message */
+.alm-card-msg{font-size:12px;color:var(--text-secondary);line-height:1.7;margin:4px 0 10px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+
+/* Meta */
+.alm-card-meta{display:flex;flex-wrap:wrap;gap:6px 16px}
+.alm-meta-i{display:flex;align-items:center;gap:4px;font-size:11px}
+.alm-meta-l{color:var(--text-muted)}
+.alm-meta-v{color:var(--text);font-weight:600}
+.alm-meta-v.ltr{direction:ltr}
+
+/* Action */
+.alm-card-act{display:flex;align-items:center;padding:0 14px;flex-shrink:0}
+
+/* Bulk bar */
+.alm-bulk-bar{text-align:center;padding:18px 0 8px}
+
+/* Overlay + modal */
+.alm-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:alm-fade .2s ease}
+@@keyframes alm-fade{from{opacity:0}to{opacity:1}}
+.alm-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:alm-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes alm-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.alm-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.alm-mh-icon{font-size:18px}
+.alm-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.alm-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.alm-mh-x:hover{background:var(--bg);color:var(--text)}
+.alm-mb{padding:16px 20px}
+.alm-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.alm-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.alm-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.alm-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.alm-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Access denied */
+.alm-denied{text-align:center;padding:80px 20px;color:#888}
+.alm-denied-icon{font-size:48px;margin-bottom:12px}
+.alm-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.alm-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.alm-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.alm-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .alm-container{padding:16px 12px}
+    .alm-top{flex-direction:column;align-items:stretch;gap:10px}
+    .alm-top-r{justify-content:space-between}
+    .alm-title{font-size:16px}
+    .alm-count{font-size:10px}
+    .alm-filters{gap:6px}
+    .alm-fil{flex:1;min-width:0}
+    .alm-fil-sl{font-size:11px;padding:8px 30px 8px 24px}
+    .alm-btn-clear{flex:1;justify-content:center}
+    .alm-card-body{padding:12px 14px}
+    .alm-card-ttl strong{font-size:13px}
+    .alm-card-msg{font-size:11px;padding:6px 8px}
+    .alm-card-act{padding:0 10px}
+    .alm-card-meta{gap:4px 12px}
+    .alm-meta-i{font-size:10px}
+    .alm-empty{padding:40px 16px}
+    .alm-prereq{padding:14px;border-radius:12px}
+    .alm-prereq-t{font-size:13px}
+    .alm-prereq-d{font-size:11px}
+    .alm-modal{max-width:100%;margin:0;border-radius:14px}
+    .alm-mh{padding:14px 16px 12px}
+    .alm-mb{padding:12px 16px}
+    .alm-mf{padding:10px 16px 14px}
+}
+</style>

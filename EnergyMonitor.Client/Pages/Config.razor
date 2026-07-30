@@ -8,100 +8,239 @@
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>تنظیمات دستگاه</h2>
+<div class="cfg-container">
+    <div class="cfg-top">
+        <div class="cfg-top-l">
+            <span class="cfg-icon">⚙️</span>
+            <h2 class="cfg-title">تنظیمات دستگاه</h2>
+        </div>
+        <div class="cfg-top-r">
+            <button class="cfg-btn cfg-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+        </div>
     </div>
 
-    <PrereqAlert Met="(_devices.Count > 0)"
-        Title="هنوز دستگاهی ثبت نشده"
-        Text="برای تنظیمات دستگاه، ابتدا باید یک دستگاه ایجاد کنید. به صفحه دستگاه‌ها بروید."
-        LinkText="رفتن به مدیریت دستگاه‌ها"
-        LinkHref="/devices" />
-
-    <HelpBox>
-        <p><strong>تنظیمات دستگاه</strong> به شما امکان می‌دهد پارامترهای ارتباطی و عملیاتی هر دستگاه را پیکربندی کنید.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">دستگاه مورد نظر را از لیست انتخاب کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">پارامترهای مورد نیاز را تنظیم کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">تنظیمات را ذخیره کنید تا به دستگاه ارسال شود.</span></div>
-    </HelpBox>
-
-    <div class="form-row" style="max-width:400px">
-        <label>انتخاب دستگاه</label>
-        <select @bind="_selectedDeviceId" @bind:after="LoadConfig" class="form-select">
-            <option value="">-- انتخاب دستگاه --</option>
-            @foreach (var d in _devices)
-            {
-                <option value="@d.DeviceId">@d.DisplayName (@d.DeviceId)</option>
-            }
-        </select>
-    </div>
-
-    @if (_loading)
+    @if (_devices.Count == 0)
     {
-        <div class="loading-state"><div class="spinner"></div></div>
-    }
-    else if (_cfg != null)
-    {
-        <div class="cfg-card">
-            <div class="cfg-section">
-                <h4>تنظیمات ولتاژ</h4>
-                <div class="form-row"><label>حداکثر ولتاژ (V)</label><input @bind="_cfg.OverVoltageThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
-                <div class="form-row"><label>حداقل ولتاژ (V)</label><input @bind="_cfg.UnderVoltageThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
-                <div class="form-row"><label>عدم تعادل فاز (V)</label><input @bind="_cfg.PhaseImbalanceThreshold" type="number" inputmode="numeric" class="form-input ltr" step="1" /></div>
+        <div class="cfg-prereq">
+            <div class="cfg-prereq-icon">⚠️</div>
+            <div class="cfg-prereq-b">
+                <div class="cfg-prereq-t">هنوز دستگاهی ثبت نشده</div>
+                <div class="cfg-prereq-d">برای تنظیمات دستگاه، ابتدا باید یک دستگاه ایجاد کنید.</div>
+                <a class="cfg-prereq-a" href="/devices">← رفتن به مدیریت دستگاه‌ها</a>
             </div>
-            <div class="cfg-section">
-                <h4>تنظیمات جریان و توان</h4>
-                <div class="form-row"><label>حداکثر جریان (A)</label><input @bind="_cfg.OverCurrentThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
-                <div class="form-row"><label>حداکثر توان هر فاز (W)</label><input @bind="_cfg.HighPowerThreshold" type="number" inputmode="numeric" class="form-input ltr" step="100" /></div>
-            </div>
-            <div class="cfg-section">
-                <h4>ضریب توان و فرکانس</h4>
-                <div class="form-row"><label>حداقل PF</label><input @bind="_cfg.LowPFThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.01" max="0.99" /></div>
-                <div class="form-row"><label>حداقل فرکانس (Hz)</label><input @bind="_cfg.FreqMinThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.1" /></div>
-                <div class="form-row"><label>حداکثر فرکانس (Hz)</label><input @bind="_cfg.FreqMaxThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.1" /></div>
-            </div>
-            <div class="cfg-section">
-                <h4>دمای محیط</h4>
-                <div class="form-row"><label>آستانه دمای بالا (°C)</label><input @bind="_cfg.TemperatureThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
-            </div>
-            <div class="cfg-section">
-                <h4>سایر</h4>
-                <div class="form-row"><label>فاصله ارسال (ms)</label><input @bind="_cfg.PublishIntervalMs" type="number" inputmode="numeric" class="form-input ltr" step="1000" min="1000" /></div>
-                <div class="form-row">
-                    <label>ذخیره خودکار</label>
-                    <label class="tgl"><input type="checkbox" @bind="_cfg.IsSavingEnabled" /><span class="sl"></span></label>
-                </div>
-                <div class="form-row">
-                    <label>صدای هشدار</label>
-                    <label class="tgl"><input type="checkbox" @bind="_cfg.AlarmSoundEnabled" /><span class="sl"></span></label>
-                </div>
-            </div>
-            <button class="btn btn-primary" @onclick="SaveConfig" disabled="@_saving">@(_saving ? "در حال ذخیره..." : "ذخیره تنظیمات")</button>
         </div>
     }
+    else
+    {
+        @* Device selector *@
+        <div class="cfg-picker">
+            <label class="cfg-picker-lbl">انتخاب دستگاه</label>
+            <div class="cfg-picker-wr">
+                <span class="cfg-picker-icon">📡</span>
+                <select class="cfg-picker-sl" @bind="_selectedDeviceId" @bind:after="LoadConfig">
+                    <option value="">-- انتخاب دستگاه --</option>
+                    @foreach (var d in _devices)
+                    {
+                        <option value="@d.DeviceId">@d.DisplayName (@d.DeviceId)</option>
+                    }
+                </select>
+                <span class="cfg-picker-arrow">▼</span>
+            </div>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="cfg-loading"><div class="cfg-spinner"></div></div>
+        }
+        else if (!string.IsNullOrEmpty(_selectedDeviceId) && _cfg != null)
+        {
+            @* Device info card *@
+            <div class="cfg-device-card">
+                <div class="cfg-device-bar @(_selectedDevice?.IsActive==true?"cfg-dev-on":"cfg-dev-off")"></div>
+                <div class="cfg-device-body">
+                    <div class="cfg-device-top">
+                        <div class="cfg-device-id">@_selectedDeviceId</div>
+                        <span class="cfg-device-badge @(_selectedDevice?.IsActive==true?"cfg-badge-on":"cfg-badge-off")">@(_selectedDevice?.IsActive==true?"فعال":"غیرفعال")</span>
+                    </div>
+                    <div class="cfg-device-name">@(_selectedDevice?.DisplayName ?? "")</div>
+                    <div class="cfg-device-meta">
+                        @if (!string.IsNullOrEmpty(_selectedDevice?.MacAddress))
+                        {
+                            <div class="cfg-meta-i"><span class="cfg-meta-l">MAC</span><span class="cfg-meta-v ltr">@_selectedDevice.MacAddress</span></div>
+                        }
+                        @if (!string.IsNullOrEmpty(_selectedDevice?.Location))
+                        {
+                            <div class="cfg-meta-i"><span class="cfg-meta-l">موقعیت</span><span class="cfg-meta-v">@_selectedDevice.Location</span></div>
+                        }
+                        <div class="cfg-meta-i"><span class="cfg-meta-l">فاز</span><span class="cfg-meta-v">@(_selectedDevice?.PhaseCount ?? 3)</span></div>
+                        @if (_selectedDevice?.LastSeenAt != null)
+                        {
+                            <div class="cfg-meta-i"><span class="cfg-meta-l">آخرین ارتباط</span><span class="cfg-meta-v ltr">@_selectedDevice.LastSeenAt.Value.ToPersianDateTime()</span></div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Settings groups *@
+            <div class="cfg-settings">
+                <div class="cfg-group">
+                    <div class="cfg-group-h">
+                        <span class="cfg-group-icon">⚡</span>
+                        <span class="cfg-group-t">تنظیمات ولتاژ</span>
+                    </div>
+                    <div class="cfg-group-b">
+                        <div class="cfg-row">
+                            <div class="cfg-fg"><label class="cfg-fl">حداکثر ولتاژ (V)</label><input @bind="_cfg.OverVoltageThreshold" type="number" inputmode="decimal" class="cfg-fi" step="0.5" /></div>
+                            <div class="cfg-fg"><label class="cfg-fl">حداقل ولتاژ (V)</label><input @bind="_cfg.UnderVoltageThreshold" type="number" inputmode="decimal" class="cfg-fi" step="0.5" /></div>
+                            <div class="cfg-fg"><label class="cfg-fl">عدم تعادل فاز (V)</label><input @bind="_cfg.PhaseImbalanceThreshold" type="number" inputmode="numeric" class="cfg-fi" step="1" /></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cfg-group">
+                    <div class="cfg-group-h" style="background:linear-gradient(135deg,#2563eb1a,#1d4ed80a)">
+                        <span class="cfg-group-icon">🔌</span>
+                        <span class="cfg-group-t">تنظیمات جریان و توان</span>
+                    </div>
+                    <div class="cfg-group-b">
+                        <div class="cfg-row">
+                            <div class="cfg-fg"><label class="cfg-fl">حداکثر جریان (A)</label><input @bind="_cfg.OverCurrentThreshold" type="number" inputmode="decimal" class="cfg-fi" step="0.5" /></div>
+                            <div class="cfg-fg"><label class="cfg-fl">حداکثر توان هر فاز (W)</label><input @bind="_cfg.HighPowerThreshold" type="number" inputmode="numeric" class="cfg-fi" step="100" /></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cfg-group">
+                    <div class="cfg-group-h" style="background:linear-gradient(135deg,#7c3aed1a,#6d28d90a)">
+                        <span class="cfg-group-icon">📊</span>
+                        <span class="cfg-group-t">ضریب توان و فرکانس</span>
+                    </div>
+                    <div class="cfg-group-b">
+                        <div class="cfg-row">
+                            <div class="cfg-fg"><label class="cfg-fl">حداقل PF</label><input @bind="_cfg.LowPFThreshold" type="number" inputmode="decimal" class="cfg-fi" step="0.01" max="0.99" /></div>
+                            <div class="cfg-fg"><label class="cfg-fl">حداقل فرکانس (Hz)</label><input @bind="_cfg.FreqMinThreshold" type="number" inputmode="decimal" class="cfg-fi" step="0.1" /></div>
+                            <div class="cfg-fg"><label class="cfg-fl">حداکثر فرکانس (Hz)</label><input @bind="_cfg.FreqMaxThreshold" type="number" inputmode="decimal" class="cfg-fi" step="0.1" /></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cfg-group">
+                    <div class="cfg-group-h" style="background:linear-gradient(135deg,#dc26261a,#b91c1c0a)">
+                        <span class="cfg-group-icon">🌡️</span>
+                        <span class="cfg-group-t">دمای محیط</span>
+                    </div>
+                    <div class="cfg-group-b">
+                        <div class="cfg-row">
+                            <div class="cfg-fg"><label class="cfg-fl">آستانه دمای بالا (°C)</label><input @bind="_cfg.TemperatureThreshold" type="number" inputmode="decimal" class="cfg-fi" step="0.5" /></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cfg-group">
+                    <div class="cfg-group-h" style="background:linear-gradient(135deg,#0891b21a,#0e74900a)">
+                        <span class="cfg-group-icon">⏱️</span>
+                        <span class="cfg-group-t">ارسال و هشدار</span>
+                    </div>
+                    <div class="cfg-group-b">
+                        <div class="cfg-row">
+                            <div class="cfg-fg"><label class="cfg-fl">فاصله ارسال (ms)</label><input @bind="_cfg.PublishIntervalMs" type="number" inputmode="numeric" class="cfg-fi" step="1000" min="1000" /></div>
+                        </div>
+                        <div class="cfg-switches">
+                            <label class="cfg-tgl">
+                                <input type="checkbox" @bind="_cfg.IsSavingEnabled" />
+                                <span class="cfg-tgl-sl"></span>
+                                <span class="cfg-tgl-lbl">ذخیره خودکار</span>
+                            </label>
+                            <label class="cfg-tgl">
+                                <input type="checkbox" @bind="_cfg.AlarmSoundEnabled" />
+                                <span class="cfg-tgl-sl"></span>
+                                <span class="cfg-tgl-lbl">صدای هشدار</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cfg-save-bar">
+                <button class="cfg-btn cfg-btn-save" @onclick="SaveConfig" disabled="@_saving">
+                    @if (_saving)
+                    {
+                        <span class="cfg-btn-spinner"></span>
+                        <span>در حال ذخیره...</span>
+                    }
+                    else
+                    {
+                        <span>💾</span>
+                        <span>ذخیره تنظیمات</span>
+                    }
+                </button>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(_selectedDeviceId) && _cfg == null && !_loading)
+        {
+            <div class="cfg-empty">
+                <div class="cfg-empty-icon">⚙️</div>
+                <div class="cfg-empty-t">تنظیماتی یافت نشد</div>
+                <div class="cfg-empty-d">برای این دستگاه هنوز تنظیماتی ثبت نشده است. یکبار روی ذخیره کلیک کنید تا تنظیمات پیش‌فرض ایجاد شود.</div>
+                <button class="cfg-btn cfg-btn-save" @onclick="SaveConfig">
+                    <span>💾</span><span>ایجاد تنظیمات پیش‌فرض</span>
+                </button>
+            </div>
+        }
+    }
 </div>
+
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="cfg-overlay" @onclick="() => _showHelp = false">
+        <div class="cfg-modal cfg-modal-help" @onclick:stopPropagation>
+            <div class="cfg-mh">
+                <span class="cfg-mh-icon">📘</span>
+                <span class="cfg-mh-t">راهنمای تنظیمات دستگاه</span>
+                <button class="cfg-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="cfg-mb">
+                <p class="cfg-mb-intro">در این بخش می‌توانید پارامترهای عملیاتی هر دستگاه را تنظیم کنید. این تنظیمات به دستگاه ارسال شده و در عملکرد آن تأثیر می‌گذارد.</p>
+                <div class="cfg-mb-step"><span class="cfg-step-n">۱</span><span>دستگاه مورد نظر را از لیست انتخاب کنید.</span></div>
+                <div class="cfg-mb-step"><span class="cfg-step-n">۲</span><span>پارامترهای هر گروه را تنظیم کنید (ولتاژ، جریان، فرکانس و ...).</span></div>
+                <div class="cfg-mb-step"><span class="cfg-step-n">۳</span><span>روی «ذخیره تنظیمات» کلیک کنید تا مقادیر به روز شود.</span></div>
+                <div class="cfg-mb-tip">💡 تنظیمات بلافاصله پس از ذخیره به دستگاه ارسال می‌شود.</div>
+            </div>
+            <div class="cfg-mf">
+                <button class="cfg-btn cfg-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
+            </div>
+        </div>
+    </div>
+}
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="cfg-denied">
+        <div class="cfg-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="cfg-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
-    private List<DeviceRef> _devices = new();
+    private List<RawDevice> _devices = new();
     private string _selectedDeviceId = "";
     private CfgModel? _cfg;
-    private bool _loading, _saving;
+    private bool _loading, _saving, _showHelp;
+
+    private RawDevice? _selectedDevice => _devices.FirstOrDefault(d => d.DeviceId == _selectedDeviceId);
 
     protected override async Task OnInitializedAsync()
     {
         if (!Auth.IsInRole("Admin")) return;
-        try { _devices = await Http.GetFromJsonAsync<List<DeviceRef>>("api/v2/devices") ?? new(); } catch { }
-        if (_devices.Count > 0) { _selectedDeviceId = _devices[0].DeviceId; await LoadConfig(); }
+        try
+        {
+            _devices = await Http.GetFromJsonAsync<List<RawDevice>>("api/v2/devices") ?? new();
+            if (_devices.Count > 0) { _selectedDeviceId = _devices[0].DeviceId; await LoadConfig(); }
+        }
+        catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
     }
 
     private async Task LoadConfig()
@@ -143,5 +282,164 @@ else
         public bool AlarmSoundEnabled { get; set; } = true;
     }
 
-    public class DeviceRef { public string DeviceId { get; set; } = ""; public string DisplayName { get; set; } = ""; }
+    public class RawDevice
+    {
+        public string DeviceId { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string? MacAddress { get; set; }
+        public string? Location { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime? LastSeenAt { get; set; }
+        public int PhaseCount { get; set; } = 3;
+    }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Config page — device + settings
+   ═══════════════════════════════════════════ */
+.cfg-container{max-width:800px;margin:0 auto;padding:24px 16px}
+.cfg-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.cfg-top-l{display:flex;align-items:center;gap:10px}
+.cfg-icon{font-size:24px}
+.cfg-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.cfg-top-r{display:flex;gap:8px}
+
+/* Shared buttons */
+.cfg-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.cfg-btn:active{transform:scale(.95)}
+.cfg-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.cfg-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.cfg-btn-save{background:var(--grad-blue);color:#fff;padding:12px 28px;font-size:14px}
+.cfg-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.cfg-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.cfg-btn-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:cfg-spin .6s linear infinite}
+
+@@keyframes cfg-spin{to{transform:rotate(360deg)}}
+
+/* Prereq alert */
+.cfg-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.cfg-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.cfg-prereq-b{flex:1}
+.cfg-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.cfg-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.cfg-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none;transition:color .2s}
+.cfg-prereq-a:hover{text-decoration:underline}
+
+/* Device picker */
+.cfg-picker{margin-bottom:20px}
+.cfg-picker-lbl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px}
+.cfg-picker-wr{position:relative;max-width:400px}
+.cfg-picker-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);z-index:1;font-size:16px;pointer-events:none}
+.cfg-picker-sl{width:100%;padding:12px 44px 12px 36px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);color:var(--text);font-size:13px;font-weight:500;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font);appearance:none;-webkit-appearance:none;cursor:pointer}
+.cfg-picker-sl:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.cfg-picker-arrow{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text-muted);pointer-events:none}
+
+/* Loading */
+.cfg-loading{text-align:center;padding:60px 20px}
+.cfg-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:cfg-spin .7s linear infinite;margin:0 auto}
+
+/* Device card */
+.cfg-device-card{display:flex;overflow:hidden;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;margin-bottom:24px;transition:border-color .2s,box-shadow .2s}
+.cfg-device-card:hover{border-color:var(--blue);box-shadow:0 2px 12px rgba(59,130,246,.08)}
+.cfg-device-bar{width:5px;flex-shrink:0}
+.cfg-dev-on{background:var(--grad-green)}
+.cfg-dev-off{background:#d1d5db}
+.cfg-device-body{padding:16px 18px;flex:1}
+.cfg-device-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.cfg-device-id{direction:ltr;font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:2px 10px;border-radius:6px;letter-spacing:.3px}
+.cfg-device-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.cfg-badge-on{background:var(--green-bg);color:var(--green)}
+.cfg-badge-off{background:var(--red-bg);color:var(--red)}
+.cfg-device-name{font-size:17px;font-weight:700;color:var(--text);margin-bottom:10px}
+.cfg-device-meta{display:flex;flex-wrap:wrap;gap:12px 20px}
+.cfg-meta-i{display:flex;align-items:center;gap:5px;font-size:12px}
+.cfg-meta-l{color:var(--text-secondary);min-width:55px}
+.cfg-meta-v{color:var(--text);font-weight:600}
+.cfg-meta-v.ltr{direction:ltr}
+
+/* Settings groups */
+.cfg-settings{display:flex;flex-direction:column;gap:14px;margin-bottom:24px}
+.cfg-group{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s}
+.cfg-group:hover{border-color:#cbd5e1}
+.cfg-group-h{display:flex;align-items:center;gap:8px;padding:12px 16px;background:linear-gradient(135deg,#0596691a,#0478570a);border-bottom:1px solid var(--border)}
+.cfg-group-icon{font-size:16px}
+.cfg-group-t{font-size:13px;font-weight:700;color:var(--text)}
+.cfg-group-b{padding:14px 16px 16px}
+.cfg-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.cfg-fg{min-width:0}
+.cfg-fl{display:block;font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
+.cfg-fi{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg-card);color:var(--text);font-size:13px;direction:ltr;text-align:right;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.cfg-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.cfg-fi[disabled]{background:var(--bg);color:var(--text-muted);cursor:not-allowed}
+.cfg-switches{display:flex;gap:24px;margin-top:12px;flex-wrap:wrap}
+
+/* Toggle */
+.cfg-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.cfg-tgl input{opacity:0;width:0;height:0}
+.cfg-tgl-sl{position:relative;width:40px;height:22px;background:var(--border);border-radius:22px;transition:.3s;flex-shrink:0}
+.cfg-tgl-sl::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.cfg-tgl input:checked+.cfg-tgl-sl{background:var(--grad-blue)}
+.cfg-tgl input:checked+.cfg-tgl-sl::before{transform:translateX(18px)}
+.cfg-tgl-lbl{font-size:13px;font-weight:500;color:var(--text)}
+
+/* Save bar */
+.cfg-save-bar{text-align:center;padding:8px 0 16px}
+
+/* Empty state */
+.cfg-empty{text-align:center;padding:50px 20px}
+.cfg-empty-icon{font-size:42px;margin-bottom:12px;opacity:.4}
+.cfg-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.cfg-empty-d{font-size:13px;color:var(--text-secondary);margin-bottom:20px;max-width:360px;margin-left:auto;margin-right:auto}
+
+/* Overlay + modal */
+.cfg-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:cfg-fade .2s ease}
+@@keyframes cfg-fade{from{opacity:0}to{opacity:1}}
+.cfg-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:cfg-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes cfg-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cfg-modal-help{max-width:480px}
+.cfg-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.cfg-mh-icon{font-size:18px}
+.cfg-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.cfg-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.cfg-mh-x:hover{background:var(--bg);color:var(--text)}
+.cfg-mb{padding:16px 20px}
+.cfg-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.cfg-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.cfg-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.cfg-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.cfg-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Access denied */
+.cfg-denied{text-align:center;padding:80px 20px;color:#888}
+.cfg-denied-icon{font-size:48px;margin-bottom:12px}
+.cfg-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.cfg-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.cfg-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.cfg-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .cfg-container{padding:16px 12px}
+    .cfg-top{flex-direction:column;align-items:stretch;gap:10px}
+    .cfg-top-r{justify-content:center}
+    .cfg-title{font-size:16px}
+    .cfg-picker-wr{max-width:100%}
+    .cfg-device-card{border-radius:12px}
+    .cfg-device-body{padding:14px}
+    .cfg-device-name{font-size:16px}
+    .cfg-device-meta{gap:8px 14px}
+    .cfg-row{grid-template-columns:1fr}
+    .cfg-group-b{padding:12px 14px 14px}
+    .cfg-switches{gap:16px}
+    .cfg-btn-save{width:100%;justify-content:center}
+    .cfg-prereq{padding:14px;border-radius:12px}
+    .cfg-prereq-t{font-size:13px}
+    .cfg-prereq-d{font-size:11px}
+    .cfg-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .cfg-mh{padding:14px 16px 12px}
+    .cfg-mb{padding:12px 16px}
+    .cfg-mf{padding:10px 16px 14px}
+    .cfg-empty{padding:40px 16px}
+}
+</style>
