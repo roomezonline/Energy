@@ -8,6 +8,24 @@
 @inject ToastService Toast
 
 <div class="page-container">
+    <div class="page-toolbar">
+        <h2>گزارش‌ها</h2>
+    </div>
+
+    <PrereqAlert Met="(_centers.Count > 0)"
+        Title="هنوز مرکزی ثبت نشده"
+        Text="برای مشاهده گزارش، ابتدا باید یک مرکز ایجاد کنید."
+        LinkText="رفتن به مدیریت مراکز"
+        LinkHref="/centers" />
+
+    <HelpBox>
+        <p><strong>گزارش‌ها</strong> مصرف انرژی را بر اساس مرکز و بازه زمانی نمایش می‌دهند.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">مرکز مورد نظر را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">بازه زمانی (از تاریخ / تا تاریخ) را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">روی دکمه جستجو کلیک کنید تا گزارش نمایش داده شود.</span></div>
+        <div class="hlp-tip">💡 می‌توانید گزارش را به صورت PDF خروجی بگیرید.</div>
+    </HelpBox>
+
     <div class="rpt-filters">
         <div class="rpt-filters-row">
             <div class="rpt-fg">

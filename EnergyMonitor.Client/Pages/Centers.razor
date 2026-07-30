@@ -14,6 +14,20 @@
         <button class="btn btn-primary" @onclick="OpenCreate">+ مرکز جدید</button>
     </div>
 
+    <PrereqAlert Met="(_cities.Count > 0)"
+        Title="هنوز شهری ثبت نشده"
+        Text="برای ثبت مرکز، ابتدا باید یک شهر ایجاد کنید. به صفحه شهرها بروید."
+        LinkText="رفتن به مدیریت شهرها"
+        LinkHref="/cities" />
+
+    <HelpBox>
+        <p><strong>مرکز</strong> یک مکان فیزیکی است که دستگاه‌های اندازه‌گیری در آن نصب می‌شوند.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>شهر</strong> مربوطه را ایجاد کرده باشید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام، کد و شهر مرکز را وارد کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت مرکز، به بخش <strong>دستگاه‌ها</strong> بروید و دستگاه را به این مرکز متصل کنید.</span></div>
+        <div class="hlp-tip">💡 مراکز در فرم <strong>صورتحساب</strong> برای محاسبه قبض استفاده می‌شوند.</div>
+    </HelpBox>
+
     @if (_loading)
     {
         <div class="loading-state"><div class="spinner"></div></div>

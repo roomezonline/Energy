@@ -13,6 +13,20 @@
         <button class="btn-sm" @onclick="Load">🔄 بروزرسانی</button>
     </div>
 
+    <PrereqAlert Met="(_devices.Count > 0)"
+        Title="هنوز دستگاهی ثبت نشده"
+        Text="برای مشاهده هشدارها، ابتدا باید یک دستگاه ایجاد کنید. به صفحه دستگاه‌ها بروید."
+        LinkText="رفتن به مدیریت دستگاه‌ها"
+        LinkHref="/devices" />
+
+    <HelpBox>
+        <p><strong>هشدارها</strong> رویدادهای غیرعادی ثبت‌شده توسط دستگاه‌های اندازه‌گیری را نمایش می‌دهند.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">برای فیلتر کردن، دستگاه مورد نظر را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">هشدارهای فعال را بررسی و اقدام کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">دکمه بروزرسانی را بزنید تا آخرین هشدارها را ببینید.</span></div>
+        <div class="hlp-tip">💡 هشدارها می‌توانند شامل قطعی ارتباط، مصرف غیرمجاز و خطاهای سخت‌افزاری باشند.</div>
+    </HelpBox>
+
     <div class="filters" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
         <select class="form-select" @bind="_selectedDeviceId" style="width:auto;min-width:140px">
             <option value="">همه دستگاه‌ها</option>

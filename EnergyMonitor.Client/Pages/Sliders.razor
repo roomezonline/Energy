@@ -15,6 +15,14 @@
         <button class="btn btn-primary" @onclick="OpenCreate">+ اسلایدر جدید</button>
     </div>
 
+    <HelpBox>
+        <p><strong>اسلایدرها</strong> تصاویر چرخان در صفحه اصلی سایت را مدیریت می‌کنند.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">عنوان و ترتیب نمایش اسلایدر را مشخص کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">تصویر مورد نظر را بارگذاری کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">وضعیت فعال بودن اسلایدر را تنظیم کنید.</span></div>
+        <div class="hlp-tip">💡 اسلایدرهای فعال به ترتیب Sort Order در صفحه اصلی نمایش داده می‌شوند.</div>
+    </HelpBox>
+
     @if (_loading)
     {
         <div class="loading-state"><div class="spinner"></div></div>

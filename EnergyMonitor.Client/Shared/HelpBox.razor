@@ -1,0 +1,23 @@
+@* ── راهنمای فرم ── *@
+<div class="hlp-root @(Collapsed ? "hlp-root--collapsed" : "")">
+    <div class="hlp-bar" @onclick="Toggle">
+        <span class="hlp-bar-icon">📘</span>
+        <span class="hlp-bar-title">راهنمای این فرم</span>
+        <span class="hlp-bar-arrow">@(Collapsed ? "▾" : "▴")</span>
+    </div>
+    @if (!Collapsed)
+    {
+        <div class="hlp-body">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool StartCollapsed { get; set; } = true;
+    private bool Collapsed;
+
+    protected override void OnInitialized() => Collapsed = StartCollapsed;
+    private void Toggle() { Collapsed = !Collapsed; }
+}

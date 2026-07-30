@@ -14,6 +14,22 @@
         <button class="btn btn-primary" @onclick="OpenCreate">+ دستگاه جدید</button>
     </div>
 
+    <PrereqAlert Met="(_centers.Count > 0)"
+        Title="هنوز مرکزی ثبت نشده"
+        Text="برای ثبت دستگاه، ابتدا باید یک مرکز ایجاد کنید. دستگاه به مرکز متصل می‌شود."
+        LinkText="رفتن به مدیریت مراکز"
+        LinkHref="/centers" />
+
+    <HelpBox>
+        <p><strong>دستگاه اندازه‌گیری</strong> سخت‌افزاری است که در یک مرکز نصب می‌شود و مصرف انرژی را ثبت می‌کند.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>مرکز</strong> مربوطه را ایجاد کرده باشید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">شناسه یکتا (Device ID) و نام نمایشی برای دستگاه وارد کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">مرکز مربوطه را انتخاب کنید — دستگاه به آن مرکز متصل می‌شود.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۴</span><span class="hlp-step-text">تعداد فازها را انتخاب کنید (۱ یا ۳ فاز).</span></div>
+        <div class="hlp-tip">💡 دستگاه‌های فعال در داشبورد و محاسبه صورتحساب استفاده می‌شوند.</div>
+        <div class="hlp-warn">⚠️ شناسه دستگاه باید با شناسه فیزیکی دستگاه (ESP32) یکسان باشد.</div>
+    </HelpBox>
+
     @if (_loading)
     {
         <div class="loading-state"><div class="spinner"></div></div>

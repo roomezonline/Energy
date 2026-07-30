@@ -11,6 +11,21 @@
         <h2>مدیریت استان‌ها</h2>
         <button class="btn btn-primary" @onclick="OpenCreate">+ استان جدید</button>
     </div>
+
+    <PrereqAlert Met="(_regions.Count > 0)"
+        Title="هنوز منطقه‌ای ثبت نشده"
+        Text="برای ثبت استان، ابتدا باید یک منطقه ایجاد کنید. پس از ایجاد منطقه به این صفحه بازگردید."
+        LinkText="رفتن به مدیریت مناطق"
+        LinkHref="/regions" />
+
+    <HelpBox>
+        <p><strong>استان</strong> دومین سطح جغرافیایی است. هر استان به یک منطقه متصل می‌شود.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا مطمئن شوید <strong>منطقه</strong> مورد نظر قبلاً ایجاد شده باشد.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام استان و منطقه مربوطه را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت استان‌ها، به بخش <strong>شهرها</strong> بروید.</span></div>
+        <div class="hlp-tip">💡 یک منطقه می‌تواند چندین استان داشته باشد.</div>
+    </HelpBox>
+
     @if (_loading) { <div class="loading-state"><div class="spinner"></div></div> }
     else if (_items.Count == 0)
     {

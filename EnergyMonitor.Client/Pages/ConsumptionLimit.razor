@@ -12,6 +12,19 @@
         <button class="btn btn-primary" @onclick="OpenCreate">+ محدودیت جدید</button>
     </div>
 
+    <PrereqAlert Met="(_centers.Count > 0)"
+        Title="هنوز مرکزی ثبت نشده"
+        Text="برای ثبت محدودیت مصرف، ابتدا باید یک مرکز ایجاد کنید. به صفحه مراکز بروید."
+        LinkText="رفتن به مدیریت مراکز"
+        LinkHref="/centers" />
+
+    <HelpBox>
+        <p><strong>محدودیت مصرف</strong> به شما امکان می‌دهد سقف مصرف مجاز برای هر مرکز را تعیین کنید.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">مرکز مربوطه را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">حداکثر مصرف مجاز را مشخص کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">در صورت تجاوز از حد، هشدار صادر می‌شود.</span></div>
+    </HelpBox>
+
     @if (_loading)
     {
         <div class="loading-state"><div class="spinner"></div></div>

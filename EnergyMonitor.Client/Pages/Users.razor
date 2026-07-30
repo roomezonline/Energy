@@ -14,6 +14,14 @@
         <button class="btn btn-primary" @onclick="OpenCreate">+ کاربر جدید</button>
     </div>
 
+    <HelpBox>
+        <p><strong>کاربران سیستم</strong> می‌توانند نقش‌های مدیر (Admin) یا سوپرادمین (SuperAdmin) داشته باشند.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">نام کاربری، ایمیل و نقش کاربر را وارد کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">رمز عبور موقت برای کاربر تنظیم کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">کاربر می‌تواند رمز خود را بعداً تغییر دهد.</span></div>
+        <div class="hlp-warn">⚠️ فقط سوپرادمین می‌تواند کاربران را مدیریت کند.</div>
+    </HelpBox>
+
     @if (_loading)
     {
         <div class="loading-state"><div class="spinner"></div></div>

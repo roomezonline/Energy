@@ -13,6 +13,19 @@
         <h2>تنظیمات دستگاه</h2>
     </div>
 
+    <PrereqAlert Met="(_devices.Count > 0)"
+        Title="هنوز دستگاهی ثبت نشده"
+        Text="برای تنظیمات دستگاه، ابتدا باید یک دستگاه ایجاد کنید. به صفحه دستگاه‌ها بروید."
+        LinkText="رفتن به مدیریت دستگاه‌ها"
+        LinkHref="/devices" />
+
+    <HelpBox>
+        <p><strong>تنظیمات دستگاه</strong> به شما امکان می‌دهد پارامترهای ارتباطی و عملیاتی هر دستگاه را پیکربندی کنید.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">دستگاه مورد نظر را از لیست انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">پارامترهای مورد نیاز را تنظیم کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">تنظیمات را ذخیره کنید تا به دستگاه ارسال شود.</span></div>
+    </HelpBox>
+
     <div class="form-row" style="max-width:400px">
         <label>انتخاب دستگاه</label>
         <select @bind="_selectedDeviceId" @bind:after="LoadConfig" class="form-select">

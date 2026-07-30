@@ -11,6 +11,21 @@
         <h2>مدیریت شهرها</h2>
         <button class="btn btn-primary" @onclick="OpenCreate">+ شهر جدید</button>
     </div>
+
+    <PrereqAlert Met="(_provinces.Count > 0)"
+        Title="هنوز استانی ثبت نشده"
+        Text="برای ثبت شهر، ابتدا باید یک استان ایجاد کنید. به صفحه استان‌ها بروید و استان مورد نظر را ثبت کنید."
+        LinkText="رفتن به مدیریت استان‌ها"
+        LinkHref="/provinces" />
+
+    <HelpBox>
+        <p><strong>شهر</strong> سومین سطح جغرافیایی است. هر شهر به یک استان متصل می‌شود.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>استان</strong> مربوطه را قبلاً ایجاد کرده باشید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام شهر و استان مربوطه را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت شهرها، به بخش <strong>مراکز</strong> بروید و مرکز را به این شهر متصل کنید.</span></div>
+        <div class="hlp-tip">💡 یک استان می‌تواند چندین شهر داشته باشد.</div>
+    </HelpBox>
+
     @if (_loading) { <div class="loading-state"><div class="spinner"></div></div> }
     else if (_items.Count == 0)
     {

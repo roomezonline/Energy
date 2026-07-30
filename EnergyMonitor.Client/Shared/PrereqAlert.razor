@@ -1,0 +1,23 @@
+@* ── هشدار پیش‌نیاز ── *@
+@if (!Met)
+{
+    <div class="prq-root">
+        <div class="prq-icon">⚠️</div>
+        <div class="prq-body">
+            <div class="prq-title">@Title</div>
+            <div class="prq-text">@Text</div>
+            @if (!string.IsNullOrEmpty(LinkText) && !string.IsNullOrEmpty(LinkHref))
+            {
+                <a class="prq-link" href="@LinkHref">← @LinkText</a>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Met { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string? LinkText { get; set; }
+    [Parameter] public string? LinkHref { get; set; }
+}

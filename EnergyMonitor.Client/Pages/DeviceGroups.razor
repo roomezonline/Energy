@@ -11,6 +11,21 @@
         <h2>مدیریت گروه‌های دستگاه</h2>
         <button class="btn btn-primary" @onclick="OpenCreate">+ گروه جدید</button>
     </div>
+
+    <PrereqAlert Met="(_centers.Count > 0)"
+        Title="هنوز مرکزی ثبت نشده"
+        Text="برای ثبت گروه دستگاه، ابتدا باید یک مرکز ایجاد کنید. به صفحه مراکز بروید."
+        LinkText="رفتن به مدیریت مراکز"
+        LinkHref="/centers" />
+
+    <HelpBox>
+        <p><strong>گروه دستگاه</strong> برای دسته‌بندی دستگاه‌های اندازه‌گیری در یک مرکز استفاده می‌شود.</p>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>مرکز</strong> مربوطه را ایجاد کرده باشید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام گروه و مرکز مربوطه را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت گروه، به بخش <strong>دستگاه‌ها</strong> بروید و دستگاه را به این گروه متصل کنید.</span></div>
+        <div class="hlp-tip">💡 گروه‌ها به سازماندهی دستگاه‌ها در مراکز بزرگ کمک می‌کنند.</div>
+    </HelpBox>
+
     @if (_loading) { <div class="loading-state"><div class="spinner"></div></div> }
     else if (_items.Count == 0)
     {
