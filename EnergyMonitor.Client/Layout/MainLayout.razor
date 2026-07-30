@@ -22,8 +22,8 @@
         }
         <nav class="sidebar-nav">
             <a href="/dashboard" class="nav-item @(IsActive("/dashboard") ? "active" : "")">
-                <span class="nav-icon">📊</span>
-                <span class="nav-text">داشبورد</span>
+                <span class="nav-icon">🏠</span>
+                <span class="nav-text">داشبورد اصلی</span>
             </a>
             @if (Auth.IsInRole("Admin"))
             {
@@ -105,8 +105,8 @@
     @* Bottom Navigation — Mobile *@
     <nav class="bottom-nav">
         <a href="/dashboard" class="bottom-nav-item @(IsActive("/dashboard") ? "active" : "")">
-            <span class="bn-icon">📊</span>
-            <span class="bn-label">داشبورد</span>
+            <span class="bn-icon">🏠</span>
+            <span class="bn-label">خانه</span>
         </a>
         @if (Auth.IsInRole("Admin"))
         {
@@ -172,8 +172,9 @@
                 new("⚙", "تنظیمات دستگاه", "/config")
             }),
         new("🔔", "پایش و هشدار", "mon",
-            new string[] { "/alarms", "/reports", "/limits" },
+            new string[] { "/monitoring", "/alarms", "/reports", "/limits" },
             new NavLink[] {
+                new("📊", "پایش انرژی", "/monitoring"),
                 new("🔔", "مدیریت هشدارها", "/alarms"),
                 new("📈", "گزارش مصرف", "/reports"),
                 new("⛔", "محدودیت مصرف", "/limits")
@@ -226,7 +227,7 @@
     private bool IsProtectedPage()
     {
         var uri = Nav.Uri;
-        return uri.Contains("/dashboard") || uri.Contains("/centers") || uri.Contains("/devices") || uri.Contains("/config")
+        return uri.Contains("/dashboard") || uri.Contains("/monitoring") || uri.Contains("/centers") || uri.Contains("/devices") || uri.Contains("/config")
             || uri.Contains("/alarms") || uri.Contains("/billing") || uri.Contains("/reports")
             || uri.Contains("/limits") || uri.Contains("/news") || uri.Contains("/sliders")
             || uri.Contains("/regions") || uri.Contains("/provinces") || uri.Contains("/cities")
@@ -262,6 +263,7 @@
         else if (uri.Contains("/alarms")) _pageTitle = "هشدارها";
         else if (uri.Contains("/reports")) _pageTitle = "گزارش مصرف";
         else if (uri.Contains("/limits")) _pageTitle = "محدودیت مصرف";
+        else if (uri.Contains("/monitoring")) _pageTitle = "پایش انرژی";
         else if (uri.Contains("/dashboard")) _pageTitle = "داشبورد";
         else _pageTitle = "داشبورد";
     }

@@ -1,1495 +1,225 @@
 @page "/dashboard"
 @using System.Net.Http.Json
-@using Microsoft.AspNetCore.Components.Rendering
-@implements IDisposable
 @inject HttpClient Http
-@inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject AuthService Auth
+@inject ToastService Toast
 
-<div class="dashboard">
-    <div class="loading-bar @(_isLoading ? "active" : "")"></div>
-
-    @if (_showCenterModal)
-    {
-        <div class="modal-overlay" @onclick="() => _showCenterModal = false">
-            <div class="selector-modal" @onclick:stopPropagation>
-                <div class="selector-modal-header">
-                    <h2>انتخاب مرکز</h2>
-                    <button class="modal-close" @onclick="() => _showCenterModal = false">✕</button>
-                </div>
-                <div class="selector-modal-list">
-                    @foreach (var c in _centers)
-                    {
-                        <div class="selector-modal-item @(c.Id == _selectedCenterId ? "selected" : "")"
-                             @onclick="() => SelectCenter(c.Id)">
-                            <div class="sel-item-icon">
-                                <span class="sel-icon-center">🏢</span>
-                            </div>
-                            <div class="sel-item-info">
-                                <div class="sel-item-name">@c.Name</div>
-                                <div class="sel-item-meta">
-                                    <span class="sel-tag">@c.Id.ToString()[..8]</span>
-                                </div>
-                            </div>
-                            @if (c.Id == _selectedCenterId)
-                            { <span class="sel-check">✓</span> }
-                        </div>
-                    }
-                </div>
+<div class="dash-container">
+    @* ── Welcome Header ── *@
+    <div class="dash-welcome">
+        <div class="dash-welcome-bg"></div>
+        <div class="dash-welcome-content">
+            <div class="dash-welcome-avatar">@(Auth.CurrentUser?.Username is { Length: >0 } u ? u[..1].ToUpper() : "?")</div>
+            <div class="dash-welcome-text">
+                <h1 class="dash-welcome-title">خوش آمدید، @(Auth.CurrentUser?.Username ?? "کاربر")</h1>
+                <p class="dash-welcome-sub">به سامانه هوشمند مدیریت انرژی <strong>انرژی‌کال</strong> خوش آمدید. از طریق کارت‌های زیر به بخش‌های مختلف دسترسی پیدا کنید.</p>
+            </div>
+            <div class="dash-welcome-role">
+                <span class="dash-role-badge">@(Auth.CurrentUser?.Role ?? "—")</span>
             </div>
         </div>
-    }
-
-    @if (_showDeviceModal)
-    {
-        <div class="modal-overlay" @onclick="() => _showDeviceModal = false">
-            <div class="selector-modal" @onclick:stopPropagation>
-                <div class="selector-modal-header">
-                    <h2>انتخاب کارگاه</h2>
-                    <button class="modal-close" @onclick="() => _showDeviceModal = false">✕</button>
-                </div>
-                <div class="selector-modal-list">
-                    @foreach (var d in _devices)
-                    {
-                        <div class="selector-modal-item @(d.DeviceId == _selectedDeviceId ? "selected" : "")"
-                             @onclick="() => SelectDevice(d.DeviceId)">
-                            <div class="sel-item-icon">
-                                <span class="sel-dot @(d.LastSeenAt.HasValue && (DateTime.UtcNow - d.LastSeenAt.Value).TotalMinutes < 2 ? "online" : "")"></span>
-                            </div>
-                            <div class="sel-item-info">
-                                <div class="sel-item-name">@d.DisplayName</div>
-                                <div class="sel-item-meta">
-                                    <span class="sel-tag">@d.DeviceId</span>
-                                    @if (!string.IsNullOrEmpty(d.MacAddress))
-                                    { <span class="sel-tag outline">@d.MacAddress</span> }
-                                    @if (!string.IsNullOrEmpty(d.Location))
-                                    { <span class="sel-tag outline">📍 @d.Location</span> }
-                                </div>
-                            </div>
-                            @if (d.DeviceId == _selectedDeviceId)
-                            { <span class="sel-check">✓</span> }
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    }
-
-    @* Full-page loading overlay when changing center/device *@
-    @if (_isChangingDevice)
-    {
-        <div class="dash-loader-overlay">
-            <div class="dash-loader-box">
-                <div class="dash-loader-spinner"></div>
-                <div class="dash-loader-text">در حال بروزرسانی...</div>
-            </div>
-        </div>
-    }
-
-    @if (_data is null)
-    {
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>در حال بارگذاری اطلاعات...</p>
-        </div>
-    }
-    else
-    {
-        <div class="info-card @(_data.Connected ? "online" : "offline")">
-            <div class="ht-bar">
-                <div class="ht-left">
-                    <span class="ht-date" id="date-display"></span>
-                    <span class="status-spinner @(_data.Connected ? "online" : "offline")"></span>
-                </div>
-                <div class="ht-right">
-                    <span class="status-dot"></span>
-                    <span class="ht-status-text">@(_data.Connected ? "متصل" : "قطع")</span>
-                </div>
-            </div>
-            <div class="ht-main">
-                <div class="ht-info">
-                    <div class="ht-selectors">
-                        <div class="sel-chip sel-chip-center @(_centers.Count <= 1 ? "disabled" : "")"
-                             @onclick="() => { if (_centers.Count > 1) _showCenterModal = true; }">
-                            <span class="sel-chip-icon">🏢</span>
-                            <span class="sel-chip-label">@(_centers.FirstOrDefault(c => c.Id == _selectedCenterId)?.Name ?? "انتخاب مرکز")</span>
-                            <span class="sel-chip-arrow">▾</span>
-                        </div>
-                        <div class="sel-chip sel-chip-device @(_devices.Count == 0 ? "disabled" : "")"
-                             @onclick="() => { if (_devices.Count > 0) _showDeviceModal = true; }">
-                            <span class="sel-chip-icon">📟</span>
-                            <span class="sel-chip-label">@(_devices.FirstOrDefault(d => d.DeviceId == _selectedDeviceId)?.DisplayName ?? "انتخاب کارگاه")</span>
-                            <span class="sel-chip-arrow">▾</span>
-                        </div>
-                    </div>
-                    <div class="ht-meta">
-                        @if (!string.IsNullOrEmpty(_data.Center?.Code))
-                        { <span class="badge">@_data.Center.Code</span> }
-                        @if (!string.IsNullOrEmpty(_data.Center?.Province))
-                        { <span class="badge outline">@_data.Center.Province</span> }
-                    </div>
-                </div>
-                <div class="ht-avatar">
-                    @if (!string.IsNullOrEmpty(_data.Center?.ImageFileName))
-                    { <img src="/uploads/@_data.Center.ImageFileName" class="center-avatar-img" alt="" /> }
-                    else
-                    {
-                        var _initial = _data.Center?.Name?[..1] ?? "🏭";
-                        <div class="center-avatar-fallback">@_initial</div>
-                    }
-                </div>
-            </div>
-            <div class="ht-footer">
-                @{
-                    var _updClass = !_data.Connected ? "upd-red" :
-                        (DateTime.UtcNow - (_data.LatestSnapshot?.Timestamp ?? DateTime.UtcNow)).TotalSeconds > 60 ? "upd-orange" : "upd-green";
-                }
-                <span class="ht-update @_updClass">🕐 آخرین بروزرسانی: @_data.LastUpdateText</span>
-            </div>
-        </div>
-
-        var s = _data.LatestSnapshot;
-        var isOnline = _data.Connected && s is not null;
-        var pc = _data.SelectedDevice?.PhaseCount ?? 3;
-
-        var phaseAOn = isOnline && s!.VoltageA > 0;
-        var phaseBOn = pc >= 2 && isOnline && s!.VoltageB > 0;
-        var phaseCOn = pc >= 3 && isOnline && s!.VoltageC > 0;
-
-        var phaseAlarmsA = _data.ActiveAlarms?.Where(a => a.Phase == "A").ToList() ?? new();
-        var phaseAlarmsB = _data.ActiveAlarms?.Where(a => a.Phase == "B").ToList() ?? new();
-        var phaseAlarmsC = _data.ActiveAlarms?.Where(a => a.Phase == "C").ToList() ?? new();
-        var alarmA = phaseAlarmsA.Count > 0;
-        var alarmB = phaseAlarmsB.Count > 0;
-        var alarmC = phaseAlarmsC.Count > 0;
-        var criticalA = phaseAlarmsA.Any(a => a.Severity == "Critical");
-        var criticalB = phaseAlarmsB.Any(a => a.Severity == "Critical");
-        var criticalC = phaseAlarmsC.Any(a => a.Severity == "Critical");
-
-        var hasVoltA = phaseAOn || (isOnline && s!.VoltageA > 0);
-        var hasVoltB = phaseBOn || (pc >= 2 && isOnline && s!.VoltageB > 0);
-        var hasVoltC = phaseCOn || (pc >= 3 && isOnline && s!.VoltageC > 0);
-        var voltCount = (hasVoltA ? 1 : 0) + (hasVoltB ? 1 : 0) + (hasVoltC ? 1 : 0);
-        if (voltCount == 0) voltCount = 1;
-
-        var hasLoadA = phaseAOn && s!.CurrentA > 0;
-        var hasLoadB = phaseBOn && s!.CurrentB > 0;
-        var hasLoadC = phaseCOn && s!.CurrentC > 0;
-        var loadCount = (hasLoadA ? 1 : 0) + (hasLoadB ? 1 : 0) + (hasLoadC ? 1 : 0);
-        if (loadCount == 0) loadCount = 1;
-
-        var avgV = isOnline ? ((hasVoltA ? s.VoltageA : 0) + (hasVoltB ? s.VoltageB : 0) + (hasVoltC ? s.VoltageC : 0)) / voltCount : 0;
-        var avgI = isOnline ? ((hasLoadA ? (decimal)s.CurrentA : 0) + (hasLoadB ? (decimal)s.CurrentB : 0) + (hasLoadC ? (decimal)s.CurrentC : 0)) / loadCount : 0;
-        var avgP = isOnline ? ((hasLoadA ? (decimal)s.PowerA : 0) + (hasLoadB ? (decimal)s.PowerB : 0) + (hasLoadC ? (decimal)s.PowerC : 0)) / loadCount : 0;
-        decimal Nz(decimal v) => v;
-        var sA = isOnline ? Nz((decimal)s.VoltageA * (decimal)s.CurrentA) : 0;
-        var sB = isOnline ? Nz((decimal)s.VoltageB * (decimal)s.CurrentB) : 0;
-        var sC = isOnline ? Nz((decimal)s.VoltageC * (decimal)s.CurrentC) : 0;
-        var qA = isOnline ? (decimal)Math.Sqrt((double)Math.Max(0, Nz(sA * sA) - Nz((decimal)s.PowerA * (decimal)s.PowerA))) : 0;
-        var qB = isOnline ? (decimal)Math.Sqrt((double)Math.Max(0, Nz(sB * sB) - Nz((decimal)s.PowerB * (decimal)s.PowerB))) : 0;
-        var qC = isOnline ? (decimal)Math.Sqrt((double)Math.Max(0, Nz(sC * sC) - Nz((decimal)s.PowerC * (decimal)s.PowerC))) : 0;
-        var avgQ = ((hasLoadA ? qA : 0) + (hasLoadB ? qB : 0) + (hasLoadC ? qC : 0)) / loadCount;
-        var totalP = (hasLoadA ? (decimal)s.PowerA : 0) + (hasLoadB ? (decimal)s.PowerB : 0) + (hasLoadC ? (decimal)s.PowerC : 0);
-        var totalS = (hasLoadA ? sA : 0) + (hasLoadB ? sB : 0) + (hasLoadC ? sC : 0);
-        var avgPf = totalS > 0 ? Math.Clamp(totalP / totalS, 0, 1) : 0;
-
-        var ambientTemp = isOnline && s.Temperature > -50 && s.Temperature < 100 ? (decimal)s.Temperature : (decimal?)null;
-        var tempPct = ambientTemp is null
-            ? 0 : Math.Clamp(((double)ambientTemp.Value - (-10)) / 50.0 * 100, 0, 100);
-
-        decimal SafePct(decimal val, decimal scale) => val / scale * 100;
-        var voltPct = SafePct(avgV - 180, 80);
-        var powerPct = SafePct(avgP, 10000);
-        var reactivePct = SafePct(avgQ, 10000);
-
-        @if (!isOnline)
-        {
-            <div class="offline-banner">
-                <span class="offline-icon">⚠</span>
-                <span>دستگاه آفلاین است — آخرین ارتباط: @_data.LastUpdateText</span>
-            </div>
-        }
-
-            <svg style="position:absolute;width:0;height:0" aria-hidden="true">
-                <defs>
-                    <linearGradient id="grad-red" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#ef4444" stop-opacity=".9"/>
-                        <stop offset="40%" stop-color="#f97316" stop-opacity=".4"/>
-                        <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="grad-gold" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#f59e0b" stop-opacity=".9"/>
-                        <stop offset="40%" stop-color="#ea580c" stop-opacity=".4"/>
-                        <stop offset="100%" stop-color="#ea580c" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="grad-blue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#3b82f6" stop-opacity=".9"/>
-                        <stop offset="40%" stop-color="#8b5cf6" stop-opacity=".4"/>
-                        <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="grad-green" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#06b6d4" stop-opacity=".9"/>
-                        <stop offset="40%" stop-color="#10b981" stop-opacity=".4"/>
-                        <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="grad-purple" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#8b5cf6" stop-opacity=".9"/>
-                        <stop offset="40%" stop-color="#ec4899" stop-opacity=".4"/>
-                        <stop offset="100%" stop-color="#ec4899" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="grad-pink" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#ec4899" stop-opacity=".9"/>
-                        <stop offset="40%" stop-color="#f472b6" stop-opacity=".4"/>
-                        <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="gauge-fill-a" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#f97316"/>
-                        <stop offset="100%" stop-color="#ea580c"/>
-                    </linearGradient>
-                    <linearGradient id="gauge-fill-b" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#3b82f6"/>
-                        <stop offset="100%" stop-color="#3b82f6"/>
-                    </linearGradient>
-                    <linearGradient id="gauge-fill-c" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#ef4444"/>
-                        <stop offset="100%" stop-color="#ef4444"/>
-                    </linearGradient>
-                    <linearGradient id="gauge-bg-c" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#fef2f2"/>
-                        <stop offset="100%" stop-color="#fef2f2"/>
-                    </linearGradient>
-                    <linearGradient id="gauge-bg-a" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#fff7ed"/>
-                        <stop offset="100%" stop-color="#fff7ed"/>
-                    </linearGradient>
-                    <linearGradient id="gauge-bg-b" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#dbeafe"/>
-                        <stop offset="100%" stop-color="#dbeafe"/>
-                    </linearGradient>
-                    <linearGradient id="gauge-bg-c" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#d1fae5"/>
-                        <stop offset="100%" stop-color="#d1fae5"/>
-                    </linearGradient>
-                </defs>
-            </svg>
-
-            <div class="cards @(isOnline ? "" : "offline")">
-                <div class="card power">
-                    <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
-                        <circle class="ring-track" cx="54" cy="54" r="42"/>
-                        <circle class="ring-fill" cx="54" cy="54" r="42"
-                            stroke-dasharray="263.9" stroke-dashoffset="@(263.9m * (1 - powerPct / 100))" />
-                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@SmartPower(avgP)</text>
-                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">@SmartPowerUnit(avgP)</text>
-                    </svg>
-                    <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-                        @if (_sparklinePower is not null) { <path d="@_sparklinePower.Area" fill="url(#grad-red)" /> <path d="@_sparklinePower.Line" class="sp-line" /> }
-                    </svg>
-                    <div class="card-label">توان میانگین</div>
-                </div>
-                <div class="card reactive">
-                    <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
-                        <circle class="ring-track" cx="54" cy="54" r="42"/>
-                        <circle class="ring-fill" cx="54" cy="54" r="42"
-                            stroke-dasharray="263.9" stroke-dashoffset="@(263.9m * (1 - reactivePct / 100))" />
-                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@SmartReactive(avgQ)</text>
-                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">@SmartReactiveUnit(avgQ)</text>
-                    </svg>
-                    <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-                        @if (_sparklineReactive is not null) { <path d="@_sparklineReactive.Area" fill="url(#grad-gold)" /> <path d="@_sparklineReactive.Line" class="sp-line" /> }
-                    </svg>
-                    <div class="card-label">راکتیو میانگین</div>
-                </div>
-                <div class="card voltage">
-                    <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
-                        <circle class="ring-track" cx="54" cy="54" r="42"/>
-                        <circle class="ring-fill" cx="54" cy="54" r="42"
-                            stroke-dasharray="263.9" stroke-dashoffset="@(263.9m * (1 - voltPct / 100))" />
-                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@avgV.ToString("F1")</text>
-                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">V</text>
-                    </svg>
-                    <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-                        @if (_sparklineVoltage is not null) { <path d="@_sparklineVoltage.Area" fill="url(#grad-blue)" /> <path d="@_sparklineVoltage.Line" class="sp-line" /> }
-                    </svg>
-                    <div class="card-label">ولتاژ میانگین</div>
-                </div>
-                <div class="card current">
-                    <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
-                        <circle class="ring-track" cx="54" cy="54" r="42"/>
-                        <circle class="ring-fill" cx="54" cy="54" r="42"
-                            stroke-dasharray="263.9" stroke-dashoffset="@(263.9m * (1 - (_currPct) / 100))" />
-                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@avgI.ToString("F2")</text>
-                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">A</text>
-                    </svg>
-                    <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-                        @if (_sparklineCurrent is not null) { <path d="@_sparklineCurrent.Area" fill="url(#grad-green)" /> <path d="@_sparklineCurrent.Line" class="sp-line" /> }
-                    </svg>
-                    <div class="card-label">جریان میانگین</div>
-                </div>
-                <div class="card pf">
-                    <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
-                        <circle class="ring-track" cx="54" cy="54" r="42"/>
-                        <circle class="ring-fill" cx="54" cy="54" r="42"
-                            stroke-dasharray="263.9" stroke-dashoffset="@(263.9m * (1 - Math.Clamp((avgPf - 0.5m) / 0.5m * 100, 0, 100) / 100))" />
-                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@avgPf.ToString("F2")</text>
-                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">PF</text>
-                    </svg>
-                    <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-                        @if (_sparklinePf is not null) { <path d="@_sparklinePf.Area" fill="url(#grad-purple)" /> <path d="@_sparklinePf.Line" class="sp-line" /> }
-                    </svg>
-                    <div class="card-label">ضریب توان</div>
-                </div>
-                <div class="card temperature">
-                    <svg class="progress-ring" viewBox="0 0 108 108" width="120" height="120">
-                        <circle class="ring-track" cx="54" cy="54" r="42"/>
-                        <circle class="ring-fill" cx="54" cy="54" r="42"
-                            stroke-dasharray="263.9"                             stroke-dashoffset="@(263.9m * (1 - (decimal)tempPct / 100))" />
-                        <text x="54" y="48" text-anchor="middle" fill="var(--text)" font-size="20" font-weight="700">@(ambientTemp is null ? "—" : ambientTemp.Value.ToString("F1"))</text>
-                        <text x="54" y="68" text-anchor="middle" fill="var(--text-light)" font-size="10">°C</text>
-                    </svg>
-                    <svg class="card-sparkline" viewBox="0 0 100 20" preserveAspectRatio="none">
-                        @if (_sparklineTemp is not null) { <path d="@_sparklineTemp.Area" fill="url(#grad-pink)" /> <path d="@_sparklineTemp.Line" class="sp-line" /> }
-                    </svg>
-                    <div class="card-label">دمای محیط</div>
-                </div>
-            </div>
-
-            <div class="collapse-section @(_expandPhaseStatus ? "expanded" : "")">
-                <button class="collapse-hdr" @onclick="() => _expandPhaseStatus = !_expandPhaseStatus">
-                    <h2 class="section-title">وضعیت فازها</h2>
-                    <span class="collapse-arrow">▾</span>
-                </button>
-                @if (_expandPhaseStatus)
-                {
-                    <div class="collapse-body">
-                        <div class="gauges-layout">
-                            <div class="gauges-row">
-                                @RenderGauge("A", phaseAOn, s, hasLoadA, avgPf)
-                                @if (pc >= 2) { @RenderGauge("B", phaseBOn, s, hasLoadB, avgPf) }
-                                @if (pc >= 3) { @RenderGauge("C", phaseCOn, s, hasLoadC, avgPf) }
-                            </div>
-                            <div class="chart-panel">
-                                <h3>نمودار ولتاژ (V)</h3>
-                                <div class="chart-panel-wrap">
-                                    @if (_data.ChartSnapshots != null && _data.ChartSnapshots.Count > 0)
-                                    {
-                                        <canvas id="chartVoltage"></canvas>
-                                    }
-                                    else
-                                    {
-                                        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:12px;">داده‌ای موجود نیست</div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-
-            <div class="collapse-section @(_expandPhaseInfo ? "expanded" : "")">
-                <button class="collapse-hdr" @onclick="() => _expandPhaseInfo = !_expandPhaseInfo">
-                    <h2 class="section-title">اطلاعات فازها</h2>
-                    <span class="collapse-arrow">▾</span>
-                </button>
-                @if (_expandPhaseInfo)
-                {
-                    <div class="collapse-body">
-                        <div class="phase-grid">
-                            @RenderPhase("A", phaseAOn, alarmA, criticalA, phaseAlarmsA, s, qA, pc)
-                            @if (pc >= 2)
-                            {
-                                @RenderPhase("B", phaseBOn, alarmB, criticalB, phaseAlarmsB, s, qB, pc)
-                            }
-                            @if (pc >= 3)
-                            {
-                                @RenderPhase("C", phaseCOn, alarmC, criticalC, phaseAlarmsC, s, qC, pc)
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-
-            <div class="collapse-section @(_expandEnergy ? "expanded" : "")">
-                <button class="collapse-hdr" @onclick="() => _expandEnergy = !_expandEnergy">
-                    <h2 class="section-title">مصرف انرژی</h2>
-                    <span class="collapse-arrow">▾</span>
-                </button>
-                @if (_expandEnergy)
-                {
-                    <div class="collapse-body">
-                        <div class="cons-grid">
-                            <div class="cons-card"><div class="cons-lbl">امروز</div><div class="cons-val">@SmartEnergy(_data.Consumption?.TodayKWh ?? 0)</div></div>
-                            <div class="cons-card"><div class="cons-lbl">ماه جاری</div><div class="cons-val">@SmartEnergy(_data.Consumption?.MonthKWh ?? 0)</div></div>
-                            <div class="cons-card"><div class="cons-lbl">پیک جریان A</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentA ?? 0)</div></div>
-                            @if (pc >= 2)
-                            {
-                            <div class="cons-card"><div class="cons-lbl">پیک جریان B</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentB ?? 0)</div></div>
-                            }
-                            @if (pc >= 3)
-                            {
-                            <div class="cons-card"><div class="cons-lbl">پیک جریان C</div><div class="cons-sub">@SmartCurrent(_data.Consumption?.PeakCurrentC ?? 0)</div></div>
-                            }
-                            <div class="cons-card"><div class="cons-lbl">پیک توان A</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerA ?? 0)</div></div>
-                            @if (pc >= 2)
-                            {
-                            <div class="cons-card"><div class="cons-lbl">پیک توان B</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerB ?? 0)</div></div>
-                            }
-                            @if (pc >= 3)
-                            {
-                            <div class="cons-card"><div class="cons-lbl">پیک توان C</div><div class="cons-sub">@SmartPower(_data.Consumption?.PeakPowerC ?? 0)</div></div>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-
-            @if (_data.ChartSnapshots != null && _data.ChartSnapshots.Count > 0)
-            {
-                <div class="collapse-section @(_expandCharts ? "expanded" : "")">
-                    <button class="collapse-hdr" @onclick="() => _expandCharts = !_expandCharts">
-                        <h2 class="section-title">نمودارها</h2>
-                        <span class="collapse-arrow">▾</span>
-                    </button>
-                    @if (_expandCharts)
-                    {
-                        <div class="collapse-body">
-                            <div class="chart-grid">
-                                <div class="chart-card"><h3>جریان (A)</h3><div class="chart-wrap"><canvas id="chartCurrent"></canvas></div></div>
-                                <div class="chart-card"><h3>توان (W)</h3><div class="chart-wrap"><canvas id="chartPower"></canvas></div></div>
-                                <div class="chart-card"><h3>ضریب توان</h3><div class="chart-wrap"><canvas id="chartPf"></canvas></div></div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-
-            @if (_data.ActiveAlarms != null && _data.ActiveAlarms.Count > 0)
-            {
-                <div class="collapse-section @(_expandAlarms ? "expanded" : "")">
-                    <button class="collapse-hdr" @onclick="() => _expandAlarms = !_expandAlarms">
-                        <h2 class="section-title">هشدارهای فعال <span class="count-badge red">@_data.ActiveAlarms.Count</span></h2>
-                        <div>
-                            <button class="alarm-stop-all-btn" @onclick:stopPropagation="true" @onclick="StopAllAlarmSounds" title="قطع صدا">🔇 قطع صدا</button>
-                            <span class="collapse-arrow">▾</span>
-                        </div>
-                    </button>
-                    @if (_expandAlarms)
-                    {
-                        <div class="collapse-body">
-                            <div class="alarm-list">
-                                @foreach (var a in _data.ActiveAlarms.Take(5))
-                                {
-                                    var silenced = _silencedAlarms.Contains(a.Id);
-                                    <div class="alarm-row @(a.Severity?.ToLower() == "critical" ? "critical" : a.Severity?.ToLower() == "warning" ? "warning" : "info")">
-                                        <span class="alarm-sev-dot"></span>
-                                        <div class="alarm-row-body">
-                                            <div class="alarm-row-title">@a.Title</div>
-                                            @if (!string.IsNullOrEmpty(a.Phase)) { <span class="alarm-phase-badge">فاز @a.Phase</span> }
-                                            @if (!string.IsNullOrEmpty(a.Message)) { <div class="alarm-row-msg">@a.Message</div> }
-                                        </div>
-                                        <button class="alarm-resolve-btn" @onclick="() => ResolveAlarm(a.Id)" title="حل شد">✓</button>
-                                        <button class="alarm-mute-btn @(silenced ? "muted" : "")" @onclick="() => ToggleMute(a.Id)" title="@(silenced ? "فعال کردن صدا" : "قطع صدا")">
-                                            @(silenced ? "🔇" : "🔔")
-                                        </button>
-                                    </div>
-                                }
-                            </div>
-                            <a href="/alarms" class="btn-link">مشاهده همه هشدارها</a>
-                        </div>
-                    }
-                </div>
-            }
-
-            @if (_data.RecentResolvedAlarms != null && _data.RecentResolvedAlarms.Count > 0)
-            {
-                <div class="collapse-section @(_expandResolved ? "expanded" : "")">
-                    <button class="collapse-hdr" @onclick="() => _expandResolved = !_expandResolved">
-                        <h2 class="section-title resolved-title">رویدادهای اخیر</h2>
-                        <span class="collapse-arrow">▾</span>
-                    </button>
-                    @if (_expandResolved)
-                    {
-                        <div class="collapse-body">
-                            <div class="resolved-list">
-                                @foreach (var a in _data.RecentResolvedAlarms.Take(3))
-                                {
-                                    <div class="resolved-item">
-                                        <span class="resolved-icon">@(a.Title.Contains("اتصال") ? "🔗" : "✅")</span>
-                                        <div class="resolved-body">
-                                            <div class="resolved-title">@a.Title</div>
-                                            @if (!string.IsNullOrEmpty(a.Phase)) { <span class="resolved-phase">فاز @a.Phase</span> }
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-
-            <div class="collapse-section @(_expandQuickActions ? "expanded" : "")">
-                <button class="collapse-hdr" @onclick="() => _expandQuickActions = !_expandQuickActions">
-                    <h2 class="section-title">دسترسی سریع</h2>
-                    <span class="collapse-arrow">▾</span>
-                </button>
-                @if (_expandQuickActions)
-                {
-                    <div class="collapse-body">
-                        <div class="qa-grid">
-                            <a href="/news" class="qa-card">اخبار و اطلاعیه‌ها</a>
-                        </div>
-                    </div>
-                }
-            </div>
-    }
-
-    <div class="app-footer">
-        <span>© @DateTime.UtcNow.Year — انرژی‌کال</span>
-        <span>نسخه ۲.۰</span>
     </div>
 
-    @if (_showSummary)
-    {
-        <div class="summary-overlay" @onclick="() => _showSummary = false"></div>
-        <div class="summary-drawer">
-            <div class="summary-header">
-                <h3>صورتحساب و تعرفه</h3>
-                <button class="summary-close" @onclick="() => _showSummary = false">&times;</button>
-            </div>
-            <div class="summary-body">
-                @if (_summaryLoading)
-                {
-                    <div style="text-align:center;padding:40px 0"><div class="spinner"></div></div>
-                }
-                else
-                {
-                    <div class="sum-card">
-                        <div class="sum-avatar">
-                            @if (!string.IsNullOrEmpty(_data?.Center?.ImageFileName))
-                            { <img src="/uploads/@_data.Center.ImageFileName" class="sum-avatar-img" alt="" /> }
-                            else
-                            { <div class="sum-avatar-fallback">🏭</div> }
-                        </div>
-                        <div class="sum-info">
-                            <div class="sum-name">@(_data?.Center?.Name ?? "")</div>
-                            <div class="sum-meta">
-                                @if (!string.IsNullOrEmpty(_data?.Center?.Code))
-                                { <span class="badge">@_data.Center.Code</span> }
-                                @if (!string.IsNullOrEmpty(_data?.Center?.Province))
-                                { <span class="badge outline">@_data.Center.Province</span> }
-                            </div>
-                        </div>
-                    </div>
-
-                    @* --- بازه تاریخ (پیش‌فرض یک ماهه) --- *@
-                    <div class="sum-section">
-                        <div class="sum-section-title">بازه صورتحساب</div>
-                        <div class="sum-grid two">
-                            <div class="sum-item">
-                                <div class="sum-item-label">از تاریخ</div>
-                                <input data-jdp class="sum-date-input" id="billFrom" value="@_billFrom" />
-                            </div>
-                            <div class="sum-item">
-                                <div class="sum-item-label">تا تاریخ</div>
-                                <input data-jdp class="sum-date-input" id="billTo" value="@_billTo" />
-                            </div>
-                        </div>
-                    </div>
-
-                    @* --- انتخاب تعرفه --- *@
-                    <div class="sum-section">
-                        <div class="sum-section-title">تعرفه</div>
-                        <select class="form-select" @bind="_selectedTariffId">
-                            <option value="@Guid.Empty">تعرفه را انتخاب کنید</option>
-                            @foreach (var t in _tariffs)
-                            {
-                                var label = t.RateDerivationMode == "Automatic"
-                                    ? $"{t.Name} (خودکار)"
-                                    : $"{t.Name} (ثابت)";
-                                <option value="@t.Id">@label</option>
-                            }
-                        </select>
-                    </div>
-
-                    <button class="sum-calc-btn" @onclick="CalcBill" disabled="@(_tariffs.Count == 0)">محاسبه صورتحساب</button>
-
-                    @* --- نتایج --- *@
-                    @if (!string.IsNullOrEmpty(_billResult))
-                    {
-                        <div class="sum-bill-result">@_billResult</div>
-                    }
-
-                    @if (_billData is not null)
-                    {
-                        <div class="bill-result-card">
-                            <div class="bill-result-hdr">@_billData.CenterName</div>
-                            <div class="bill-result-subhdr">تعرفه: @_billData.TariffName | @_billData.FromDate تا @_billData.ToDate (@_billData.Days روز)</div>
-
-                            @* اطلاعات تعرفه خودکار *@
-                            @if (!string.IsNullOrEmpty(_billData.ConsumerTypeName))
-                            {
-                                <div class="bill-section">
-                                    <div class="bill-section-title">اطلاعات تعرفه خودکار</div>
-                                    <div class="bill-grid">
-                                        <div class="bill-item"><span>نوع مصرف‌کننده</span><span>@_billData.ConsumerTypeName</span></div>
-                                        @if (_billData.Year.HasValue) { <div class="bill-item"><span>سال</span><span>@_billData.Year</span></div> }
-                                        @if (_billData.EcaCoefficient.HasValue) { <div class="bill-item"><span>ضریب ECA</span><span>@_billData.EcaCoefficient?.ToString("F4")</span></div> }
-                                        @if (_billData.BaseEcaRate.HasValue) { <div class="bill-item"><span>نرخ پایه</span><span>@_billData.BaseEcaRate?.ToString("N0") ریال/kWh</span></div> }
-                                        @if (_billData.TouOffPeakMultiplier.HasValue && _billData.EffectiveOffPeakRate.HasValue)
-                                        {
-                                            <div class="bill-item"><span>نرخ مؤثر کم‌باری</span><span>@_billData.EffectiveOffPeakRate?.ToString("N0") ریال/kWh</span></div>
-                                            <div class="bill-item"><span>نرخ مؤثر میان‌باری</span><span>@_billData.EffectiveMidPeakRate?.ToString("N0") ریال/kWh</span></div>
-                                            <div class="bill-item"><span>نرخ مؤثر اوج‌باری</span><span>@_billData.EffectivePeakRate?.ToString("N0") ریال/kWh</span></div>
-                                        }
-                                        else if (_billData.SupplyCostPerKwh.HasValue)
-                                        {
-                                            <div class="bill-item"><span>نرخ تأمین برق</span><span>@_billData.SupplyCostPerKwh?.ToString("N0") ریال/kWh</span></div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-
-                            @* مصرف به تفکیک فاز و بازه *@
-                            <div class="bill-section">
-                                <div class="bill-section-title">مصرف به تفکیک فاز (kWh)</div>
-                                <div class="bill-phase-grid">
-                                    <div class="bill-phase-hdr"><span></span><span>کم‌باری</span><span>میان‌باری</span><span>اوج‌باری</span><span>جمع</span></div>
-                                    <div class="bill-phase-row"><span>فاز A</span><span>@_billData.PhaseA.OffPeak.ToString("N3")</span><span>@_billData.PhaseA.MidPeak.ToString("N3")</span><span>@_billData.PhaseA.Peak.ToString("N3")</span><span>@_billData.PhaseA.Total.ToString("N3")</span></div>
-                                    <div class="bill-phase-row"><span>فاز B</span><span>@_billData.PhaseB.OffPeak.ToString("N3")</span><span>@_billData.PhaseB.MidPeak.ToString("N3")</span><span>@_billData.PhaseB.Peak.ToString("N3")</span><span>@_billData.PhaseB.Total.ToString("N3")</span></div>
-                                    <div class="bill-phase-row"><span>فاز C</span><span>@_billData.PhaseC.OffPeak.ToString("N3")</span><span>@_billData.PhaseC.MidPeak.ToString("N3")</span><span>@_billData.PhaseC.Peak.ToString("N3")</span><span>@_billData.PhaseC.Total.ToString("N3")</span></div>
-                                    <div class="bill-phase-row total"><span>جمع کل</span><span>@_billData.OffPeakKWh.ToString("N3")</span><span>@_billData.MidPeakKWh.ToString("N3")</span><span>@_billData.PeakKWh.ToString("N3")</span><span>@_billData.TotalKWh.ToString("N3")</span></div>
-                                </div>
-                            </div>
-
-                            @* هزینه هر فاز *@
-                            @if (_billData.PhaseACost > 0 || _billData.PhaseBCost > 0 || _billData.PhaseCCost > 0)
-                            {
-                                <div class="bill-section">
-                                    <div class="bill-section-title">هزینه به تفکیک فاز (ریال)</div>
-                                    <div class="bill-grid">
-                                        <div class="bill-item"><span>فاز A (@_billData.PhaseA.Total.ToString("N3") kWh)</span><span>@_billData.PhaseACost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>فاز B (@_billData.PhaseB.Total.ToString("N3") kWh)</span><span>@_billData.PhaseBCost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>فاز C (@_billData.PhaseC.Total.ToString("N3") kWh)</span><span>@_billData.PhaseCCost.ToString("N0")</span></div>
-                                    </div>
-                                </div>
-                            }
-
-                            @* هزینه انرژی *@
-                            <div class="bill-section">
-                                <div class="bill-section-title">هزینه انرژی (ریال)</div>
-                                <div class="bill-grid">
-                                    @if (_billData.HasTieredRates)
-                                    {
-                                        @if (_billData.Tier1Cost > 0)
-                                        {
-                                            <div class="bill-item"><span>پله اول (@_billData.Tier1Rate.ToString("N0") ریال/kWh)</span><span>@_billData.Tier1Cost.ToString("N0")</span></div>
-                                        }
-                                        @if (_billData.Tier2Cost > 0)
-                                        {
-                                            <div class="bill-item"><span>پله دوم (@_billData.Tier2Rate.ToString("N0") ریال/kWh)</span><span>@_billData.Tier2Cost.ToString("N0")</span></div>
-                                        }
-                                        @if (_billData.Tier3Cost > 0)
-                                        {
-                                            <div class="bill-item"><span>پله سوم (@_billData.Tier3Rate.ToString("N0") ریال/kWh)</span><span>@_billData.Tier3Cost.ToString("N0")</span></div>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <div class="bill-item"><span>کم‌باری (@_billData.OffPeakRate.ToString("N0") ریال/kWh)</span><span>@_billData.OffPeakCost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>میان‌باری (@_billData.MidPeakRate.ToString("N0") ریال/kWh)</span><span>@_billData.MidPeakCost.ToString("N0")</span></div>
-                                        <div class="bill-item"><span>اوج‌باری (@_billData.PeakRate.ToString("N0") ریال/kWh)</span><span>@_billData.PeakCost.ToString("N0")</span></div>
-                                    }
-                                    <div class="bill-item total"><span>جمع</span><span>@_billData.EnergyCost.ToString("N0")</span></div>
-                                </div>
-                            </div>
-
-                            @* سایر هزینه‌ها *@
-                            <div class="bill-section">
-                                <div class="bill-section-title">سایر هزینه‌ها</div>
-                                <div class="bill-grid">
-                                    <div class="bill-item"><span>آبونمان (@_billData.Months ماه)</span><span>@_billData.MonthlyFixedFeeTotal.ToString("N0")</span></div>
-                                    @if (_billData.DemandCost > 0)
-                                    {
-                                        <div class="bill-item"><span>هزینه دیماند (@_billData.MaxDemandKW.ToString("N2") kW)</span><span>@_billData.DemandCost.ToString("N0")</span></div>
-                                    }
-                                    @if (_billData.PeakPenalty > 0)
-                                    {
-                                        <div class="bill-item penalty"><span>جریمه اوج مصرف</span><span>@_billData.PeakPenalty.ToString("N0")</span></div>
-                                    }
-                                    @if (_billData.OffPeakDiscount > 0)
-                                    {
-                                        <div class="bill-item discount"><span>تخفیف کم‌باری</span><span>@_billData.OffPeakDiscount.ToString("N0")</span></div>
-                                    }
-                                    @if (_billData.Article16Cost > 0)
-                                    {
-                                        <div class="bill-item"><span>قانون ماده ۱۶</span><span>@_billData.Article16Cost.ToString("N0")</span></div>
-                                    }
-                                    @if (_billData.TollAmount > 0)
-                                    {
-                                        <div class="bill-item"><span>عوارض</span><span>@_billData.TollAmount.ToString("N0")</span></div>
-                                    }
-                                    @if (_billData.HasReactivePenalty)
-                                    {
-                                        <div class="bill-item penalty"><span>جریمه راکتیو (PF: @_billData.AveragePfA.ToString("F3"))</span><span>@_billData.ReactivePenalty.ToString("N0")</span></div>
-                                    }
-                                    @if (_billData.HasReactiveBonus)
-                                    {
-                                        <div class="bill-item discount"><span>پاداش راکتیو</span><span>@_billData.ReactiveBonus.ToString("N0")</span></div>
-                                    }
-                                </div>
-                            </div>
-
-                            @* جمع نهایی *@
-                            <div class="bill-section">
-                                <div class="bill-grid">
-                                    <div class="bill-item"><span>جمع قبل از مالیات</span><span>@_billData.SubTotal.ToString("N0")</span></div>
-                                    <div class="bill-item"><span>مالیات (@_billData.TaxPercent%)</span><span>@_billData.TaxAmount.ToString("N0")</span></div>
-                                    <div class="bill-item grand-total"><span>قابل پرداخت</span><span>@_billData.GrandTotal.ToString("N0") ریال</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                }
+    @* ── Quick Stats ── *@
+    <div class="dash-stats">
+        <div class="dash-stat">
+            <div class="dash-stat-icon dash-stat-icon--blue">📟</div>
+            <div class="dash-stat-body">
+                <div class="dash-stat-val">@_deviceCount</div>
+                <div class="dash-stat-lbl">دستگاه فعال</div>
             </div>
         </div>
-    }
-
-    @if (_showPhaseAlarms)
-    {
-        <div class="phase-alarm-overlay" @onclick="() => _showPhaseAlarms = false"></div>
-        <div class="phase-alarm-drawer">
-            <div class="phase-alarm-drawer-header">
-                <h3>هشدارهای فاز @_selectedPhaseName</h3>
-                <button class="phase-alarm-drawer-close" @onclick="() => _showPhaseAlarms = false">&times;</button>
-            </div>
-            <div class="phase-alarm-drawer-body">
-                @if (_selectedPhaseAlarms.Count == 0)
-                {
-                    <div class="phase-alarm-empty">هشدار فعالی وجود ندارد</div>
-                }
-                else
-                {
-                    @foreach (var a in _selectedPhaseAlarms)
-                    {
-                        var silenced = _silencedAlarms.Contains(a.Id);
-                        <div class="phase-alarm-row @(a.Severity?.ToLower() == "critical" ? "critical" : a.Severity?.ToLower() == "warning" ? "warning" : "info")">
-                            <span class="alarm-sev-dot"></span>
-                            <div class="phase-alarm-row-body">
-                                <div class="phase-alarm-row-title">@a.Title</div>
-                                @if (!string.IsNullOrEmpty(a.Message))
-                                {
-                                    <div class="phase-alarm-row-msg">@a.Message</div>
-                                }
-                            </div>
-                            <button class="alarm-resolve-btn" @onclick="() => ResolveAlarm(a.Id)" title="حل شد">✓</button>
-                            <button class="alarm-mute-btn @(silenced ? "muted" : "")" @onclick="() => ToggleMute(a.Id)" title="@(silenced ? "فعال کردن صدا" : "قطع صدا")">
-                                @(silenced ? "🔇" : "🔔")
-                            </button>
-                        </div>
-                    }
-                }
+        <div class="dash-stat">
+            <div class="dash-stat-icon dash-stat-icon--green">🏢</div>
+            <div class="dash-stat-body">
+                <div class="dash-stat-val">@_centerCount</div>
+                <div class="dash-stat-lbl">مرکز فعال</div>
             </div>
         </div>
-    }
+        <div class="dash-stat">
+            <div class="dash-stat-icon dash-stat-icon--gold">🔔</div>
+            <div class="dash-stat-body">
+                <div class="dash-stat-val">@_alarmCount</div>
+                <div class="dash-stat-lbl">هشدار فعال</div>
+            </div>
+        </div>
+        <div class="dash-stat">
+            <div class="dash-stat-icon dash-stat-icon--purple">👥</div>
+            <div class="dash-stat-body">
+                <div class="dash-stat-val">@_userCount</div>
+                <div class="dash-stat-lbl">کاربران</div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Hero: Energy Monitoring ── *@
+    <div class="dash-hero" @onclick="GoToMonitoring" role="button" tabindex="0">
+        <div class="dash-hero-bg"></div>
+        <div class="dash-hero-content">
+            <div class="dash-hero-icon">📊</div>
+            <div class="dash-hero-text">
+                <h2 class="dash-hero-title">پایش انرژی</h2>
+                <p class="dash-hero-desc">مشاهده لحظه‌ای مصرف، صورتحساب، نمودارهای تحلیلی و گزارش‌های دوره‌ای</p>
+            </div>
+            <div class="dash-hero-action">
+                <span class="dash-hero-btn">ورود به پایش انرژی</span>
+                <span class="dash-hero-arrow">←</span>
+            </div>
+        </div>
+    </div>
+
+    @* ── Feature Grid ── *@
+    <div class="dash-feat-title">
+        <span class="dash-feat-title-icon">🚀</span>
+        <span>سایر بخش‌های مدیریتی</span>
+    </div>
+    <div class="dash-feats">
+        @foreach (var f in _features)
+        {
+            <a href="@f.Href" class="dash-feat @f.CssClass">
+                <div class="dash-feat-icon">@f.Icon</div>
+                <div class="dash-feat-body">
+                    <div class="dash-feat-name">@f.Name</div>
+                    <div class="dash-feat-desc">@f.Desc</div>
+                </div>
+                <div class="dash-feat-arrow">←</div>
+            </a>
+        }
+    </div>
 </div>
 
-<button class="summary-fab" @onclick="OpenSummary">📊</button>
-
 @code {
-    private DashboardDataDto? _data;
-    private List<CenterRef> _centers = new();
-    private Guid _selectedCenterId;
-    private List<DeviceInfoDto> _devices = new();
-    private string _selectedDeviceId = "";
-    private bool _showCenterModal;
-    private bool _showDeviceModal;
-    private bool _isLoading;
-    private bool _isChangingDevice;
-    private decimal _currPct;
-    private Timer? _refreshTimer;
-    private bool _showSummary;
-    private bool _summaryLoading;
-    private ConsumptionDto? _sumData;
-    private List<TariffRef> _tariffs = new();
-    private Guid _selectedTariffId = Guid.Empty;
-    private HashSet<int> _silencedAlarms = new();
-    private string _billResult = "";
-    private BillingResultDto? _billData;
-    private bool _showPhaseAlarms;
-    private List<AlarmItemDto> _selectedPhaseAlarms = new();
-    private string _selectedPhaseName = "";
+    private int _deviceCount, _centerCount, _alarmCount, _userCount;
 
-    private bool _expandPhaseStatus;
-    private bool _expandPhaseInfo;
-    private bool _expandEnergy;
-    private bool _expandCharts;
-    private bool _expandAlarms;
-    private bool _expandResolved;
-    private bool _expandQuickActions;
+    private record DashFeature(string Icon, string Name, string Desc, string Href, string CssClass);
 
-    private SparklineData? _sparklinePower;
-    private SparklineData? _sparklineReactive;
-    private SparklineData? _sparklineVoltage;
-    private SparklineData? _sparklineCurrent;
-    private SparklineData? _sparklinePf;
-    private SparklineData? _sparklineTemp;
-
-    private class SparklineData
+    private List<DashFeature> _features => new()
     {
-        public string Line { get; set; } = "";
-        public string Area { get; set; } = "";
-    }
-
-    private SparklineData? BuildSparkline(Func<SnapshotDto, decimal> valueFn, decimal minRef, decimal maxRef, int maxPoints = 20)
-    {
-        var snaps = _data?.ChartSnapshots;
-        if (snaps == null || snaps.Count < 1) return null;
-        var vals = snaps.Select(valueFn).TakeLast(maxPoints).ToArray();
-        if (vals.Length < 1) return null;
-        var lo = minRef < maxRef ? minRef : vals.Min();
-        var hi = minRef < maxRef ? maxRef : vals.Max();
-        var range = hi - lo;
-        if (range < 1e-9m) range = 0;
-        var w = 100m; var h = 20m; var m = h - 2;
-        var count = vals.Length;
-        decimal LineY(decimal v) => range > 0 ? h - Math.Clamp((v - lo) / range, 0, 1) * m - 1 : h / 2;
-        if (count == 1)
-        {
-            var y = LineY(vals[0]);
-            var line = $"M0,{y:F1} L{w},{y:F1}";
-            var area = $"{line} L{w},{h} L0,{h} Z";
-            return new SparklineData { Line = line, Area = area };
-        }
-        var step = (decimal)(w - 0) / (count - 1);
-        var pts = vals.Select((v, i) => $"{i * step:F1},{LineY(v):F1}").ToArray();
-        var lineSvg = "M" + string.Join(" L", pts);
-        var areaSvg = $"{lineSvg} L{w:F1},{h} L0,{h} Z";
-        return new SparklineData { Line = lineSvg, Area = areaSvg };
-    }
-
-    private void UpdateSparklines()
-    {
-        var snaps = _data?.ChartSnapshots;
-        if (snaps == null || snaps.Count < 1) return;
-        var pc = _data?.SelectedDevice?.PhaseCount ?? 3;
-        _sparklinePower = BuildSparkline(s => s.TotalPower, 0, 10000);
-        _sparklineReactive = BuildSparkline(s =>
-        {
-            var sA = (decimal)s.VoltageA * (decimal)s.CurrentA;
-            var qA = sA > 0 ? (decimal)Math.Sqrt((double)Math.Max(0, sA * sA - (decimal)s.PowerA * (decimal)s.PowerA)) : 0;
-            var sB = pc >= 2 ? (decimal)s.VoltageB * (decimal)s.CurrentB : 0;
-            var qB = sB > 0 ? (decimal)Math.Sqrt((double)Math.Max(0, sB * sB - (decimal)s.PowerB * (decimal)s.PowerB)) : 0;
-            var sC = pc >= 3 ? (decimal)s.VoltageC * (decimal)s.CurrentC : 0;
-            var qC = sC > 0 ? (decimal)Math.Sqrt((double)Math.Max(0, sC * sC - (decimal)s.PowerC * (decimal)s.PowerC)) : 0;
-            var cnt = (qA > 0 ? 1 : 0) + (qB > 0 ? 1 : 0) + (qC > 0 ? 1 : 0);
-            return cnt > 0 ? (qA + qB + qC) / cnt : 0;
-        }, 0, 10000);
-        _sparklineVoltage = BuildSparkline(s => s.VoltageA, 180, 260);
-        _sparklineCurrent = BuildSparkline(s => s.CurrentA, 0, 50);
-        _sparklinePf = BuildSparkline(s => s.PfA, 0.5m, 1);
-        _sparklineTemp = BuildSparkline(s => s.Temperature, -10m, 50m);
-    }
-
-
-    private string PhaseBgCard(string phase) => "linear-gradient(135deg,#f0fdf4,#dcfce7)";
-
-    private RenderFragment RenderPhase(string phase, bool phaseOn, bool hasAlarm, bool isCritical, List<AlarmItemDto> alarmList, SnapshotDto? s, decimal q, int pc) => builder =>
-    {
-        var voltage = phase == "A" ? s?.VoltageA ?? 0 : phase == "B" ? s?.VoltageB ?? 0 : s?.VoltageC ?? 0;
-        var current = phase == "A" ? s?.CurrentA ?? 0 : phase == "B" ? s?.CurrentB ?? 0 : s?.CurrentC ?? 0;
-        var power = phase == "A" ? s?.PowerA ?? 0 : phase == "B" ? s?.PowerB ?? 0 : s?.PowerC ?? 0;
-        var pf = phase == "A" ? s?.PfA ?? 0 : phase == "B" ? s?.PfB ?? 0 : s?.PfC ?? 0;
-        var color = PhaseColor(phase);
-        var cls = $"phase-card phase-{phase.ToLower()}";
-        if (!phaseOn) cls += " disconnected";
-        if (hasAlarm) cls += isCritical ? " critical-alarm" : " warning-alarm";
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", cls);
-        builder.AddAttribute(2, "style", phaseOn ? $"background:{PhaseBgCard(phase)}" : "");
-        builder.OpenElement(3, "div");
-        builder.AddAttribute(4, "class", "phase-header");
-        builder.AddAttribute(5, "style", "color:var(--text)");
-        builder.OpenElement(6, "span");
-        builder.AddAttribute(7, "class", $"phase-dot{(phaseOn ? "" : " off")}");
-        builder.AddAttribute(8, "style", phaseOn ? $"background:{color}" : "");
-        builder.CloseElement();
-        builder.OpenElement(9, "svg");
-        builder.AddAttribute(10, "class", "phase-icon");
-        builder.AddAttribute(11, "viewBox", "0 0 24 24");
-        builder.AddAttribute(12, "fill", "none");
-        builder.AddAttribute(13, "stroke", color);
-        builder.AddAttribute(14, "stroke-width", "2");
-        builder.AddAttribute(15, "stroke-linecap", "round");
-        builder.AddAttribute(16, "stroke-linejoin", "round");
-        builder.OpenElement(17, "path");
-        builder.AddAttribute(18, "d", "M13 2L3 14h9l-1 8 10-12h-9l1-8z");
-        builder.CloseElement();
-        builder.CloseElement();
-        builder.AddContent(19, $" فاز {phase}");
-        if (hasAlarm)
-        {
-            builder.OpenElement(20, "button");
-            builder.AddAttribute(21, "class", "phase-alarm-badge");
-            builder.AddAttribute(22, "onclick", EventCallback.Factory.Create(this, () => ShowPhaseAlarms(alarmList, phase)));
-            builder.AddContent(23, "⚠");
-            builder.CloseElement();
-        }
-        builder.CloseElement();
-        if (phaseOn)
-        {
-            builder.OpenElement(24, "div");
-            builder.AddAttribute(25, "class", "phase-stats");
-            RenderStat(builder, "ولتاژ", voltage.ToString("F1") + " V", "var(--text)");
-            RenderStat(builder, "جریان", SmartCurrent(current), "var(--text)");
-            RenderStat(builder, "توان", SmartPower(power) + " " + SmartPowerUnit(power), "var(--text)");
-            RenderStat(builder, "توان راکتیو", SmartReactive(q) + " " + SmartReactiveUnit(q), "var(--text)");
-            RenderStat(builder, "ضریب توان", pf.ToString("F2"), "var(--text)");
-            builder.CloseElement();
-        }
-        else
-        {
-            builder.OpenElement(24, "div");
-            builder.AddAttribute(25, "class", "phase-stats");
-            RenderStat(builder, "ولتاژ", "—", "var(--text)");
-            RenderStat(builder, "جریان", "—", "var(--text)");
-            RenderStat(builder, "توان", "—", "var(--text)");
-            RenderStat(builder, "توان راکتیو", "—", "var(--text)");
-            RenderStat(builder, "ضریب توان", "—", "var(--text)");
-            builder.CloseElement();
-            builder.OpenElement(26, "div");
-            builder.AddAttribute(27, "class", "phase-offline-badge");
-            builder.AddContent(28, "قطع");
-            builder.CloseElement();
-        }
-        builder.CloseElement();
+        new("🗺️", "مناطق", "مدیریت مناطق جغرافیایی", "/regions", "dash-feat--blue"),
+        new("📍", "استان‌ها", "مدیریت استان‌های هر منطقه", "/provinces", "dash-feat--coral"),
+        new("🏙️", "شهرها", "مدیریت شهرهای هر استان", "/cities", "dash-feat--purple"),
+        new("🏢", "مراکز", "ثبت و مدیریت مراکز مصرف", "/centers", "dash-feat--green"),
+        new("📁", "گروه دستگاه", "دسته‌بندی دستگاه‌های اندازه‌گیری", "/device-groups", "dash-feat--gold"),
+        new("📟", "دستگاه‌ها", "مدیریت دستگاه‌های متصل", "/devices", "dash-feat--blue"),
+        new("⚙", "تنظیمات", "پیکربندی پارامترهای دستگاه", "/config", "dash-feat--coral"),
+        new("🔔", "هشدارها", "رویدادها و آلارم‌های ثبت‌شده", "/alarms", "dash-feat--red"),
+        new("💰", "تعرفه‌ها", "مدیریت نرخ‌ها و تعرفه‌های انرژی", "/billing/tariffs", "dash-feat--gold"),
+        new("🧾", "صورتحساب", "محاسبه و صدور صورتحساب", "/billing", "dash-feat--green"),
+        new("📈", "گزارش مصرف", "تحلیل و مقایسه مصرف انرژی", "/reports", "dash-feat--purple"),
+        new("⛔", "محدودیت مصرف", "تعیین سقف مصرف مجاز", "/limits", "dash-feat--red"),
+        new("📰", "اخبار", "مدیریت اخبار و اطلاعیه‌ها", "/news/manage", "dash-feat--blue"),
+        new("🖼", "اسلایدر", "مدیریت تصاویر صفحه اصلی", "/sliders/manage", "dash-feat--green"),
     };
 
-    private void RenderStat(RenderTreeBuilder builder, string label, string value, string color)
-    {
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "phase-stat");
-        builder.OpenElement(2, "span");
-        builder.AddContent(3, label);
-        builder.CloseElement();
-        builder.OpenElement(4, "span");
-        builder.AddAttribute(5, "style", $"color:{color};font-weight:700");
-        builder.AddContent(6, value);
-        builder.CloseElement();
-        builder.CloseElement();
-    }
-
-    private string PhaseGaugeGrad(string phase) => phase == "A" ? "url(#gauge-fill-a)" : phase == "B" ? "url(#gauge-fill-b)" : "url(#gauge-fill-c)";
-    private string PhaseBgGrad(string phase) => phase == "A" ? "#fff7ed" : phase == "B" ? "#dbeafe" : "#fef2f2";
-    private string PhaseColor(string phase) => phase == "A" ? "#f97316" : phase == "B" ? "#3b82f6" : "#ef4444";
-    private string PhaseGlow(string phase) => phase == "A" ? "rgba(249,115,22,.35)" : phase == "B" ? "rgba(59,130,246,.3)" : "rgba(239,68,68,.3)";
-    private string PhaseLabel(string phase) => phase == "A" ? "فاز A" : phase == "B" ? "فاز B" : "فاز C";
-    private string PhaseNormBg(string phase) => phase == "A" ? "#fff7ed" : phase == "B" ? "#eff6ff" : "#fef2f2";
-    private string PhaseNormClr(string phase) => phase == "A" ? "#f97316" : phase == "B" ? "#2563eb" : "#dc2626";
-
-    private RenderFragment RenderGauge(string phase, bool phaseOn, SnapshotDto? s, bool hasLoad, decimal avgPf) => builder =>
-    {
-        var voltage = phase == "A" ? s?.VoltageA ?? 0 : phase == "B" ? s?.VoltageB ?? 0 : s?.VoltageC ?? 0;
-        var current = phase == "A" ? s?.CurrentA ?? 0 : phase == "B" ? s?.CurrentB ?? 0 : s?.CurrentC ?? 0;
-        var power = phase == "A" ? s?.PowerA ?? 0 : phase == "B" ? s?.PowerB ?? 0 : s?.PowerC ?? 0;
-        var pf = phase == "A" ? s?.PfA ?? 0 : phase == "B" ? s?.PfB ?? 0 : s?.PfC ?? 0;
-        var gaugeId = $"gauge-{(phase == "A" ? "a" : phase == "B" ? "b" : "c")}";
-        var gaugePct = !phaseOn
-            ? 0 : Math.Clamp((double)(voltage - 180) / 80.0 * 100, 0, 100);
-        var circ = 2 * Math.PI * 38;
-        var offset = circ * (1 - gaugePct / 100.0);
-        var color = PhaseColor(phase);
-        var grad = PhaseGaugeGrad(phase);
-        var bgGrad = PhaseBgGrad(phase);
-        var label = PhaseLabel(phase);
-
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", $"gauge-card {gaugeId}");
-        builder.AddAttribute(2, "style", phaseOn ? $"background:{bgGrad}" : "");
-        builder.OpenElement(3, "svg");
-        builder.AddAttribute(4, "class", "gauge-svg");
-        builder.AddAttribute(5, "viewBox", "0 0 100 100");
-        builder.OpenElement(6, "circle");
-        builder.AddAttribute(7, "class", "gauge-track");
-        builder.AddAttribute(8, "cx", "50");
-        builder.AddAttribute(9, "cy", "50");
-        builder.AddAttribute(10, "r", "38");
-        builder.CloseElement();
-        builder.OpenElement(11, "circle");
-        builder.AddAttribute(12, "class", "gauge-fill");
-        builder.AddAttribute(13, "stroke", grad);
-        builder.AddAttribute(14, "cx", "50");
-        builder.AddAttribute(15, "cy", "50");
-        builder.AddAttribute(16, "r", "38");
-        builder.AddAttribute(17, "stroke-dasharray", $"{circ:F1}");
-        builder.AddAttribute(18, "stroke-dashoffset", $"{offset:F1}");
-        builder.AddAttribute(19, "transform", "rotate(-90 50 50)");
-        builder.CloseElement();
-        builder.OpenElement(20, "text");
-        builder.AddAttribute(21, "x", "50");
-        builder.AddAttribute(22, "y", "44");
-        builder.AddAttribute(23, "text-anchor", "middle");
-        builder.AddAttribute(24, "fill", "var(--text)");
-        builder.AddAttribute(25, "font-weight", "900");
-        builder.AddAttribute(26, "font-size", "20");
-        builder.AddAttribute(27, "font-family", "var(--font)");
-        builder.AddContent(28, phaseOn ? voltage.ToString("F1") : "—");
-        builder.CloseElement();
-        builder.OpenElement(29, "text");
-        builder.AddAttribute(30, "x", "50");
-        builder.AddAttribute(31, "y", "62");
-        builder.AddAttribute(32, "text-anchor", "middle");
-        builder.AddAttribute(33, "fill", "var(--text-secondary)");
-        builder.AddAttribute(34, "font-size", "10");
-        builder.AddAttribute(35, "font-weight", "600");
-        builder.AddAttribute(35, "font-family", "var(--font)");
-        builder.AddContent(36, "V");
-        builder.CloseElement();
-        builder.CloseElement();
-        builder.OpenElement(37, "div");
-        builder.AddAttribute(38, "class", "gauge-label");
-        builder.AddAttribute(39, "style", "color:var(--text);font-weight:700");
-        builder.AddContent(40, label);
-        builder.CloseElement();
-        if (phaseOn)
-        {
-            builder.OpenElement(41, "span");
-            builder.AddAttribute(42, "class", "gauge-norm-badge");
-            builder.AddAttribute(43, "style", $"background:{PhaseNormBg(phase)};color:var(--text)");
-            builder.AddContent(44, "نرمال");
-            builder.CloseElement();
-        }
-        if (phaseOn)
-        {
-            builder.OpenElement(45, "div");
-            builder.AddAttribute(46, "class", "gauge-params");
-            RenderGaugeParam(builder, "جریان", current.ToString("F2") + " A", "var(--text)");
-            RenderGaugeParam(builder, "توان", SmartPower(power) + " " + SmartPowerUnit(power), "var(--text)");
-            RenderGaugeParam(builder, "ضریب توان", pf.ToString("F2"), "var(--text)");
-            builder.CloseElement();
-        }
-        builder.CloseElement();
-    };
-
-    private void RenderGaugeParam(RenderTreeBuilder builder, string label, string value, string color)
-    {
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "gauge-param");
-        builder.OpenElement(2, "span");
-        builder.AddContent(3, label);
-        builder.CloseElement();
-        builder.OpenElement(4, "span");
-        builder.AddAttribute(5, "style", $"color:{color};font-weight:700");
-        builder.AddContent(6, value);
-        builder.CloseElement();
-        builder.CloseElement();
-    }
+    private void GoToMonitoring() => Nav.NavigateTo("/monitoring");
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCenters();
-        if (_centers.Count > 0)
-            await LoadDevices(selectedFirst: true);
-        if (!string.IsNullOrEmpty(_selectedDeviceId))
-            await LoadData();
-        _refreshTimer = new Timer(async _ => await AutoRefresh(), null, 5000, 5000);
+        if (Auth.IsLoggedIn) await LoadStats();
     }
 
-    private async Task LoadCenters()
+    private async Task LoadStats()
     {
         try
         {
-            _centers = await Http.GetFromJsonAsync<List<CenterRef>>("api/v2/centers") ?? new();
-            if (!Auth.IsInRole("SuperAdmin") && Auth.CurrentUser?.CenterIds.Count > 0)
-            {
-                var allowed = Auth.CurrentUser.CenterIds;
-                _centers = _centers.Where(c => allowed.Contains(c.Id)).ToList();
-            }
-            if (_centers.Count > 0)
-            {
-                var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "dashboard_centerId");
-                if (!string.IsNullOrEmpty(saved) && Guid.TryParse(saved, out var gid) && _centers.Any(c => c.Id == gid))
-                    _selectedCenterId = gid;
-                else
-                    _selectedCenterId = _centers[0].Id;
-            }
+            var devTask = Http.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("api/v2/devices");
+            var centTask = Http.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("api/v2/centers");
+            var alarmTask = Http.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("api/v2/alarms");
+            var userTask = Http.GetFromJsonAsync<List<System.Text.Json.JsonElement>>("api/v2/users");
+
+            await Task.WhenAll(devTask, centTask, alarmTask, userTask);
+
+            if (devTask.Result is { } d) _deviceCount = d.Count(x => x.TryGetProperty("isActive", out var a) && a.GetBoolean());
+            if (centTask.Result is { } c) _centerCount = c.Count(x => x.TryGetProperty("isActive", out var a) && a.GetBoolean());
+            if (alarmTask.Result is { } a) _alarmCount = a.Count(x => x.TryGetProperty("isResolved", out var r) && !r.GetBoolean());
+            if (userTask.Result is { } u) _userCount = u.Count;
         }
         catch { }
-    }
-
-    private async Task LoadDevices(bool selectedFirst = false)
-    {
-        try
-        {
-            if (_selectedCenterId != Guid.Empty)
-            {
-                _devices = await Http.GetFromJsonAsync<List<DeviceInfoDto>>($"api/v2/devices/by-center/{_selectedCenterId}") ?? new();
-            }
-            else
-            {
-                var resp = await Http.GetAsync("api/devices");
-                if (resp.IsSuccessStatusCode)
-                    _devices = await resp.Content.ReadFromJsonAsync<List<DeviceInfoDto>>() ?? new();
-            }
-            if (_devices.Count > 0)
-            {
-                var saved = await JS.InvokeAsync<string?>("localStorage.getItem", "dashboard_deviceId");
-                if (!string.IsNullOrEmpty(saved) && _devices.Any(d => d.DeviceId == saved))
-                    _selectedDeviceId = saved;
-                else if (selectedFirst)
-                    _selectedDeviceId = _devices[0].DeviceId;
-            }
-        }
-        catch { }
-    }
-
-    private async Task LoadData()
-    {
-        _isLoading = true;
         StateHasChanged();
-        try
-        {
-            var deviceId = _selectedDeviceId;
-            if (string.IsNullOrEmpty(deviceId) && _devices.Count > 0)
-                deviceId = _devices[0].DeviceId;
-
-            if (!string.IsNullOrEmpty(deviceId))
-            {
-                _data = await Http.GetFromJsonAsync<DashboardDataDto>($"api/dashboard/fulldata/{Uri.EscapeDataString(deviceId)}");
-                if (_data?.LatestSnapshot is not null)
-                {
-                    var s = _data.LatestSnapshot;
-                    var pc = _data.SelectedDevice?.PhaseCount ?? 3;
-                    var actCount = (s.CurrentA > 0 && s.VoltageA > 0 ? 1 : 0) + (pc >= 2 && s.CurrentB > 0 && s.VoltageB > 0 ? 1 : 0) + (pc >= 3 && s.CurrentC > 0 && s.VoltageC > 0 ? 1 : 0);
-                    if (actCount == 0) actCount = 1;
-                    var avgI = ((s.CurrentA > 0 && s.VoltageA > 0 ? s.CurrentA : 0) + (pc >= 2 && s.CurrentB > 0 && s.VoltageB > 0 ? s.CurrentB : 0) + (pc >= 3 && s.CurrentC > 0 && s.VoltageC > 0 ? s.CurrentC : 0)) / actCount;
-                    _currPct = (decimal)Math.Clamp((double)avgI / 50.0 * 100, 0, 100);
-                }
-                UpdateSparklines();
-            }
-            _data ??= new DashboardDataDto();
-        }
-        catch
-        {
-            _data ??= new DashboardDataDto();
-        }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task AutoRefresh()
-    {
-        try
-        {
-            var oldAlarmIds = _data?.ActiveAlarms?.Select(a => a.Id).ToHashSet() ?? new();
-            var soundEnabled = _data?.DeviceConfig?.AlarmSoundEnabled ?? true;
-            await LoadData();
-            var hasAlarms = _data?.ActiveAlarms?.Count > 0;
-            var newSoundEnabled = _data?.DeviceConfig?.AlarmSoundEnabled ?? true;
-
-            if (!hasAlarms)
-            {
-                try { await JS.InvokeVoidAsync("stopAlarmSound"); } catch { }
-            }
-            else
-            {
-                var newAlarms = _data!.ActiveAlarms!.Where(a =>
-                    !oldAlarmIds.Contains(a.Id) && !_silencedAlarms.Contains(a.Id)).ToList();
-                if (newAlarms.Count > 0 && newSoundEnabled)
-                    try { await JS.InvokeVoidAsync("playAlarmSound"); } catch { }
-            }
-
-            await InvokeAsync(StateHasChanged);
-        }
-        catch { }
-    }
-
-    private async Task SelectCenter(Guid centerId)
-    {
-        _showCenterModal = false;
-        if (centerId == _selectedCenterId) return;
-        _selectedCenterId = centerId;
-        _selectedDeviceId = "";
-        await JS.InvokeVoidAsync("localStorage.setItem", "dashboard_centerId", centerId.ToString());
-        await JS.InvokeVoidAsync("localStorage.removeItem", "dashboard_deviceId");
-        _isChangingDevice = true;
-        StateHasChanged();
-        await LoadDevices(selectedFirst: true);
-        await LoadData();
-        _isChangingDevice = false;
-        StateHasChanged();
-    }
-
-    private async Task SelectDevice(string deviceId)
-    {
-        _showDeviceModal = false;
-        if (deviceId == _selectedDeviceId) return;
-        _selectedDeviceId = deviceId;
-        await JS.InvokeVoidAsync("localStorage.setItem", "dashboard_deviceId", deviceId);
-        _isChangingDevice = true;
-        StateHasChanged();
-        await LoadData();
-        _isChangingDevice = false;
-        StateHasChanged();
-    }
-
-    private string SmartReactiveUnit(decimal v)
-    {
-        if (v >= 1000000) return "MVAr";
-        if (v >= 1000) return "kVAr";
-        return "VAr";
-    }
-
-    private string SmartPower(decimal w)
-    {
-        if (w >= 1000000) return (w / 1000000).ToString("F2");
-        if (w >= 1000) return (w / 1000).ToString("F1");
-        return w.ToString("F0");
-    }
-
-    private string SmartPowerUnit(decimal w)
-    {
-        if (w >= 1000000) return "MW";
-        if (w >= 1000) return "kW";
-        return "W";
-    }
-
-    private string SmartCurrent(decimal a)
-    {
-        if (a >= 1000) return (a / 1000).ToString("F2") + " kA";
-        return a.ToString("F2") + " A";
-    }
-
-    private string SmartEnergy(decimal e)
-    {
-        if (e >= 1000) return (e / 1000).ToString("F3") + " MWh";
-        if (e >= 1) return e.ToString("F3") + " kWh";
-        return (e * 1000).ToString("F1") + " Wh";
-    }
-
-    private string SmartReactive(decimal v)
-    {
-        if (v >= 1000000) return (v / 1000000).ToString("F2");
-        if (v >= 1000) return (v / 1000).ToString("F1");
-        return v.ToString("F0");
-    }
-
-    private async Task RenderCharts()
-    {
-        if (_data?.ChartSnapshots == null || _data.ChartSnapshots.Count == 0) return;
-        try
-        {
-            var ready = await JS.InvokeAsync<bool>("eval", "!!window._chartReady");
-            if (!ready) return;
-            var maxPoints = 50;
-            var snapshots = _data.ChartSnapshots.TakeLast(maxPoints).ToList();
-            var labels = snapshots.Select(s => s.Timestamp.ToLocalTime().ToString("HH:mm")).ToArray();
-            var pc = _data.SelectedDevice?.PhaseCount ?? 3;
-            var vA = snapshots.Select(s => s.VoltageA).ToArray();
-            var cA = snapshots.Select(s => s.CurrentA).ToArray();
-            var pA = snapshots.Select(s => s.PowerA).ToArray();
-            var pfA = snapshots.Select(s => s.PfA).ToArray();
-
-            var volDs = new List<object> { new { label = "فاز A", data = vA } };
-            var curDs = new List<object> { new { label = "فاز A", data = cA } };
-            var pwrDs = new List<object> { new { label = "فاز A", data = pA } };
-            var pfDs = new List<object> { new { label = "فاز A", data = pfA } };
-
-            if (pc >= 2)
-            {
-                volDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.VoltageB).ToArray() });
-                curDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.CurrentB).ToArray() });
-                pwrDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.PowerB).ToArray() });
-                pfDs.Add(new { label = "فاز B", data = snapshots.Select(s => s.PfB).ToArray() });
-            }
-            if (pc >= 3)
-            {
-                volDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.VoltageC).ToArray() });
-                curDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.CurrentC).ToArray() });
-                pwrDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.PowerC).ToArray() });
-                pfDs.Add(new { label = "فاز C", data = snapshots.Select(s => s.PfC).ToArray() });
-            }
-
-            await JS.InvokeVoidAsync("createOrUpdateChart", "chartVoltage", labels, volDs, "V");
-            await JS.InvokeVoidAsync("createOrUpdateChart", "chartCurrent", labels, curDs, "A");
-            await JS.InvokeVoidAsync("createOrUpdateChart", "chartPower", labels, pwrDs, "W");
-            await JS.InvokeVoidAsync("createOrUpdateChart", "chartPf", labels, pfDs, "");
-        }
-        catch { }
-    }
-
-    private bool _scriptsLoaded;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && !_scriptsLoaded)
-        {
-            await JS.InvokeVoidAsync("eval", @"
-                function loadScript(src){return new Promise(function(r,j){var s=document.createElement('script');s.src=src;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
-                loadScript('js/chart.umd.min.js').then(function(){return loadScript('js/charts.js')}).then(function(){window._chartReady=true}).catch(function(){});
-            ");
-            _scriptsLoaded = true;
-            await Task.Delay(500);
-        }
-
-        if (_data?.ChartSnapshots?.Count > 0)
-        {
-            await RenderCharts();
-        }
-
-        try { await JS.InvokeVoidAsync("initJalaliDatepicker"); } catch { }
-    }
-
-    public void Dispose()
-    {
-        _refreshTimer?.Dispose();
-    }
-
-    private string _billFrom = "", _billTo = "";
-
-    private async Task OpenSummary()
-    {
-        await JS.InvokeVoidAsync("closeSidebar");
-        // Set default Persian date range (last 1 month) before render
-        var pc = new System.Globalization.PersianCalendar();
-        var iranTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran");
-        var iranNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, iranTz);
-        _billTo = $"{pc.GetYear(iranNow):D4}/{pc.GetMonth(iranNow):D2}/{pc.GetDayOfMonth(iranNow):D2}";
-        _billFrom = $"{pc.GetYear(iranNow.AddMonths(-1)):D4}/{pc.GetMonth(iranNow.AddMonths(-1)):D2}/{pc.GetDayOfMonth(iranNow.AddMonths(-1)):D2}";
-
-        _showSummary = true;
-        _summaryLoading = true;
-        _billData = null;
-        _billResult = "";
-        _selectedTariffId = Guid.Empty;
-        StateHasChanged();
-        try
-        {
-            if (_data?.Center?.Id != null)
-            {
-                var centerId = _data.Center.Id;
-                await Task.WhenAll(LoadSumData(centerId), LoadTariffs());
-            }
-        }
-        catch { }
-        _summaryLoading = false;
-        StateHasChanged();
-    }
-
-    private async Task LoadSumData(Guid centerId)
-    {
-        try { _sumData = await Http.GetFromJsonAsync<ConsumptionDto>($"api/consumption/{centerId}"); } catch { }
-    }
-
-    private async Task LoadTariffs()
-    {
-        try { _tariffs = await Http.GetFromJsonAsync<List<TariffRef>>("api/tariffs") ?? new(); } catch { _tariffs = new(); }
-    }
-
-    private void ToggleMute(int alarmId)
-    {
-        if (!_silencedAlarms.Add(alarmId))
-            _silencedAlarms.Remove(alarmId);
-        if (_silencedAlarms.Count >= (_data?.ActiveAlarms?.Count ?? 0))
-            _ = JS.InvokeVoidAsync("stopAlarmSound");
-    }
-
-    private void ShowPhaseAlarms(List<AlarmItemDto> alarms, string phase)
-    {
-        _selectedPhaseAlarms = alarms;
-        _selectedPhaseName = phase;
-        _showPhaseAlarms = true;
-    }
-
-    private async Task ResolveAlarm(int alarmId)
-    {
-        try
-        {
-            await Http.PostAsync($"api/alarms/{alarmId}/resolve", null);
-            _silencedAlarms.Remove(alarmId);
-            if (_data?.ActiveAlarms != null)
-            {
-                var alarm = _data.ActiveAlarms.FirstOrDefault(a => a.Id == alarmId);
-                if (alarm != null) alarm.IsResolved = true;
-                _data.ActiveAlarms.RemoveAll(a => a.Id == alarmId);
-                if (_data.ActiveAlarms.Count == 0)
-                    await JS.InvokeVoidAsync("stopAlarmSound");
-            }
-        }
-        catch { }
-    }
-
-    private async Task StopAllAlarmSounds()
-    {
-        if (_data?.ActiveAlarms != null)
-            foreach (var a in _data.ActiveAlarms)
-                _silencedAlarms.Add(a.Id);
-        await JS.InvokeVoidAsync("stopAlarmSound");
-    }
-
-    private async Task CalcBill()
-    {
-        try
-        {
-            var from = await JS.InvokeAsync<string>("getDateInput", "billFrom");
-            var to = await JS.InvokeAsync<string>("getDateInput", "billTo");
-            if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to))
-            {
-                _billResult = "لطفا بازه تاریخ را انتخاب کنید";
-                return;
-            }
-            if (_data?.Center?.Id == null)
-            {
-                _billResult = "مرکز انتخاب نشده است";
-                return;
-            }
-            if (_selectedTariffId == Guid.Empty)
-            {
-                _billResult = "لطفا یک تعرفه انتخاب کنید";
-                return;
-            }
-            _billResult = "در حال محاسبه...";
-            _billData = null;
-            StateHasChanged();
-
-            var req = new
-            {
-                centerId = _data.Center.Id,
-                fromDate = from,
-                toDate = to,
-                tariffId = _selectedTariffId
-            };
-            var resp = await Http.PostAsJsonAsync("api/v2/billing/calculate", req);
-            if (resp.IsSuccessStatusCode)
-            {
-                _billData = await resp.Content.ReadFromJsonAsync<BillingResultDto>();
-                _billResult = "";
-            }
-            else
-            {
-                var err = await resp.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-                _billResult = err?.GetValueOrDefault("error") ?? "خطا در محاسبه";
-            }
-        }
-        catch { _billResult = "خطا در ارتباط با سرور"; }
-    }
-
-    public class CenterRef { public Guid Id { get; set; } public string Name { get; set; } = ""; }
-
-    public class TariffRef
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = "";
-        public bool IsActive { get; set; }
-        public decimal OffPeakRate { get; set; }
-        public decimal MidPeakRate { get; set; }
-        public decimal PeakRate { get; set; }
-        public decimal MonthlyFixedFee { get; set; }
-        public string? RateDerivationMode { get; set; }
-        public string? ConsumerTypeCode { get; set; }
-        public int? Year { get; set; }
     }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Landing Dashboard
+   ═══════════════════════════════════════════ */
+.dash-container{max-width:1100px;margin:0 auto;padding:24px 16px;font-family:var(--font)}
+.dash-welcome{position:relative;border-radius:20px;overflow:hidden;margin-bottom:24px}
+.dash-welcome-bg{position:absolute;inset:0;background:linear-gradient(135deg,#1e293b,#334155,#0f172a);z-index:0}
+.dash-welcome-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 20%,rgba(59,130,246,.15),transparent 60%)}
+.dash-welcome-content{position:relative;z-index:1;display:flex;align-items:center;gap:18px;padding:28px 32px;flex-wrap:wrap}
+.dash-welcome-avatar{width:56px;height:56px;border-radius:16px;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;flex-shrink:0;box-shadow:0 4px 16px rgba(59,130,246,.4)}
+.dash-welcome-text{flex:1;min-width:200px}
+.dash-welcome-title{font-size:22px;font-weight:800;color:#fff;margin:0;line-height:1.3}
+.dash-welcome-sub{font-size:13px;color:rgba(255,255,255,.7);margin:4px 0 0;line-height:1.6}
+.dash-welcome-sub strong{color:#fbbf24}
+.dash-welcome-role{flex-shrink:0}
+.dash-role-badge{display:inline-block;padding:4px 16px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(4px)}
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.dash-stat{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;transition:all .25s}
+.dash-stat:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.08);transform:translateY(-2px)}
+.dash-stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.dash-stat-icon--blue{background:var(--blue-bg);color:var(--blue)}
+.dash-stat-icon--green{background:var(--green-bg);color:var(--green)}
+.dash-stat-icon--gold{background:var(--gold-bg);color:var(--gold)}
+.dash-stat-icon--purple{background:#f0f0ff;color:var(--purple)}
+.dash-stat-body{flex:1}
+.dash-stat-val{font-size:26px;font-weight:800;color:var(--text);line-height:1.1}
+.dash-stat-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.dash-hero{position:relative;border-radius:20px;overflow:hidden;margin-bottom:28px;cursor:pointer;transition:all .3s}
+.dash-hero:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(59,130,246,.25)}
+.dash-hero:active{transform:scale(.98)}
+.dash-hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,#2563eb,#7c3aed,#1e40af);z-index:0}
+.dash-hero-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 80%,rgba(255,255,255,.1),transparent 50%)}
+.dash-hero-content{position:relative;z-index:1;display:flex;align-items:center;gap:20px;padding:32px 36px;flex-wrap:wrap}
+.dash-hero-icon{width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;backdrop-filter:blur(4px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.dash-hero-text{flex:1;min-width:200px}
+.dash-hero-title{font-size:26px;font-weight:800;color:#fff;margin:0;text-shadow:0 2px 8px rgba(0,0,0,.15)}
+.dash-hero-desc{font-size:14px;color:rgba(255,255,255,.8);margin:6px 0 0;line-height:1.6}
+.dash-hero-action{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.dash-hero-btn{display:inline-block;padding:12px 24px;border-radius:12px;background:#fff;color:#2563eb;font-size:14px;font-weight:700;white-space:nowrap;transition:all .2s;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.dash-hero:hover .dash-hero-btn{background:#f0f9ff;transform:translateX(-4px)}
+.dash-hero-arrow{font-size:20px;color:rgba(255,255,255,.6);transition:transform .3s}
+.dash-hero:hover .dash-hero-arrow{transform:translateX(-6px)}
+.dash-feat-title{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px}
+.dash-feat-title-icon{font-size:18px}
+.dash-feats{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.dash-feat{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:var(--bg-card);text-decoration:none;transition:all .25s;position:relative;overflow:hidden}
+.dash-feat:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.dash-feat:active{transform:scale(.97)}
+.dash-feat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:all .3s}
+.dash-feat:hover .dash-feat-icon{transform:scale(1.1) rotate(-5deg)}
+.dash-feat-body{flex:1;min-width:0}
+.dash-feat-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.dash-feat-desc{font-size:11px;color:var(--text-muted);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-feat-arrow{font-size:14px;color:var(--text-muted);transition:all .3s;flex-shrink:0;opacity:0}
+.dash-feat:hover .dash-feat-arrow{opacity:1;color:var(--blue);transform:translateX(-4px)}
+.dash-feat--blue .dash-feat-icon{background:var(--blue-bg);color:var(--blue)}
+.dash-feat--green .dash-feat-icon{background:var(--green-bg);color:var(--green)}
+.dash-feat--gold .dash-feat-icon{background:var(--gold-bg);color:var(--gold)}
+.dash-feat--red .dash-feat-icon{background:var(--red-bg);color:var(--red)}
+.dash-feat--purple .dash-feat-icon{background:#f0f0ff;color:var(--purple)}
+.dash-feat--coral .dash-feat-icon{background:#fff7ed;color:var(--coral)}
+@@media(max-width:768px){
+    .dash-welcome-content{padding:24px 20px;flex-direction:column;text-align:center}
+    .dash-welcome-role{align-self:center}
+    .dash-hero-content{padding:24px 20px;flex-direction:column;text-align:center}
+    .dash-hero-action{width:100%;justify-content:center}
+    .dash-hero-btn{width:100%;text-align:center}
+    .dash-hero-arrow{display:none}
+    .dash-feats{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+}
+@@media(max-width:640px){
+    .dash-container{padding:16px 12px}
+    .dash-welcome-title{font-size:18px}
+    .dash-welcome-sub{font-size:12px}
+    .dash-stats{grid-template-columns:repeat(2,1fr);gap:8px}
+    .dash-stat{padding:12px}
+    .dash-stat-val{font-size:20px}
+    .dash-hero-title{font-size:20px}
+    .dash-hero-desc{font-size:13px}
+    .dash-feats{grid-template-columns:1fr;gap:8px}
+    .dash-feat{padding:12px 14px}
+}
+</style>
