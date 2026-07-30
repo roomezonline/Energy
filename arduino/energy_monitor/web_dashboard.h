@@ -133,6 +133,8 @@ c += ".temp-bar.alert b{color:#b71c1c}";
         c += ".cfg-fld input{width:80px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-weight:600;text-align:center;direction:ltr;outline:none;background:#fafafa;color:#1c1c1e}";
         c += ".cfg-fld input:focus{border-color:#007aff;background:#fff}";
         c += ".cfg-fld input:disabled{background:#f2f2f7;color:#aaa;border-color:#e8e8ed}";
+        c += ".cfg-fld select{width:96px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-weight:600;text-align:center;direction:ltr;outline:none;background:#fafafa;color:#1c1c1e;cursor:pointer}";
+        c += ".cfg-fld select:focus{border-color:#007aff;background:#fff}";
         c += ".cfg-fld .unit{font-size:11px;color:#8e8e93;min-width:20px;text-align:left}";
 
         c += ".cfg-save{width:100%;padding:12px;border:none;border-radius:10px;background:#007aff;color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;display:none}";
@@ -588,6 +590,7 @@ c += ".temp-bar.alert b{color:#b71c1c}";
         // Calibration (single set for all phases)
         h += "\n<div class=cfg-grp>";
         h += "\n<div class=cfg-grp-hd>🔧 Calibration</div>";
+        h += "\n<div class=cfg-fld><label>نوع سنسور</label><select id=sensorType class=cfgIn onchange=onSensorTypeChange()><option value=0>کلمپی (Clamp)</option><option value=1>حلقه‌ای (Ring)</option></select></div>";
         h += "\n<div class=cfg-fld><label>Enable</label><div class=tgl><input type=checkbox id=calEnabled checked onchange=onCalToggle()><span class=sl></span></div></div>";
         h += "\n<div class=cfg-fld><label>Current</label><input type=number id=calCur min=0.1 max=10 step=0.01><span class=unit></span></div>";
         h += "\n<div class=cfg-fld><label>Power</label><input type=number id=calPwr min=0.1 max=10 step=0.01><span class=unit></span></div>";
@@ -683,6 +686,7 @@ c += ".temp-bar.alert b{color:#b71c1c}";
         j += "\n\n$i('calEnr').value=cal.energy;";
         j += "\n\n$i('calOff').value=cal.offset;";
         j += "\n\n}";
+        j += "\n\nif(d.sensorType!==undefined)$i('sensorType').value=d.sensorType;";
         j += "\n\nif(d.calEnabled!==undefined && Date.now()-_lastToggle>2000)$i('calEnabled').checked=d.calEnabled;";
 
         j += "\n\nfor(var i=0;i<fields.length;i++){";
@@ -725,6 +729,20 @@ c += ".temp-bar.alert b{color:#b71c1c}";
         j += "\n\nsaveCalOnly(en)";
         j += "\n\n}";
 
+        // Sensor type change handler — set defaults for the selected type
+        j += "\n\nfunction onSensorTypeChange(){";
+        j += "\n\nvar t=parseInt($i('sensorType').value);";
+        j += "\n\nif(t==1){";
+        j += "\n\n$i('calCur').value=1.0;$i('calPwr').value=1.0;";
+        j += "\n\n$i('calPf').value=1.0;$i('calEnr').value=1.0;";
+        j += "\n\n$i('calOff').value=0;";
+        j += "\n\n}else{";
+        j += "\n\n$i('calCur').value=2.05;$i('calPwr').value=2.10;";
+        j += "\n\n$i('calPf').value=1.02;$i('calEnr').value=1.08;";
+        j += "\n\n$i('calOff').value=0;";
+        j += "\n\n}";
+        j += "\n\n}";
+
         // Save only calEnabled state
         j += "\n\nfunction saveCalOnly(val){";
         j += "\n\nvar x=new XMLHttpRequest();";
@@ -745,6 +763,7 @@ c += ".temp-bar.alert b{color:#b71c1c}";
         // Save calibration values (flat fields — always works regardless of local mode)
         j += "\n\nfunction saveCalCfg(){";
         j += "\n\nvar d={};";
+        j += "\n\nd.sensorType=parseInt($i('sensorType').value)||0;";
         j += "\n\nd.calCurrent=parseFloat($i('calCur').value)||2.05;";
         j += "\n\nd.calPower=parseFloat($i('calPwr').value)||2.10;";
         j += "\n\nd.calPf=parseFloat($i('calPf').value)||1.02;";

@@ -145,7 +145,21 @@ public:
         fv = _extractFloat(json, "\"temperatureThreshold\":", found);
         if (found && fv != _temperatureThreshold) { _temperatureThreshold = fv; _configDirty = true; }
 
-        // Calibration — flat fields (works for both full cal save and calEnabled toggle)
+        // Calibration — handle sensor type change first
+        {
+            bool stFound;
+            int stVal = _extractInt(json, "\"sensorType\":", stFound);
+            if (stFound && stVal != (int)g_sensorType) {
+                // Save current calibration to the old type before switching
+                _saveCalForType(g_sensorType);
+                g_sensorType = (SensorType)stVal;
+                // Load the new type's stored calibration
+                _loadCalForType(g_sensorType);
+                _configDirty = true;
+            }
+        }
+
+        // Calibration values (applied to the now-active type)
         float cfv;
         cfv = _extractFloat(json, "\"calCurrent\":", found); if (found && cfv != g_cal.current) { g_cal.current = cfv; _calDirty = true; }
         cfv = _extractFloat(json, "\"calPower\":", found);   if (found && cfv != g_cal.power) { g_cal.power = cfv; _calDirty = true; }
@@ -190,6 +204,7 @@ public:
         j += ",\"temperatureThreshold\":" + String(_temperatureThreshold, 1);
         j += ",\"source\":\"" + String(_localMode ? "local" : "server") + "\"";
         j += ",\"serverReachable\":" + String(_serverReachable ? "true" : "false");
+        j += ",\"sensorType\":" + String((int)g_sensorType);
         j += ",\"calEnabled\":" + String(g_calEnabled ? "true" : "false");
         j += ",\"cal\":{";
         j += "\"current\":" + String(g_cal.current, 4);
@@ -228,27 +243,40 @@ public:
 
     void loadCalibration() {
         // Always load from NVS (regardless of local mode)
-        float cur = _prefs.getFloat("cal_cur", 2.05f);
-        float pwr = _prefs.getFloat("cal_pwr", 2.10f);
-        float pf  = _prefs.getFloat("cal_pf",  1.02f);
-        float enr = _prefs.getFloat("cal_enr", 1.08f);
-        float off = _prefs.getFloat("cal_off", 0.0f);
-        g_cal.current = cur;
-        g_cal.power   = pwr;
-        g_cal.pf      = pf;
-        g_cal.energy  = enr;
-        g_cal.offset  = off;
+        g_sensorType = (SensorType)_prefs.getUChar("sensorType", SENSOR_CLAMP);
+
+        // Load clamp calibration
+        float clampCur = _prefs.getFloat("cal_cur", 2.05f);
+        float clampPwr = _prefs.getFloat("cal_pwr", 2.10f);
+        float clampPf  = _prefs.getFloat("cal_pf",  1.02f);
+        float clampEnr = _prefs.getFloat("cal_enr", 1.08f);
+        float clampOff = _prefs.getFloat("cal_off", 0.0f);
+
+        // Load ring calibration
+        float ringCur = _prefs.getFloat("ring_cal_cur", 1.0f);
+        float ringPwr = _prefs.getFloat("ring_cal_pwr", 1.0f);
+        float ringPf  = _prefs.getFloat("ring_cal_pf",  1.0f);
+        float ringEnr = _prefs.getFloat("ring_cal_enr", 1.0f);
+        float ringOff = _prefs.getFloat("ring_cal_off", 0.0f);
+
+        // Set active calibration based on sensor type
+        if (g_sensorType == SENSOR_RING) {
+            g_cal.current = ringCur; g_cal.power = ringPwr; g_cal.pf = ringPf;
+            g_cal.energy = ringEnr; g_cal.offset = ringOff;
+        } else {
+            g_cal.current = clampCur; g_cal.power = clampPwr; g_cal.pf = clampPf;
+            g_cal.energy = clampEnr; g_cal.offset = clampOff;
+        }
+
         g_calEnabled  = _prefs.getUChar("calEnabled", 1);  // default: ON
-        LOGF("[CONFIG] Loaded calibration: cur=%.2f pwr=%.2f pf=%.2f enr=%.2f off=%.3f enabled=%d\n",
-             g_cal.current, g_cal.power, g_cal.pf, g_cal.energy, g_cal.offset, g_calEnabled);
+        LOGF("[CONFIG] Loaded calibration (sensor=%d): cur=%.2f pwr=%.2f pf=%.2f enr=%.2f off=%.3f enabled=%d\n",
+             g_sensorType, g_cal.current, g_cal.power, g_cal.pf, g_cal.energy, g_cal.offset, g_calEnabled);
     }
 
     void saveCalibration() {
-        _prefs.putFloat("cal_cur", g_cal.current);
-        _prefs.putFloat("cal_pwr", g_cal.power);
-        _prefs.putFloat("cal_pf",  g_cal.pf);
-        _prefs.putFloat("cal_enr", g_cal.energy);
-        _prefs.putFloat("cal_off", g_cal.offset);
+        // Save current g_cal to the active type's NVS keys
+        _saveCalForType(g_sensorType);
+        _prefs.putUChar("sensorType", (uint8_t)g_sensorType);
         _prefs.putUChar("calEnabled", g_calEnabled ? 1 : 0);
         LOGD("[CONFIG] Calibration saved to NVS");
     }
@@ -285,6 +313,38 @@ private:
         _prefs.putFloat("fMaxThresh", _freqMaxThreshold);
         _prefs.putFloat("hpThresh", _highPowerThreshold);
         _prefs.putFloat("tempThresh", _temperatureThreshold);
+    }
+
+    void _saveCalForType(SensorType t) {
+        if (t == SENSOR_RING) {
+            _prefs.putFloat("ring_cal_cur", g_cal.current);
+            _prefs.putFloat("ring_cal_pwr", g_cal.power);
+            _prefs.putFloat("ring_cal_pf",  g_cal.pf);
+            _prefs.putFloat("ring_cal_enr", g_cal.energy);
+            _prefs.putFloat("ring_cal_off", g_cal.offset);
+        } else {
+            _prefs.putFloat("cal_cur", g_cal.current);
+            _prefs.putFloat("cal_pwr", g_cal.power);
+            _prefs.putFloat("cal_pf",  g_cal.pf);
+            _prefs.putFloat("cal_enr", g_cal.energy);
+            _prefs.putFloat("cal_off", g_cal.offset);
+        }
+    }
+
+    void _loadCalForType(SensorType t) {
+        if (t == SENSOR_RING) {
+            g_cal.current = _prefs.getFloat("ring_cal_cur", 1.0f);
+            g_cal.power   = _prefs.getFloat("ring_cal_pwr", 1.0f);
+            g_cal.pf      = _prefs.getFloat("ring_cal_pf",  1.0f);
+            g_cal.energy  = _prefs.getFloat("ring_cal_enr", 1.0f);
+            g_cal.offset  = _prefs.getFloat("ring_cal_off", 0.0f);
+        } else {
+            g_cal.current = _prefs.getFloat("cal_cur", 2.05f);
+            g_cal.power   = _prefs.getFloat("cal_pwr", 2.10f);
+            g_cal.pf      = _prefs.getFloat("cal_pf",  1.02f);
+            g_cal.energy  = _prefs.getFloat("cal_enr", 1.08f);
+            g_cal.offset  = _prefs.getFloat("cal_off", 0.0f);
+        }
     }
 
     String _extractCalBlock(const String& json) {

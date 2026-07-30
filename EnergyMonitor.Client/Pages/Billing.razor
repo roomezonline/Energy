@@ -462,7 +462,7 @@
                     <div class="bll-fg"><label class="bll-fl">نام تعرفه</label><input class="bll-fi" @bind="_form.Name" /></div>
                     <div class="bll-fg"><label class="bll-fl">وضعیت</label><select class="bll-fi" @bind="_form.IsActive"><option value="@true">فعال</option><option value="@false">غیرفعال</option></select></div>
                     <div class="bll-fg"><label class="bll-fl">توضیحات</label><input class="bll-fi" @bind="_form.Description" /></div>
-                    <div class="bll-fg"><label class="bll-fl">روش محاسبه</label><select class="bll-fi" @bind="_form.RateDerivationMode"><option value="Manual">دستی (ثابت)</option><option value="ECA">خودکار (ECA)</option></select></div>
+                    <div class="bll-fg"><label class="bll-fl">روش محاسبه</label><select class="bll-fi" @bind="_form.RateDerivationMode"><option value="Manual">دستی (ثابت)</option><option value="Automatic">خودکار (ECA)</option></select></div>
                     @if (_form.RateDerivationMode == "ECA")
                     {
                         <div class="bll-fg"><label class="bll-fl">نوع مصرف‌کننده</label><select class="bll-fi" @bind="_form.ConsumerTypeCode"><option value="">انتخاب کنید</option>@foreach (var ct in _consumerTypes) { <option value="@ct.Code">@ct.Name</option> }</select></div>

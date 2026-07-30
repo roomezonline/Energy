@@ -111,7 +111,15 @@ extern bool g_debugDisabled;
 #define LOGF(fmt, ...)  do { char _lb[LOG_LINE_MAX]; snprintf(_lb, sizeof(_lb), fmt, ##__VA_ARGS__); logManager.add(_lb); if (!g_debugDisabled) { Serial.print(_lb); } } while(0)
 
 // ============================================================
-//  Calibration factors (shared for all 3 phases, for clamp sensors)
+//  Sensor type
+// ============================================================
+enum SensorType : uint8_t {
+    SENSOR_CLAMP = 0,
+    SENSOR_RING = 1
+};
+
+// ============================================================
+//  Calibration factors (shared for all 3 phases)
 //  Stored in NVS under "energyCfg" namespace
 //  Default: enabled (g_calEnabled = true)
 // ============================================================
@@ -126,6 +134,7 @@ struct CalibrationFactors {
 
 extern CalibrationFactors g_cal;
 extern bool g_calEnabled;
+extern SensorType g_sensorType;
 
 // ============================================================
 //  Device ID — stored in NVS, controlled by g_saveDeviceId

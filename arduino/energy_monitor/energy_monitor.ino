@@ -55,6 +55,7 @@ String          g_persianTime      = "";
 bool            g_debugDisabled    = false;
 CalibrationFactors g_cal;            // single set for all 3 phases
 bool              g_calEnabled = true;  // default: ON
+SensorType        g_sensorType = SENSOR_CLAMP;
 
 // ============================================================
 //  Device ID — NVS save/load

@@ -35,7 +35,7 @@ public class TariffsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateTariffRequest dto, CancellationToken ct)
     {
-        var mode = dto.RateDerivationMode == "Automatic" ? RateDerivationMode.Automatic : RateDerivationMode.Manual;
+        var mode = dto.RateDerivationMode == "Automatic" || dto.RateDerivationMode == "ECA" ? RateDerivationMode.Automatic : RateDerivationMode.Manual;
         var tariff = new Tariff
         {
             Name = dto.Name,
@@ -76,7 +76,7 @@ public class TariffsController : ControllerBase
 
         tariff.Name = dto.Name;
         tariff.Description = dto.Description;
-        tariff.RateDerivationMode = dto.RateDerivationMode == "Automatic" ? RateDerivationMode.Automatic : RateDerivationMode.Manual;
+        tariff.RateDerivationMode = dto.RateDerivationMode == "Automatic" || dto.RateDerivationMode == "ECA" ? RateDerivationMode.Automatic : RateDerivationMode.Manual;
         tariff.ConsumerTypeCode = string.IsNullOrEmpty(dto.ConsumerTypeCode) ? null : dto.ConsumerTypeCode;
         tariff.Year = dto.Year > 0 ? dto.Year : null;
         if (tariff.RateDerivationMode != RateDerivationMode.Automatic)
