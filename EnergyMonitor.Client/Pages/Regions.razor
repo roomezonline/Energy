@@ -6,44 +6,47 @@
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>مدیریت مناطق</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ منطقه جدید</button>
+<div class="reg-container">
+    <div class="reg-top">
+        <div class="reg-top-l">
+            <span class="reg-icon">🗺️</span>
+            <h2 class="reg-title">مدیریت مناطق</h2>
+        </div>
+        <div class="reg-top-r">
+            <button class="reg-btn reg-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="reg-btn reg-btn-add" @onclick="OpenCreate">+ منطقه جدید</button>
+        </div>
     </div>
 
-    <HelpBox>
-        <p><strong>منطقه</strong> بالاترین سطح جغرافیایی در سیستم است. هر استان به یک منطقه تعلق دارد.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">نام منطقه را وارد کنید — کد به صورت خودکار تولید می‌شود.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">پس از ایجاد منطقه، به بخش <strong>استان‌ها</strong> بروید و استان‌های مربوطه را ثبت کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">سپس به ترتیب <strong>شهرها → مراکز → دستگاه‌ها</strong> را تکمیل کنید.</span></div>
-        <div class="hlp-tip">💡 زنجیره: منطقه ← استان ← شهر ← مرکز ← دستگاه</div>
-    </HelpBox>
-
-    @if (_loading) { <div class="loading-state"><div class="spinner"></div></div> }
+    @if (_loading)
+    {
+        <div class="reg-loading"><div class="reg-spinner"></div></div>
+    }
     else if (_items.Count == 0)
     {
-        <div class="empty-state">
-            <div class="empty-icon">🗺️</div>
-            <div class="empty-title">منطقه‌ای ثبت نشده</div>
+        <div class="reg-empty">
+            <div class="reg-empty-icon">🗺️</div>
+            <div class="reg-empty-t">منطقه‌ای ثبت نشده</div>
+            <div class="reg-empty-d">روی «+ منطقه جدید» کلیک کنید تا اولین منطقه را ایجاد کنید.</div>
         </div>
     }
     else
     {
-        <div class="card-list">
+        <div class="reg-grid">
             @foreach (var item in _items)
             {
-                <div class="card-item">
-                    <div class="card-hdr">
-                        <strong>@item.Name</strong>
-                        <span class="card-tag @(item.IsActive ? "active" : "inactive")">@(item.IsActive ? "فعال" : "غیرفعال")</span>
+                <div class="reg-card @(item.IsActive ? "reg-card--on" : "reg-card--off")">
+                    <div class="reg-card-bar"></div>
+                    <div class="reg-card-body">
+                        <div class="reg-card-top">
+                            <span class="reg-card-name">@item.Name</span>
+                            <span class="reg-card-badge @(item.IsActive ? "reg-badge-on" : "reg-badge-off")">@(item.IsActive ? "فعال" : "غیرفعال")</span>
+                        </div>
+                        <div class="reg-card-code">@item.Code</div>
                     </div>
-                    <div class="card-body">
-                        <div class="card-row"><span>کد</span><span class="ltr">@item.Code</span></div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="card-btn primary" @onclick="() => OpenEdit(item)">ویرایش</button>
-                        <button class="card-btn danger" @onclick="() => ConfirmDelete(item)">حذف</button>
+                    <div class="reg-card-acts">
+                        <button class="reg-btn-sm reg-btn-edit" @onclick="() => OpenEdit(item)">ویرایش</button>
+                        <button class="reg-btn-sm reg-btn-del" @onclick="() => ConfirmDelete(item)">حذف</button>
                     </div>
                 </div>
             }
@@ -51,36 +54,80 @@
     }
 </div>
 
-@if (_showModal)
+@* Help modal *@
+@if (_showHelp)
 {
-    <div class="modal-overlay" @onclick="CloseModal">
-        <div class="modal-card" @onclick:stopPropagation>
-            <div class="modal-hdr">
-                <h3>@(_editingId == Guid.Empty ? "منطقه جدید" : "ویرایش منطقه")</h3>
-                <button class="modal-close" @onclick="CloseModal">&times;</button>
+    <div class="reg-overlay" @onclick="() => _showHelp = false">
+        <div class="reg-modal reg-modal-help" @onclick:stopPropagation>
+            <div class="reg-mh">
+                <span class="reg-mh-icon">📘</span>
+                <span class="reg-mh-t">راهنمای مدیریت مناطق</span>
+                <button class="reg-mh-x" @onclick="() => _showHelp = false">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
-                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" disabled /></div>
-                <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
+            <div class="reg-mb">
+                <p class="reg-mb-intro"><strong>منطقه</strong> بالاترین سطح جغرافیایی در سیستم است. هر استان به یک منطقه تعلق دارد.</p>
+                <div class="reg-mb-step"><span class="reg-step-n">۱</span><span>نام منطقه را وارد کنید — کد به صورت خودکار تولید می‌شود.</span></div>
+                <div class="reg-mb-step"><span class="reg-step-n">۲</span><span>پس از ایجاد منطقه، به بخش <strong>استان‌ها</strong> بروید و استان‌های مربوطه را ثبت کنید.</span></div>
+                <div class="reg-mb-step"><span class="reg-step-n">۳</span><span>سپس به ترتیب <strong>شهرها → مراکز → دستگاه‌ها</strong> را تکمیل کنید.</span></div>
+                <div class="reg-mb-tip">💡 زنجیره: منطقه ← استان ← شهر ← مرکز ← دستگاه</div>
             </div>
-            <div class="modal-ftr">
-                <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
-                <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            <div class="reg-mf">
+                <button class="reg-btn reg-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
             </div>
         </div>
     </div>
 }
 
+@* Create / Edit modal *@
+@if (_showModal)
+{
+    <div class="reg-overlay" @onclick="CloseModal">
+        <div class="reg-modal reg-modal-form" @onclick:stopPropagation>
+            <div class="reg-mh">
+                <span class="reg-mh-t">@(_editingId == Guid.Empty ? "منطقه جدید" : "ویرایش منطقه")</span>
+                <button class="reg-mh-x" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="reg-mb">
+                <div class="reg-fg">
+                    <label class="reg-fl">نام منطقه</label>
+                    <input @bind="_form.Name" class="reg-fi" placeholder="مثلاً منطقه شمال" />
+                </div>
+                <div class="reg-fg">
+                    <label class="reg-fl">کد</label>
+                    <input @bind="_form.Code" class="reg-fi reg-fi-ltr" disabled />
+                </div>
+                <div class="reg-fg">
+                    <label class="reg-fl">وضعیت</label>
+                    <label class="reg-tgl">
+                        <input type="checkbox" @bind="_form.IsActive" />
+                        <span class="reg-tgl-sl"></span>
+                        <span class="reg-tgl-lbl">@(_form.IsActive ? "فعال" : "غیرفعال")</span>
+                    </label>
+                </div>
+            </div>
+            <div class="reg-mf">
+                <button class="reg-btn reg-btn-cancel" @onclick="CloseModal">انصراف</button>
+                <button class="reg-btn reg-btn-save" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Delete confirm modal *@
 @if (_deleteTarget is not null)
 {
-    <div class="modal-overlay" @onclick="() => _deleteTarget = null">
-        <div class="modal-card" @onclick:stopPropagation>
-            <div class="modal-hdr"><h3>حذف منطقه</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
-            <div class="modal-body"><p>آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p></div>
-            <div class="modal-ftr">
-                <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
-                <button class="btn btn-danger" @onclick="DeleteItem">حذف</button>
+    <div class="reg-overlay" @onclick="() => _deleteTarget = null">
+        <div class="reg-modal reg-modal-form" @onclick:stopPropagation>
+            <div class="reg-mh">
+                <span class="reg-mh-t reg-mh-t-del">حذف منطقه</span>
+                <button class="reg-mh-x" @onclick="() => _deleteTarget = null">&times;</button>
+            </div>
+            <div class="reg-mb">
+                <p class="reg-del-msg">آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p>
+            </div>
+            <div class="reg-mf">
+                <button class="reg-btn reg-btn-cancel" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="reg-btn reg-btn-danger" @onclick="DeleteItem">حذف</button>
             </div>
         </div>
     </div>
@@ -88,16 +135,17 @@
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="reg-denied">
+        <div class="reg-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="reg-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
     private List<RegionItem> _items = new();
-    private bool _loading = true, _saving, _showModal;
+    private bool _loading = true, _saving, _showModal, _showHelp;
     private Guid _editingId;
     private RegionForm _form = new();
     private RegionItem? _deleteTarget;
@@ -139,3 +187,129 @@ else
     public class RegionItem { public Guid Id { get; set; } public string Name { get; set; } = ""; public string Code { get; set; } = ""; public bool IsActive { get; set; } = true; }
     public class RegionForm { public string Name { get; set; } = ""; public string Code { get; set; } = ""; public bool IsActive { get; set; } = true; }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Regions page — modern card grid
+   ═══════════════════════════════════════════ */
+.reg-container{max-width:1120px;margin:0 auto;padding:24px 16px}
+.reg-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.reg-top-l{display:flex;align-items:center;gap:10px}
+.reg-icon{font-size:24px}
+.reg-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.reg-top-r{display:flex;gap:8px}
+.reg-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.reg-btn:active{transform:scale(.95)}
+.reg-btn-add{background:var(--grad-blue);color:#fff}
+.reg-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.reg-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.reg-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.reg-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.reg-btn-cancel:hover{background:var(--bg-alt)}
+.reg-btn-save{background:var(--grad-blue);color:#fff}
+.reg-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.reg-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.reg-btn-danger{background:var(--red);color:#fff}
+.reg-btn-danger:hover{box-shadow:var(--shadow-red);transform:translateY(-1px)}
+.reg-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.reg-btn-sm:active{transform:scale(.93)}
+
+.reg-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.reg-btn-edit:hover{background:var(--blue);color:#fff}
+.reg-btn-del{background:var(--red-bg);color:var(--red)}
+.reg-btn-del:hover{background:var(--red);color:#fff}
+
+/* Loading */
+.reg-loading{text-align:center;padding:80px 20px}
+.reg-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:reg-spin .7s linear infinite;margin:0 auto}
+@@keyframes reg-spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.reg-empty{text-align:center;padding:60px 20px}
+.reg-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.reg-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.reg-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.reg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.reg-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.reg-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.reg-card:active{transform:scale(.97)}
+.reg-card-bar{height:4px;flex-shrink:0}
+.reg-card--on .reg-card-bar{background:var(--grad-green)}
+.reg-card--off .reg-card-bar{background:#d1d5db}
+.reg-card-body{padding:16px 16px 12px;flex:1}
+.reg-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.reg-card-name{font-size:15px;font-weight:700;color:var(--text)}
+.reg-card-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.reg-badge-on{background:var(--green-bg);color:var(--green)}
+.reg-badge-off{background:var(--red-bg);color:var(--red)}
+.reg-card-code{direction:ltr;font-size:13px;font-weight:600;color:var(--text-secondary);letter-spacing:.5px}
+.reg-card-acts{display:flex;gap:6px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+
+/* Overlay + modal */
+.reg-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:reg-fade .2s ease}
+@@keyframes reg-fade{from{opacity:0}to{opacity:1}}
+.reg-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:reg-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes reg-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.reg-modal-form{max-width:420px}
+.reg-modal-help{max-width:500px}
+.reg-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.reg-mh-icon{font-size:18px}
+.reg-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.reg-mh-t-del{color:var(--red)}
+.reg-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.reg-mh-x:hover{background:var(--bg);color:var(--text)}
+.reg-mb{padding:16px 20px}
+.reg-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.reg-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.reg-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.reg-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.reg-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.reg-fg{margin-bottom:16px}
+.reg-fg:last-child{margin-bottom:0}
+.reg-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.reg-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.reg-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.reg-fi::placeholder{color:var(--text-muted)}
+.reg-fi:disabled{background:var(--bg);color:var(--text-muted);cursor:not-allowed}
+.reg-fi-ltr{direction:ltr;text-align:right}
+.reg-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.reg-tgl input{opacity:0;width:0;height:0}
+.reg-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.reg-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.reg-tgl input:checked+.reg-tgl-sl{background:var(--grad-blue)}
+.reg-tgl input:checked+.reg-tgl-sl::before{transform:translateX(18px)}
+.reg-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.reg-del-msg{font-size:14px;line-height:1.7;color:var(--text)}
+
+/* Access denied */
+.reg-denied{text-align:center;padding:80px 20px;color:#888}
+.reg-denied-icon{font-size:48px;margin-bottom:12px}
+.reg-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.reg-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.reg-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.reg-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .reg-container{padding:16px 12px}
+    .reg-top{flex-direction:column;align-items:stretch;gap:10px}
+    .reg-top-r{justify-content:space-between}
+    .reg-title{font-size:16px}
+    .reg-grid{grid-template-columns:1fr;gap:10px}
+    .reg-card-body{padding:14px 14px 10px}
+    .reg-card-acts{padding:8px 14px}
+    .reg-card-name{font-size:14px}
+    .reg-btn{padding:8px 14px;font-size:12px}
+    .reg-modal-form,.reg-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .reg-mh{padding:14px 16px 12px}
+    .reg-mb{padding:12px 16px}
+    .reg-mf{padding:10px 16px 14px}
+    .reg-mb-step{font-size:12px}
+    .reg-empty{padding:40px 16px}
+    .reg-mb-intro{font-size:12px}
+}
+</style>
