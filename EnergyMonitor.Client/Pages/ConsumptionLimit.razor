@@ -1,0 +1,171 @@
+@page "/limits"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject AuthService Auth
+
+@if (Auth.IsInRole("Admin"))
+{
+<div class="page-container">
+    <div class="page-toolbar">
+        <h2>محدودیت مصرف</h2>
+        <button class="btn btn-primary" @onclick="OpenCreate">+ محدودیت جدید</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div></div>
+    }
+    else
+    {
+        <div class="form-row">
+            <label>مرکز</label>
+            <select class="form-select" value="@_selectedCenterId" @onchange="OnCenterChanged">
+                @foreach (var c in _centers) { <option value="@c.Id">@c.Name</option> }
+            </select>
+        </div>
+
+        <div class="card-list" style="margin-top:1rem">
+            @foreach (var l in _limits)
+            {
+                <div class="card-item">
+                    <div class="card-hdr">
+                        <h3>@l.LimitType - @l.PeriodType</h3>
+                        <span class="status-@(l.IsActive ? "active" : "inactive")">@(l.IsActive ? "فعال" : "غیرفعال")</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row"><span>حداکثر مجاز</span><span>@l.MaxValue.ToString("N2")</span></div>
+                        <div class="card-row"><span>آستانه هشدار</span><span>@l.AlertThresholdPercent%</span></div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-sm" @onclick="() => OpenEdit(l)">ویرایش</button>
+                        <button class="btn-sm danger" @onclick="() => ConfirmDelete(l)">حذف</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+    @if (_showModal)
+    {
+        <div class="modal-overlay" @onclick="() => _showModal = false">
+            <div class="modal-card" @onclick:stopPropagation>
+                <div class="modal-hdr">
+                    <h3>@(_editingId == Guid.Empty ? "محدودیت جدید" : "ویرایش محدودیت")</h3>
+                    <button class="modal-close" @onclick="() => _showModal = false">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row"><label>نوع محدودیت</label><select @bind="_form.LimitType" class="form-select"><option>Consumption</option><option>Power</option></select></div>
+                    <div class="form-row"><label>دوره</label><select @bind="_form.PeriodType" class="form-select"><option>Daily</option><option>Monthly</option></select></div>
+                    <div class="form-row"><label>حداکثر مجاز</label><input @bind="_form.MaxValue" type="number" class="form-input ltr" /></div>
+                    <div class="form-row"><label>آستانه هشدار (%)</label><input @bind="_form.AlertThresholdPercent" type="number" class="form-input ltr" /></div>
+                    <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
+                </div>
+                <div class="modal-ftr">
+                    <button class="btn btn-secondary" @onclick="() => _showModal = false">انصراف</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_deleteTarget is not null)
+    {
+        <div class="modal-overlay" @onclick="() => _deleteTarget = null">
+            <div class="modal-card" @onclick:stopPropagation>
+                <div class="modal-hdr"><h3>حذف محدودیت</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
+                <div class="modal-body"><p>آیا اطمینان دارید؟</p></div>
+                <div class="modal-ftr">
+                    <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
+                    <button class="btn btn-danger" @onclick="DeleteLimit">حذف</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div style="text-align:center;padding:4rem 1rem;color:#888">
+        <h3>🔒 دسترسی محدود</h3>
+        <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
+        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+    </div>
+}
+
+@code {
+    private bool _loading = true, _saving, _showModal;
+    private Guid _editingId;
+    private List<CenterRef> _centers = new();
+    private Guid _selectedCenterId;
+    private List<LimitItem> _limits = new();
+    private LimitForm _form = new();
+    private LimitItem? _deleteTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsInRole("Admin"))
+        {
+            try
+            {
+                _centers = await Http.GetFromJsonAsync<List<CenterRef>>("api/v2/centers") ?? new();
+                if (_centers.Count > 0) { _selectedCenterId = _centers[0].Id; await LoadLimits(); }
+            }
+            catch { }
+            _loading = false;
+        }
+    }
+
+    private async Task OnCenterChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        { _selectedCenterId = id; await LoadLimits(); StateHasChanged(); }
+    }
+
+    private async Task LoadLimits()
+    {
+        try
+        {
+            _limits = await Http.GetFromJsonAsync<List<LimitItem>>($"api/v2/limits/by-center/{_selectedCenterId}") ?? new();
+        }
+        catch { }
+    }
+
+    private void OpenCreate() { _editingId = Guid.Empty; _form = new(); _showModal = true; }
+
+    private void OpenEdit(LimitItem l)
+    {
+        _editingId = l.Id;
+        _form = new LimitForm { LimitType = l.LimitType, PeriodType = l.PeriodType, MaxValue = l.MaxValue, AlertThresholdPercent = l.AlertThresholdPercent, IsActive = l.IsActive };
+        _showModal = true;
+    }
+
+    private void ConfirmDelete(LimitItem l) => _deleteTarget = l;
+
+    private async Task Save()
+    {
+        _saving = true;
+        try
+        {
+            _form.CenterId = _selectedCenterId;
+            HttpResponseMessage resp;
+            if (_editingId == Guid.Empty)
+                resp = await Http.PostAsJsonAsync("api/v2/limits", _form);
+            else
+                resp = await Http.PutAsJsonAsync($"api/v2/limits/{_editingId}", _form);
+            if (resp.IsSuccessStatusCode) { _showModal = false; await LoadLimits(); }
+        }
+        catch { }
+        finally { _saving = false; }
+    }
+
+    private async Task DeleteLimit()
+    {
+        if (_deleteTarget is null) return;
+        try { await Http.DeleteAsync($"api/v2/limits/{_deleteTarget.Id}"); _deleteTarget = null; await LoadLimits(); } catch { }
+    }
+
+    public class CenterRef { public Guid Id { get; set; } public string Name { get; set; } = ""; }
+    public class LimitItem { public Guid Id { get; set; } public Guid CenterId { get; set; } public string LimitType { get; set; } = ""; public string PeriodType { get; set; } = ""; public double MaxValue { get; set; } public double AlertThresholdPercent { get; set; } public bool IsActive { get; set; } }
+    public class LimitForm { public Guid CenterId { get; set; } public string LimitType { get; set; } = "Consumption"; public string PeriodType { get; set; } = "Monthly"; public double MaxValue { get; set; } public double AlertThresholdPercent { get; set; } = 80; public bool IsActive { get; set; } = true; }
+}

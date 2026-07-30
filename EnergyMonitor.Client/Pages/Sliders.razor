@@ -1,0 +1,182 @@
+@page "/sliders/manage"
+@page "/sliders"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthService Auth
+@inject ToastService Toast
+
+@if (Auth.IsInRole("Admin"))
+{
+<div class="page-container">
+    <div class="page-toolbar">
+        <h2>مدیریت اسلایدرها</h2>
+        <button class="btn btn-primary" @onclick="OpenCreate">+ اسلایدر جدید</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div></div>
+    }
+    else
+    {
+        <div class="slider-grid">
+            @foreach (var s in _items)
+            {
+                <div class="slider-card">
+                    <div class="slider-img">
+                        @if (!string.IsNullOrEmpty(s.ImageUrl))
+                        {
+                            <img src="@s.ImageUrl" alt="@s.Title" />
+                        }
+                    </div>
+                    <div class="slider-info">
+                        <div class="slider-title">@s.Title</div>
+                        <div class="slider-meta">
+                            <span>ترتیب: @s.SortOrder</span>
+                            <span class="status-@(s.IsActive ? "active" : "inactive")">@(s.IsActive ? "فعال" : "غیرفعال")</span>
+                        </div>
+                        <div class="slider-actions">
+                            <button class="btn-sm" @onclick="() => OpenEdit(s)">ویرایش</button>
+                            <button class="btn-sm danger" @onclick="() => ConfirmDelete(s)">حذف</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_showModal)
+    {
+        <div class="modal-overlay" @onclick="CloseModal">
+            <div class="modal-card" @onclick:stopPropagation>
+                <div class="modal-hdr">
+                    <h3>@(_editingId == Guid.Empty ? "اسلایدر جدید" : "ویرایش اسلایدر")</h3>
+                    <button class="modal-close" @onclick="CloseModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row"><label>عنوان</label><input @bind="_title" class="form-input" /></div>
+                    <div class="form-row"><label>ترتیب</label><input @bind="_sortOrder" type="number" inputmode="numeric" class="form-input ltr" /></div>
+                    <div class="form-row">
+                        <label>فعال</label>
+                        <label class="tgl"><input type="checkbox" @bind="_isActive" /><span class="sl"></span></label>
+                    </div>
+                    <div class="form-row">
+                        <label>تصویر</label>
+                        <div class="upload-zone">
+                            <InputFile OnChange="OnFileSelected" accept="image/*" />
+                            @if (_previewImage != null)
+                            {
+                                <img src="@_previewImage" class="upload-preview" alt="" />
+                            }
+                            else
+                            {
+                                <div class="upload-placeholder">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4361ee" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    <span>انتخاب تصویر</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-ftr">
+                    <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "در حال ذخیره..." : "ذخیره")</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+}
+else
+{
+    <div style="text-align:center;padding:4rem 1rem;color:#888">
+        <h3>🔒 دسترسی محدود</h3>
+        <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
+        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+    </div>
+}
+
+@code {
+    private List<SliderItem> _items = new();
+    private bool _loading = true, _saving, _showModal;
+    private Guid _editingId = Guid.Empty;
+    private string _title = "";
+    private int _sortOrder;
+    private bool _isActive = true;
+    private string? _previewImage;
+    private IBrowserFile? _selectedFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsInRole("Admin")) await Load();
+    }
+
+    private async Task Load()
+    {
+        _loading = true; StateHasChanged();
+        try { _items = await Http.GetFromJsonAsync<List<SliderItem>>("api/v2/sliders/admin") ?? new(); } catch { }
+        _loading = false; StateHasChanged();
+    }
+
+    private void OpenCreate()
+    {
+        _editingId = Guid.Empty; _title = ""; _sortOrder = _items.Count; _isActive = true;
+        _previewImage = null; _selectedFile = null; _showModal = true;
+    }
+
+    private void OpenEdit(SliderItem s)
+    {
+        _editingId = s.Id; _title = s.Title ?? ""; _sortOrder = s.SortOrder; _isActive = s.IsActive;
+        _previewImage = s.ImageUrl; _selectedFile = null; _showModal = true;
+    }
+
+    private void CloseModal() { _showModal = false; }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        if (_selectedFile != null)
+        {
+            var buffer = new byte[_selectedFile.Size];
+            await _selectedFile.OpenReadStream(maxAllowedSize: 5_242_880).ReadAsync(buffer);
+            _previewImage = $"data:{_selectedFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
+    }
+
+    private async Task Save()
+    {
+        _saving = true; StateHasChanged();
+        try
+        {
+            var form = new MultipartFormDataContent();
+            form.Add(new StringContent(_title ?? ""), "Title");
+            form.Add(new StringContent(_sortOrder.ToString()), "SortOrder");
+            form.Add(new StringContent(_isActive.ToString().ToLower()), "IsActive");
+            if (_selectedFile != null)
+            {
+                var stream = _selectedFile.OpenReadStream(maxAllowedSize: 5_242_880);
+                form.Add(new StreamContent(stream), "Image", _selectedFile.Name);
+            }
+            HttpResponseMessage resp;
+            if (_editingId == Guid.Empty)
+                resp = await Http.PostAsync("api/v2/sliders", form);
+            else
+                resp = await Http.PutAsync($"api/v2/sliders/{_editingId}", form);
+            if (resp.IsSuccessStatusCode) { _showModal = false; await Load(); Toast.ShowSuccess(_editingId == Guid.Empty ? "اسلایدر با موفقیت ایجاد شد" : "اسلایدر با موفقیت ویرایش شد"); }
+            else { Toast.ShowError("خطا در ذخیره اسلایدر"); }
+        }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
+        _saving = false; StateHasChanged();
+    }
+
+    private async Task ConfirmDelete(SliderItem s)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"حذف اسلایدر «{s.Title}»؟")) return;
+        try { await Http.DeleteAsync($"api/v2/sliders/{s.Id}"); await Load(); Toast.ShowSuccess("اسلایدر با موفقیت حذف شد"); } catch { Toast.ShowError("خطا در حذف اسلایدر"); }
+    }
+
+    public class SliderItem { public Guid Id { get; set; } public string? Title { get; set; } public string? ImageUrl { get; set; } public int SortOrder { get; set; } public bool IsActive { get; set; } public DateTime CreatedAt { get; set; }
+    }
+}

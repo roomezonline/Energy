@@ -1,0 +1,234 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject AuthService Auth
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="layout @(_sidebarOpen ? "menu-open" : "")">
+    <div class="sidebar-overlay" @onclick="ToggleSidebar"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">⚡</div>
+            <div class="sidebar-title">انرژی‌کال</div>
+            <div class="sidebar-sub">سیستم پایش هوشمند</div>
+        </div>
+        @if (Auth.IsLoggedIn)
+        {
+            <div class="sidebar-user">
+                <span class="user-name">@Auth.CurrentUser!.Username</span>
+                <span class="user-role">@Auth.CurrentUser.Role</span>
+            </div>
+        }
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item @(IsActive("/dashboard") ? "active" : "")">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">داشبورد</span>
+            </a>
+            @if (Auth.IsInRole("Admin"))
+            {
+                <a href="/regions" class="nav-item @(IsActive("/regions") ? "active" : "")">
+                    <span class="nav-icon">🗺️</span><span class="nav-text">مناطق</span>
+                </a>
+                <a href="/provinces" class="nav-item @(IsActive("/provinces") ? "active" : "")">
+                    <span class="nav-icon">📍</span><span class="nav-text">استان‌ها</span>
+                </a>
+                <a href="/cities" class="nav-item @(IsActive("/cities") ? "active" : "")">
+                    <span class="nav-icon">🏙️</span><span class="nav-text">شهرها</span>
+                </a>
+                <a href="/centers" class="nav-item @(IsActive("/centers") ? "active" : "")">
+                    <span class="nav-icon">🏢</span><span class="nav-text">مراکز</span>
+                </a>
+                <a href="/device-groups" class="nav-item @(IsActive("/device-groups") ? "active" : "")">
+                    <span class="nav-icon">📁</span><span class="nav-text">گروه دستگاه</span>
+                </a>
+                <a href="/devices" class="nav-item @(IsActive("/devices") ? "active" : "")">
+                    <span class="nav-icon">📟</span><span class="nav-text">مدیریت دستگاه‌ها</span>
+                </a>
+                <a href="/config" class="nav-item @(IsActive("/config") ? "active" : "")">
+                    <span class="nav-icon">⚙</span><span class="nav-text">تنظیمات دستگاه</span>
+                </a>
+                <a href="/alarms" class="nav-item @(IsActive("/alarms") ? "active" : "")">
+                    <span class="nav-icon">🔔</span><span class="nav-text">مدیریت هشدارها</span>
+                </a>
+                <a href="/billing/tariffs" class="nav-item @(IsActive("/billing/tariffs") ? "active" : "")">
+                    <span class="nav-icon">💰</span><span class="nav-text">مدیریت تعرفه‌ها</span>
+                </a>
+                <a href="/billing" class="nav-item @(IsActive("/billing") ? "active" : "")">
+                    <span class="nav-icon">🧾</span><span class="nav-text">صورتحساب</span>
+                </a>
+                <a href="/reports" class="nav-item @(IsActive("/reports") ? "active" : "")">
+                    <span class="nav-icon">📈</span><span class="nav-text">گزارش مصرف</span>
+                </a>
+                <a href="/limits" class="nav-item @(IsActive("/limits") ? "active" : "")">
+                    <span class="nav-icon">⛔</span><span class="nav-text">محدودیت مصرف</span>
+                </a>
+                <a href="/news/manage" class="nav-item @(IsActive("/news/manage") ? "active" : "")">
+                    <span class="nav-icon">📰</span><span class="nav-text">مدیریت اخبار</span>
+                </a>
+                <a href="/sliders/manage" class="nav-item @(IsActive("/sliders") ? "active" : "")">
+                    <span class="nav-icon">🖼</span><span class="nav-text">مدیریت اسلایدر</span>
+                </a>
+                @if (Auth.CurrentUser?.Role == "SuperAdmin")
+                {
+                    <hr class="nav-divider" />
+                    <a href="/users" class="nav-item @(IsActive("/users") ? "active" : "")">
+                        <span class="nav-icon">👥</span><span class="nav-text">مدیریت کاربران</span>
+                    </a>
+                }
+            }
+            else if (Auth.IsLoggedIn)
+            {
+                <a href="/centers" class="nav-item @(IsActive("/centers") ? "active" : "")">
+                    <span class="nav-icon">🏢</span><span class="nav-text">مراکز</span>
+                </a>
+                <a href="/billing" class="nav-item @(IsActive("/billing") ? "active" : "")">
+                    <span class="nav-icon">🧾</span><span class="nav-text">صورتحساب</span>
+                </a>
+            }
+        </nav>
+        <div class="sidebar-footer">
+            @if (Auth.IsLoggedIn)
+            {
+                <button class="btn btn-logout" @onclick="Logout">خروج</button>
+            }
+            <div class="sidebar-version">v3.0</div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <button class="hamburger" @onclick="ToggleSidebar" aria-label="منو">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="topbar-title">@_pageTitle</div>
+            <div class="topbar-datetime">
+                <span class="topbar-clock" id="clock-display">--:--:--</span>
+                <span class="topbar-date" id="date-display">----/--/--</span>
+            </div>
+        </header>
+
+        <div class="content-area">
+            @Body
+        </div>
+    </main>
+
+    @* Bottom Navigation — Mobile *@
+    <nav class="bottom-nav">
+        <a href="/dashboard" class="bottom-nav-item @(IsActive("/dashboard") ? "active" : "")">
+            <span class="bn-icon">📊</span>
+            <span class="bn-label">داشبورد</span>
+        </a>
+        @if (Auth.IsInRole("Admin"))
+        {
+            <a href="/devices" class="bottom-nav-item @(IsActive("/devices") ? "active" : "")">
+                <span class="bn-icon">📟</span>
+                <span class="bn-label">دستگاه‌ها</span>
+            </a>
+            <a href="/alarms" class="bottom-nav-item @(IsActive("/alarms") ? "active" : "")">
+                <span class="bn-icon">🔔</span>
+                <span class="bn-label">هشدارها</span>
+            </a>
+            <a href="/billing" class="bottom-nav-item @(IsActive("/billing") ? "active" : "")">
+                <span class="bn-icon">🧾</span>
+                <span class="bn-label">صورتحساب</span>
+            </a>
+        }
+        else
+        {
+            <a href="/centers" class="bottom-nav-item @(IsActive("/centers") ? "active" : "")">
+                <span class="bn-icon">🏢</span>
+                <span class="bn-label">مراکز</span>
+            </a>
+            <a href="/billing" class="bottom-nav-item @(IsActive("/billing") ? "active" : "")">
+                <span class="bn-icon">🧾</span>
+                <span class="bn-label">صورتحساب</span>
+            </a>
+        }
+    </nav>
+</div>
+
+<Toast />
+
+@code {
+    private bool _sidebarOpen = false;
+    private string _pageTitle = "داشبورد";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        Auth.StateChanged += OnAuthStateChanged;
+        UpdateTitle();
+        await Task.Delay(100);
+        if (!Auth.IsLoggedIn && IsProtectedPage())
+            Nav.NavigateTo("/login", true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var width = await JS.InvokeAsync<int>("getViewportWidth");
+            if (width < 768) _sidebarOpen = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsActive(string path) => Nav.Uri.Contains(path);
+
+    private bool IsProtectedPage()
+    {
+        var uri = Nav.Uri;
+        return uri.Contains("/dashboard") || uri.Contains("/centers") || uri.Contains("/devices") || uri.Contains("/config")
+            || uri.Contains("/alarms") || uri.Contains("/billing") || uri.Contains("/reports")
+            || uri.Contains("/limits") || uri.Contains("/news") || uri.Contains("/sliders")
+            || uri.Contains("/regions") || uri.Contains("/provinces") || uri.Contains("/cities")
+            || uri.Contains("/device-groups") || uri.Contains("/users");
+    }
+
+    private void OnAuthStateChanged() => StateHasChanged();
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _sidebarOpen = false;
+        UpdateTitle();
+        if (!Auth.IsLoggedIn && IsProtectedPage())
+            Nav.NavigateTo("/login", true);
+        StateHasChanged();
+    }
+
+    private void UpdateTitle()
+    {
+        var uri = Nav.Uri;
+        if (uri.Contains("/users")) _pageTitle = "مدیریت کاربران";
+        else if (uri.Contains("/regions")) _pageTitle = "مناطق";
+        else if (uri.Contains("/provinces")) _pageTitle = "استان‌ها";
+        else if (uri.Contains("/cities")) _pageTitle = "شهرها";
+        else if (uri.Contains("/device-groups")) _pageTitle = "گروه‌های دستگاه";
+        else if (uri.Contains("/news/manage")) _pageTitle = "مدیریت اخبار";
+        else if (uri.Contains("/sliders")) _pageTitle = "اسلایدر";
+        else if (uri.Contains("/billing/tariffs")) _pageTitle = "تعرفه‌ها";
+        else if (uri.Contains("/billing")) _pageTitle = "صورتحساب";
+        else if (uri.Contains("/centers")) _pageTitle = "مراکز";
+        else if (uri.Contains("/devices")) _pageTitle = "دستگاه‌ها";
+        else if (uri.Contains("/config")) _pageTitle = "تنظیمات";
+        else if (uri.Contains("/alarms")) _pageTitle = "هشدارها";
+        else if (uri.Contains("/reports")) _pageTitle = "گزارش مصرف";
+        else if (uri.Contains("/limits")) _pageTitle = "محدودیت مصرف";
+        else if (uri.Contains("/dashboard")) _pageTitle = "داشبورد";
+        else _pageTitle = "داشبورد";
+    }
+
+    private async Task Logout() => await Auth.LogoutAsync();
+
+    private async Task ToggleSidebar()
+    {
+        _sidebarOpen = !_sidebarOpen;
+        await JS.InvokeVoidAsync("closeSummary");
+    }
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        Auth.StateChanged -= OnAuthStateChanged;
+    }
+}

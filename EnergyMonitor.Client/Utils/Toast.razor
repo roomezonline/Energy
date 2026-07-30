@@ -1,0 +1,38 @@
+@using EnergyMonitor.Client.Services
+@inject ToastService ToastSvc
+
+<div class="toast-container">
+    @foreach (var t in ToastSvc.Toasts)
+    {
+        <div class="toast toast-@_cssClass(t.Type)" @onclick="() => ToastSvc.Remove(t.Id)">
+            <div class="toast-icon">@_icon(t.Type)</div>
+            <div class="toast-msg">@t.Message</div>
+            <div class="toast-close">&times;</div>
+        </div>
+    }
+</div>
+
+@code {
+    private string _cssClass(ToastType t) => t switch
+    {
+        ToastType.Success => "success",
+        ToastType.Error => "error",
+        ToastType.Warning => "warning",
+        ToastType.Info => "info",
+        _ => "info"
+    };
+
+    private string _icon(ToastType t) => t switch
+    {
+        ToastType.Success => "✓",
+        ToastType.Error => "✕",
+        ToastType.Warning => "⚠",
+        ToastType.Info => "ℹ",
+        _ => "ℹ"
+    };
+
+    protected override void OnInitialized()
+    {
+        ToastSvc.OnChanged += StateHasChanged;
+    }
+}

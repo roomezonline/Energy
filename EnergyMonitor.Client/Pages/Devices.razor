@@ -1,0 +1,263 @@
+@page "/devices"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject AuthService Auth
+@inject ToastService Toast
+
+@if (Auth.IsInRole("Admin"))
+{
+<div class="page-container">
+    <div class="page-toolbar">
+        <h2>مدیریت دستگاه‌ها</h2>
+        <button class="btn btn-primary" @onclick="OpenCreate">+ دستگاه جدید</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div></div>
+    }
+    else if (_devices.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon">📡</div>
+            <div class="empty-title">دستگاهی ثبت نشده</div>
+            <div class="empty-hint">با کلیک روی «+ دستگاه جدید» اولین دستگاه را اضافه کنید.</div>
+        </div>
+    }
+    else
+    {
+        <div class="card-list">
+            @foreach (var d in _devices)
+            {
+                <div class="card-item">
+                    <div class="card-hdr">
+                        <h3>@d.DisplayName</h3>
+                        <span class="card-tag @(d.IsActive ? "active" : "inactive")">@(d.IsActive ? "فعال" : "غیرفعال")</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row"><span>شناسه</span><span class="ltr">@d.DeviceId</span></div>
+                        <div class="card-row"><span>MAC</span><span class="ltr">@(d.MacAddress ?? "---")</span></div>
+                        <div class="card-row"><span>مرکز</span><span>@d.CenterName</span></div>
+                        <div class="card-row"><span>موقعیت</span><span>@(d.Location ?? "---")</span></div>
+                        <div class="card-row"><span>فازها</span><span>@d.PhaseCount</span></div>
+                        <div class="card-row"><span>آخرین ارتباط</span><span>@(d.LastSeenAt?.ToPersianDateTime() ?? "---")</span></div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="card-btn primary" @onclick="() => OpenEdit(d)">ویرایش</button>
+                        <button class="card-btn danger" @onclick="() => ConfirmDelete(d)">حذف</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+    @* Create / Edit modal *@
+    @if (_showForm)
+    {
+        <div class="modal-overlay" @onclick="CloseForm">
+            <div class="modal-card" @onclick:stopPropagation>
+                <div class="modal-hdr">
+                    <h3>@(_editing is null ? "دستگاه جدید" : "ویرایش دستگاه")</h3>
+                    <button class="modal-close" @onclick="CloseForm">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label>شناسه</label>
+                        <input @bind="_form.DeviceId" class="form-input ltr" placeholder="مثلاً DEV-001" />
+                    </div>
+                    <div class="form-row">
+                        <label>نام</label>
+                        <input @bind="_form.DisplayName" class="form-input" placeholder="نام نمایشی" />
+                    </div>
+                    <div class="form-row">
+                        <label>MAC</label>
+                        <input @bind="_form.MacAddress" class="form-input ltr" placeholder="اختیاری" />
+                    </div>
+                    <div class="form-row">
+                        <label>مرکز</label>
+                        <select @bind="_form.CenterId" class="form-input">
+                            <option value="@Guid.Empty">انتخاب مرکز</option>
+                            @foreach (var c in _centers)
+                            {
+                                <option value="@c.Id">@c.Name (@c.Code)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>موقعیت</label>
+                        <input @bind="_form.Location" class="form-input" placeholder="اختیاری" />
+                    </div>
+                    <div class="form-row">
+                        <label>تعداد فاز</label>
+                        <select @bind="_form.PhaseCount" class="form-input inline">
+                            <option value="1">1 فاز</option>
+                            <option value="3">3 فاز</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>فعال</label>
+                        <label class="tgl">
+                            <input type="checkbox" @bind="_form.IsActive" />
+                            <span class="sl"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-ftr">
+                    <button class="btn btn-secondary" @onclick="CloseForm">انصراف</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || string.IsNullOrWhiteSpace(_form.DeviceId) || string.IsNullOrWhiteSpace(_form.DisplayName) || _form.CenterId == Guid.Empty)">@(_saving ? "..." : "ذخیره")</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Delete confirm *@
+    @if (_deleteTarget is not null)
+    {
+        <div class="modal-overlay" @onclick="() => _deleteTarget = null">
+            <div class="modal-card" @onclick:stopPropagation>
+                <div class="modal-hdr"><h3>حذف دستگاه</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
+                <div class="modal-body">
+                    <p>آیا از حذف دستگاه <strong>@_deleteTarget.DisplayName</strong> اطمینان دارید؟</p>
+                </div>
+                <div class="modal-ftr">
+                    <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
+                    <button class="btn btn-danger" @onclick="DeleteDevice">حذف</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div style="text-align:center;padding:4rem 1rem;color:#888">
+        <h3>🔒 دسترسی محدود</h3>
+        <p>شما به این بخش دسترسی ندارید.</p>
+        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+    </div>
+}
+
+@code {
+    private List<RawDevice> _devices = new();
+    private List<CenterRef> _centers = new();
+    private bool _loading = true, _saving, _showForm;
+    private RawDevice? _editing;
+    private DeviceForm _form = new();
+    private RawDevice? _deleteTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsInRole("Admin")) await Load();
+    }
+
+    private async Task Load()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            _centers = await Http.GetFromJsonAsync<List<CenterRef>>("api/v2/centers") ?? new();
+            _devices = await Http.GetFromJsonAsync<List<RawDevice>>("api/v2/devices") ?? new();
+            _devices.ForEach(d => d.CenterName = _centers.FirstOrDefault(c => c.Id == d.CenterId)?.Name ?? "");
+        }
+        catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private void OpenCreate() { _editing = null; _form = new(); _showForm = true; }
+    private void OpenEdit(RawDevice d)
+    {
+        _editing = d;
+        _form = new DeviceForm
+        {
+            DeviceId = d.DeviceId, DisplayName = d.DisplayName,
+            MacAddress = d.MacAddress ?? "", CenterId = d.CenterId,
+            Location = d.Location ?? "", IsActive = d.IsActive, PhaseCount = d.PhaseCount
+        };
+        _showForm = true;
+    }
+    private void CloseForm() { _showForm = false; }
+
+    private void ConfirmDelete(RawDevice d) => _deleteTarget = d;
+
+    private async Task Save()
+    {
+        _saving = true;
+        try
+        {
+            HttpResponseMessage resp;
+            if (_editing is null)
+                resp = await Http.PostAsJsonAsync("api/v2/devices", _form);
+            else
+                resp = await Http.PutAsJsonAsync($"api/v2/devices/{_editing.Id}", _form);
+            if (resp.IsSuccessStatusCode)
+            {
+                _showForm = false;
+                Toast.ShowSuccess(_editing is null ? "دستگاه با موفقیت ایجاد شد" : "دستگاه با موفقیت ویرایش شد");
+                await Load();
+            }
+            else
+            {
+                var text = await resp.Content.ReadAsStringAsync();
+                try
+                {
+                    var pd = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(text);
+                    if (pd.TryGetProperty("errors", out var errors) && errors.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        var first = errors.EnumerateObject().FirstOrDefault();
+                        Toast.ShowError(first.Value[0].GetString() ?? "خطا در ذخیره");
+                    }
+                    else if (pd.TryGetProperty("error", out var msg))
+                        Toast.ShowError(msg.GetString() ?? "خطا در ذخیره");
+                    else if (pd.TryGetProperty("title", out var title))
+                        Toast.ShowError(title.GetString() ?? "خطا در ذخیره");
+                    else
+                        Toast.ShowError("خطا در ذخیره");
+                }
+                catch
+                {
+                    Toast.ShowError("خطا در ذخیره");
+                }
+            }
+        }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
+        finally { _saving = false; }
+    }
+
+    private async Task DeleteDevice()
+    {
+        if (_deleteTarget is null) return;
+        try { await Http.DeleteAsync($"api/v2/devices/{_deleteTarget.Id}"); _deleteTarget = null; Toast.ShowSuccess("دستگاه با موفقیت حذف شد"); await Load(); }
+        catch { Toast.ShowError("خطا در حذف"); }
+    }
+
+    public class RawDevice
+    {
+        public Guid Id { get; set; }
+        public string DeviceId { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string? MacAddress { get; set; }
+        public Guid CenterId { get; set; }
+        public string? Location { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime? LastSeenAt { get; set; }
+        public int PhaseCount { get; set; } = 3;
+        public DateTime CreatedAt { get; set; }
+        public string CenterName { get; set; } = "";
+    }
+
+    public class CenterRef { public Guid Id { get; set; } public string Name { get; set; } = ""; public string Code { get; set; } = ""; }
+
+    public class DeviceForm
+    {
+        public string DeviceId { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string? MacAddress { get; set; }
+        public Guid CenterId { get; set; }
+        public Guid? DeviceGroupId { get; set; }
+        public string? Location { get; set; }
+        public bool IsActive { get; set; } = true;
+        public int PhaseCount { get; set; } = 3;
+    }
+}

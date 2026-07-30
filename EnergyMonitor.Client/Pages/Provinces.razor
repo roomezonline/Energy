@@ -1,0 +1,147 @@
+@page "/provinces"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject AuthService Auth
+@inject ToastService Toast
+
+@if (Auth.IsInRole("Admin"))
+{
+<div class="page-container">
+    <div class="page-toolbar">
+        <h2>مدیریت استان‌ها</h2>
+        <button class="btn btn-primary" @onclick="OpenCreate">+ استان جدید</button>
+    </div>
+    @if (_loading) { <div class="loading-state"><div class="spinner"></div></div> }
+    else if (_items.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon">📍</div>
+            <div class="empty-title">استانی ثبت نشده</div>
+            <div class="empty-hint">ابتدا یک منطقه ایجاد کنید، سپس استان اضافه کنید.</div>
+        </div>
+    }
+    else
+    {
+        <div class="card-list">
+            @foreach (var item in _items)
+            {
+                <div class="card-item">
+                    <div class="card-hdr">
+                        <strong>@item.Name</strong>
+                        <span class="card-tag @(item.IsActive ? "active" : "inactive")">@(item.IsActive ? "فعال" : "غیرفعال")</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-row"><span>کد</span><span class="ltr">@item.Code</span></div>
+                        <div class="card-row"><span>منطقه</span><span>@item.RegionName</span></div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="card-btn primary" @onclick="() => OpenEdit(item)">ویرایش</button>
+                        <button class="card-btn danger" @onclick="() => ConfirmDelete(item)">حذف</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (_showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-card" @onclick:stopPropagation>
+            <div class="modal-hdr">
+                <h3>@(_editingId == Guid.Empty ? "استان جدید" : "ویرایش استان")</h3>
+                <button class="modal-close" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row"><label>منطقه</label><select class="form-input" @bind="_form.RegionId"><option value="">انتخاب کنید</option>@foreach (var r in _regions) { <option value="@r.Id">@r.Name</option> }</select></div>
+                <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
+                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" /></div>
+                <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
+            </div>
+            <div class="modal-ftr">
+                <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
+                <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_deleteTarget is not null)
+{
+    <div class="modal-overlay" @onclick="() => _deleteTarget = null">
+        <div class="modal-card" @onclick:stopPropagation>
+            <div class="modal-hdr"><h3>حذف استان</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
+            <div class="modal-body"><p>آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p></div>
+            <div class="modal-ftr">
+                <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="btn btn-danger" @onclick="DeleteItem">حذف</button>
+            </div>
+        </div>
+    </div>
+}
+}
+else
+{
+    <div style="text-align:center;padding:4rem 1rem;color:#888">
+        <h3>🔒 دسترسی محدود</h3>
+        <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
+        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+    </div>
+}
+
+@code {
+    private List<ProvinceItem> _items = new();
+    private List<RegionItem> _regions = new();
+    private bool _loading = true, _saving, _showModal;
+    private Guid _editingId;
+    private ProvinceForm _form = new();
+    private ProvinceItem? _deleteTarget;
+
+    protected override async Task OnInitializedAsync() { if (Auth.IsInRole("Admin")) await Load(); }
+    private async Task Load()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var regionsTask = Http.GetFromJsonAsync<List<RegionItem>>("api/v2/regions");
+            var provincesTask = Http.GetFromJsonAsync<List<ProvinceItem>>("api/v2/provinces");
+            await Task.WhenAll(regionsTask, provincesTask);
+            _regions = regionsTask.Result ?? new();
+            _items = provincesTask.Result?.Select(p =>
+            {
+                var region = _regions.FirstOrDefault(r => r.Id == p.RegionId);
+                return new ProvinceItem { Id = p.Id, Name = p.Name, Code = p.Code, RegionId = p.RegionId, RegionName = region?.Name ?? "---", IsActive = p.IsActive };
+            }).ToList() ?? new();
+        }
+        catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
+        finally { _loading = false; StateHasChanged(); }
+    }
+    private void OpenCreate() { _editingId = Guid.Empty; _form = new(); _showModal = true; }
+    private void OpenEdit(ProvinceItem c) { _editingId = c.Id; _form = new ProvinceForm { Name = c.Name, Code = c.Code, RegionId = c.RegionId, IsActive = c.IsActive }; _showModal = true; }
+    private void CloseModal() => _showModal = false;
+    private void ConfirmDelete(ProvinceItem c) => _deleteTarget = c;
+    private async Task Save()
+    {
+        _saving = true;
+        try
+        {
+            HttpResponseMessage resp;
+            if (_editingId == Guid.Empty) resp = await Http.PostAsJsonAsync("api/v2/provinces", _form);
+            else resp = await Http.PutAsJsonAsync($"api/v2/provinces/{_editingId}", _form);
+            if (resp.IsSuccessStatusCode) { _showModal = false; Toast.ShowSuccess("ذخیره شد"); await Load(); }
+            else { var err = await resp.Content.ReadFromJsonAsync<Dictionary<string, string>>(); Toast.ShowError(err?.GetValueOrDefault("error") ?? "خطا"); }
+        }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
+        finally { _saving = false; }
+    }
+    private async Task DeleteItem()
+    {
+        if (_deleteTarget is null) return;
+        try { await Http.DeleteAsync($"api/v2/provinces/{_deleteTarget.Id}"); _deleteTarget = null; Toast.ShowSuccess("حذف شد"); await Load(); }
+        catch { Toast.ShowError("خطا در حذف"); }
+    }
+
+    public class ProvinceItem { public Guid Id { get; set; } public string Name { get; set; } = ""; public string Code { get; set; } = ""; public Guid RegionId { get; set; } public string RegionName { get; set; } = ""; public bool IsActive { get; set; } = true; }
+    public class ProvinceForm { public string Name { get; set; } = ""; public string Code { get; set; } = ""; public Guid RegionId { get; set; } public bool IsActive { get; set; } = true; }
+    public class RegionItem { public Guid Id { get; set; } public string Name { get; set; } = ""; public string Code { get; set; } = ""; public bool IsActive { get; set; } = true; }
+}

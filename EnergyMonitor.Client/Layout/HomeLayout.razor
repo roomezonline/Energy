@@ -1,0 +1,62 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<div class="home-layout">
+    <header class="home-header">
+        <div class="home-header-inner">
+            <a href="/" class="home-logo">
+                <span class="logo-icon">&#9889;</span>
+                <span class="logo-text">انرژی‌کال</span>
+            </a>
+            <nav class="home-nav">
+            </nav>
+            <div class="home-header-right">
+                <span class="home-clock" id="clock-display">--:--</span>
+                <span class="home-date" id="date-display">----/--/--</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="home-main">
+        @Body
+    </main>
+
+    <footer class="home-footer">
+        <div class="home-footer-inner">
+            <div class="footer-col">
+                <span class="footer-logo">&#9889; انرژی‌کال</span>
+                <p>سیستم هوشمند پایش و مدیریت انرژی</p>
+            </div>
+            <div class="footer-col">
+                <span class="footer-heading">دسترسی سریع</span>
+                <a href="/dashboard">داشبورد</a>
+                <a href="/news">اخبار</a>
+            </div>
+        </div>
+        <div class="home-footer-bottom">
+            <span>&copy; ۱۴۰۵ انرژی‌کال. تمامی حقوق محفوظ است.</span>
+        </div>
+    </footer>
+</div>
+
+<Toast />
+
+@code {
+    private bool IsHome => Nav.Uri.TrimEnd('/') == new Uri(Nav.BaseUri).AbsoluteUri.TrimEnd('/')
+                          || Nav.Uri == Nav.BaseUri;
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

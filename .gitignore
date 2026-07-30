@@ -1,0 +1,50 @@
+## .NET
+bin/
+obj/
+*.sln.ide/
+*.user
+*.suo
+*.cache
+*.vs/
+*.DotSettings
+*.nupkg
+*.userprefs
+
+## Build
+packages/
+*.log
+*.tmp
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+## OS
+Thumbs.db
+.DS_Store
+
+## Arduino / PlatformIO build output
+arduino/.pio/
+arduino/energy_monitor/build/
+.pio/
+
+## Temp / generated files
+temp/
+*.pdf
+*.ps1
+*.bak
+export_data.ps1
+export_data2.ps1
+app_err.txt
+app_output.txt
+stderr.txt
+stdout.txt
+
+## Database & migration scripts (generated)
+*.sql
+
+## Uploads (user content)
+EnergyMonitor/wwwroot/uploads/

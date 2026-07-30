@@ -1,0 +1,146 @@
+@page "/alarms"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthService Auth
+
+@if (Auth.IsInRole("Admin"))
+{
+<div class="page-container alarms-page">
+    <div class="page-toolbar">
+        <h2>مدیریت هشدارها</h2>
+        <button class="btn-sm" @onclick="Load">🔄 بروزرسانی</button>
+    </div>
+
+    <div class="filters" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+        <select class="form-select" @bind="_selectedDeviceId" style="width:auto;min-width:140px">
+            <option value="">همه دستگاه‌ها</option>
+            @foreach (var d in _devices)
+            {
+                <option value="@d.DeviceId">@d.DisplayName (@d.DeviceId)</option>
+            }
+        </select>
+        <select class="form-select" value="@_filterSeverity" @onchange="OnSeverityChanged" style="width:auto">
+            <option value="">همه سطوح</option>
+            <option value="Critical">بحرانی</option>
+            <option value="Warning">هشدار</option>
+            <option value="Info">اطلاع</option>
+        </select>
+        <select class="form-select" value="@_filterResolved" @onchange="OnResolvedChanged" style="width:auto">
+            <option value="">همه</option>
+            <option value="false">فعال</option>
+            <option value="true">رفع شده</option>
+        </select>
+        @if (_alarms.Any(a => !a.IsResolved))
+        {
+            <button class="btn-sm danger" @onclick="ClearAll">پاک کردن همه</button>
+        }
+    </div>
+    <div class="card-list">
+        @foreach (var a in _alarms)
+        {
+            <div class="card-item @(a.IsResolved ? "resolved" : "")">
+                <div class="alarm-dot alarm-@a.Severity?.ToLower()"></div>
+                <div class="card-hdr">
+                    <strong>@a.Title</strong>
+                    <span class="alarm-severity alarm-@a.Severity?.ToLower()">@a.Severity</span>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(a.Message)) { <p>@a.Message</p> }
+                    <div class="card-row"><span>دستگاه</span><span>@(a.DeviceId ?? "---")</span></div>
+                    <div class="card-row"><span>فاز</span><span>@(a.Phase ?? "---")</span></div>
+                    <div class="card-row"><span>زمان</span><span>@a.OccurredAt.ToPersianDateTime()</span></div>
+                    @if (a.IsResolved && a.ResolvedAt.HasValue) { <div class="card-row"><span>رفع شده</span><span>@a.ResolvedAt.Value.ToPersianDateTime()</span></div> }
+                </div>
+                @if (!a.IsResolved)
+                {
+                    <div class="card-actions">
+                        <button class="btn-sm" @onclick="() => Resolve(a.Id)">رفع</button>
+                    </div>
+                }
+            </div>
+        }
+        @if (_alarms.Count == 0) { <p style="text-align:center;color:#666;padding:2rem">هیچ هشدار یافت نشد</p> }
+    </div>
+</div>
+}
+else
+{
+    <div style="text-align:center;padding:4rem 1rem;color:#888">
+        <h3>🔒 دسترسی محدود</h3>
+        <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
+        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+    </div>
+}
+
+@code {
+    private List<AlarmItem> _alarms = new();
+    private List<DeviceRef> _devices = new();
+    private bool _loading = true;
+    private string _filterSeverity = "";
+    private string _filterResolved = "";
+    private string _selectedDeviceId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsInRole("Admin")) await LoadDevices();
+    }
+
+    private async Task LoadDevices()
+    {
+        try { _devices = await Http.GetFromJsonAsync<List<DeviceRef>>("api/v2/devices") ?? new(); } catch { }
+        await Load();
+    }
+
+    private async Task OnSeverityChanged(ChangeEventArgs e) { _filterSeverity = e.Value?.ToString() ?? ""; await Load(); }
+    private async Task OnResolvedChanged(ChangeEventArgs e) { _filterResolved = e.Value?.ToString() ?? ""; await Load(); }
+
+    private async Task Load()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            var url = "api/v2/alarms";
+            var sep = "?";
+            if (!string.IsNullOrEmpty(_selectedDeviceId)) { url += $"{sep}deviceId={Uri.EscapeDataString(_selectedDeviceId)}"; sep = "&"; }
+            if (!string.IsNullOrEmpty(_filterSeverity)) { url += $"{sep}severity={_filterSeverity}"; sep = "&"; }
+            if (_filterResolved == "true") { url += $"{sep}resolved=true"; sep = "&"; }
+            else if (_filterResolved == "false") { url += $"{sep}resolved=false"; }
+            _alarms = await Http.GetFromJsonAsync<List<AlarmItem>>(url) ?? new();
+        }
+        catch { }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private async Task Resolve(int id)
+    {
+        try { await Http.PostAsync($"api/v2/alarms/{id}/resolve", null); await Load(); } catch { }
+    }
+
+    private async Task ClearAll()
+    {
+        foreach (var a in _alarms.Where(x => !x.IsResolved))
+            try { await Http.PostAsync($"api/v2/alarms/{a.Id}/resolve", null); } catch { }
+        await Load();
+    }
+
+    public class AlarmItem
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string? Message { get; set; }
+        public string? Severity { get; set; }
+        public string? Phase { get; set; }
+        public string? DeviceId { get; set; }
+        public bool IsResolved { get; set; }
+        public DateTime? ResolvedAt { get; set; }
+        public DateTime OccurredAt { get; set; }
+    }
+
+    public class DeviceRef
+    {
+        public string DeviceId { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+    }
+}

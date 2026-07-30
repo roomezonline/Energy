@@ -1,0 +1,63 @@
+@page "/login"
+@layout HomeLayout
+@using EnergyMonitor.Client.Services
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject ToastService Toast
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-logo">
+            <div class="logo-icon">⚡</div>
+            <h1>انرژی‌کال</h1>
+            <p>سامانه پایش انرژی</p>
+        </div>
+
+        <form @onsubmit="HandleLogin">
+            <div class="form-group">
+                <label>نام کاربری</label>
+                <input type="text" @bind="username" class="form-input" placeholder="نام کاربری" required />
+            </div>
+            <div class="form-group">
+                <label>رمز عبور</label>
+                <input type="password" @bind="password" class="form-input" placeholder="رمز عبور" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" disabled="@loading">
+                @(loading ? "..." : "ورود")
+            </button>
+        </form>
+    </div>
+</div>
+
+@code {
+    private string username = "";
+    private string password = "";
+    private bool loading;
+
+    protected override void OnInitialized()
+    {
+        if (Auth.IsLoggedIn)
+            Nav.NavigateTo("/dashboard");
+    }
+
+    private async Task HandleLogin()
+    {
+        loading = true;
+        try
+        {
+            var ok = await Auth.LoginAsync(username, password);
+            if (ok)
+                Nav.NavigateTo("/dashboard", true);
+            else
+                Toast.ShowError("نام کاربری یا رمز عبور اشتباه است");
+        }
+        catch
+        {
+            Toast.ShowError("خطا در ارتباط با سرور");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

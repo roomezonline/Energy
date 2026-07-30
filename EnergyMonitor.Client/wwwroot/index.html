@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="css/fonts.css" />
+    <link rel="stylesheet" href="css/home.css" />
+    <link rel="stylesheet" href="css/site.css" />
+    <link rel="stylesheet" href="lib/jalalidatepicker/jalalidatepicker.min.css" />
+    <link rel="icon" type="image/png" href="favicon.png"/>
+    <style>
+        .app-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:linear-gradient(160deg,#f8fafc 0%,#f1f5f9 100%);color:#94a3b8;font-family:Vazirmatn,system-ui,sans-serif;gap:16px}
+        .app-loading .ld-icon{font-size:44px;animation:appPulse 1.8s ease-in-out infinite;background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .app-loading p{font-size:14px;margin:0;color:#64748b}
+        .ld-bar{width:140px;height:4px;background:#e2e8f0;border-radius:4px;overflow:hidden}
+        .ld-bar::after{content:'';display:block;width:40%;height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:4px;animation:ldSlide 1.4s ease-in-out infinite}
+        @keyframes appPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+        @keyframes ldSlide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="app-loading">
+            <div class="ld-icon">&#9889;</div>
+            <p>در حال بارگذاری...</p>
+            <div class="ld-bar"></div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:#fef2f2;border-top:1px solid #fecaca;color:#ef4444;text-align:center;z-index:9999;font-family:Vazirmatn,sans-serif;font-size:13px">
+        خطا در اتصال
+        <a href="" style="color:#3b82f6;margin:0 10px;font-weight:600">تلاش مجدد</a>
+        <a class="dismiss" style="cursor:pointer;color:#94a3b8">×</a>
+    </div>
+
+    <script src="lib/jalalidatepicker/jalalidatepicker.min.js"></script>
+    <script src="lib/html2pdf.bundle.min.js"></script>
+    <script src="js/pdf-export.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        var _srvDate='',_srvH=0,_srvM=0,_srvS=0,_srvTick=0,_lastDateFetch=0;
+        function pad(n){return String(n).padStart(2,'0')}
+        function toPersianNum(s){var d={'0':'۰','1':'۱','2':'۲','3':'۳','4':'۴','5':'۵','6':'۶','7':'۷','8':'۸','9':'۹'};return String(s).split('').map(function(c){return d[c]||c}).join('')}
+        function fetchTime(){var x=new XMLHttpRequest();x.open('GET','/api/time');x.onload=function(){if(x.status!=200)return;try{var d=JSON.parse(x.responseText);_srvDate=d.persianDate;var p=d.persianTime.split(':');_srvH=parseInt(p[0]);_srvM=parseInt(p[1]);_srvS=parseInt(p[2]);_srvTick=0;_lastDateFetch=Date.now();updateClock()}catch(e){}};x.send()}
+        function updateClock(){var now=Date.now();if(!_lastDateFetch||now-_lastDateFetch>30000)fetchTime();var h=_srvH,m=_srvM,s=_srvS+_srvTick;if(s>=60){s-=60;m++}if(m>=60){m-=60;h++}if(h>=24)h-=24;var el=document.getElementById('clock-display');if(el)el.textContent=toPersianNum(pad(h)+':'+pad(m)+':'+pad(s));var el2=document.getElementById('date-display');if(el2)el2.textContent=toPersianNum(_srvDate);_srvTick++}
+        fetchTime();setInterval(updateClock,1000);
+        document.addEventListener('click',function(e){if(e.target.classList.contains('dismiss')){var bar=document.getElementById('blazor-error-ui');if(bar)bar.style.display='none'}if(!_alarmCtx){_alarmCtx=new(window.AudioContext||window.webkitAudioContext)();if(_alarmCtx.state==='suspended')_alarmCtx.resume()}},{once:true});
+        var _alarmCtx=null,_alarmOsc=null,_alarmGain=null,_alarmPlaying=false,_alarmTimer=null,_alarmSeq=0;
+        function initAlarmAudio(){if(!_alarmCtx){_alarmCtx=new(window.AudioContext||window.webkitAudioContext)();if(_alarmCtx.state==='suspended')_alarmCtx.resume()}if(_alarmCtx&&_alarmCtx.state==='suspended')_alarmCtx.resume()}
+        function playAlarmSound(){initAlarmAudio();if(_alarmPlaying||!_alarmCtx)return;_alarmPlaying=true;_alarmSeq=0;alarmBeep()}
+        function alarmBeep(){if(!_alarmPlaying||!_alarmCtx)return;try{if(_alarmOsc){_alarmOsc.stop();_alarmOsc.disconnect()}_alarmOsc=_alarmCtx.createOscillator();_alarmGain=_alarmCtx.createGain();_alarmOsc.type='square';_alarmOsc.frequency.value=_alarmSeq%2==0?880:660;_alarmGain.gain.setValueAtTime(0.12,_alarmCtx.currentTime);_alarmGain.gain.exponentialRampToValueAtTime(0.001,_alarmCtx.currentTime+0.25);_alarmOsc.connect(_alarmGain);_alarmGain.connect(_alarmCtx.destination);_alarmOsc.start();_alarmOsc.stop(_alarmCtx.currentTime+0.25);_alarmSeq++;_alarmTimer=setTimeout(alarmBeep,350)}catch(e){}}
+        function stopAlarmSound(){try{if(_alarmTimer){clearTimeout(_alarmTimer);_alarmTimer=null}if(_alarmOsc){_alarmOsc.stop();_alarmOsc.disconnect();_alarmOsc=null}if(_alarmGain){_alarmGain.disconnect();_alarmGain=null}}catch(e){}_alarmPlaying=false;_alarmSeq=0}
+        window.playAlarmSound=playAlarmSound;window.stopAlarmSound=stopAlarmSound;
+        window.initJalaliDatepicker=function(){try{jalaliDatepicker.startWatch({persianDigits:true})}catch(e){}};
+        window.setDateInput=function(id,val){try{var el=document.getElementById(id);if(el){el.value=val;el.dispatchEvent(new Event('input',{bubbles:true}))}}catch(e){}};
+        window.getDateInput=function(id){try{return document.getElementById(id).value}catch(e){return''}};
+        window.getPersianDate=function(){return _srvDate;};
+        window.getViewportWidth=function(){return window.innerWidth};
+        window.closeSidebar=function(){var l=document.querySelector('.layout');if(l)l.classList.remove('menu-open')};
+        window.closeSummary=function(){var o=document.querySelector('.summary-overlay');if(o)o.click()};
+        window.downloadPdf=function(base64,filename){var a=document.createElement('a');a.href='data:application/pdf;base64,'+base64;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a)};
+    </script>
+</body>
+</html>

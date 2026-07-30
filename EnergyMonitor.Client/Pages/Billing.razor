@@ -1,0 +1,1249 @@
+﻿@page "/billing/tariffs"
+@page "/billing"
+@page "/billing/consumer-types"
+@page "/billing/yearly-rates"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using EnergyMonitor.Shared
+@using EnergyMonitor.Client.Services
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject AuthService Auth
+@inject IJSRuntime JSRuntime
+
+<div class="page-container">
+    <div class="bll-calc-card">
+        @* Tab Header *@
+        <div class="bll-tab-bar">
+            <button class="bll-tab @(_activeTab == "calc" ? "active" : "")" @onclick="ShowCalc">💰 محاسبه صورتحساب</button>
+            <button class="bll-tab @(_activeTab == "tariffs" ? "active" : "")" @onclick="ShowTariffs">⚙️ تعرفه‌ها</button>
+            <button class="bll-tab @(_activeTab == "consumerTypes" ? "active" : "")" @onclick="ShowConsumerTypes">🏭 انواع مصرف‌کننده</button>
+            <button class="bll-tab @(_activeTab == "yearlyRates" ? "active" : "")" @onclick="ShowYearlyRates">📅 نرخ پایه سالانه</button>
+            <button class="bll-tab @(_activeTab == "help" ? "active" : "")" @onclick="() => _showHelp = true">❓ راهنما</button>
+        </div>
+
+        @if (_activeTab == "calc")
+        {
+            @* Calculation Form *@
+            <div class="bll-form">
+                <div class="rpt-fg" style="flex:1;min-width:180px">
+                    <label class="rpt-fl">مرکز</label>
+                    <select class="rpt-fi" @bind="_selectedCenterId">
+                        <option value="@Guid.Empty">انتخاب کنید</option>
+                        @foreach (var c in _centers)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="rpt-fg" style="flex:1;min-width:180px">
+                    <label class="rpt-fl">دستگاه</label>
+                    <select class="rpt-fi" @bind="_selectedDeviceId">
+                        <option value="">همه دستگاه‌ها (تجمعی)</option>
+                        @foreach (var d in _devices)
+                        {
+                            <option value="@d.Id">@d.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="rpt-fg" style="flex:1;min-width:140px">
+                    <label class="rpt-fl">از تاریخ</label>
+                    <input class="rpt-fi" dir="ltr" @bind="_billFrom" placeholder="1404/01/01" />
+                </div>
+                <div class="rpt-fg" style="flex:1;min-width:140px">
+                    <label class="rpt-fl">تا تاریخ</label>
+                    <input class="rpt-fi" dir="ltr" @bind="_billTo" placeholder="1404/03/31" />
+                </div>
+                <div class="rpt-fg" style="flex:1;min-width:140px">
+                    <label class="rpt-fl">تعرفه</label>
+                    <select class="rpt-fi" @bind="_selectedTariffId">
+                        <option value="@Guid.Empty">انتخاب کنید</option>
+                        @foreach (var t in _tariffs)
+                        {
+                            <option value="@t.Id">@t.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="rpt-fg" style="flex:0 0 auto;align-self:flex-end">
+                    <button class="rpt-btn rpt-btn-primary" disabled="@_calculating" @onclick="Calculate">
+                        @if (_calculating)
+                        {
+                            <span>در حال محاسبه...</span>
+                        }
+                        else
+                        {
+                            <span>محاسبه و ذخیره</span>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            @* Invoice Display *@
+            @if (_billData is not null)
+            {
+                <div class="inv-wrapper">
+                    <div class="inv-actions noprint">
+                        <button class="rpt-btn btn-pdf rpt-btn-sm" @onclick="() => PrintInvoice()">📥 دانلود PDF صورتحساب</button>
+                        @if (!_saveInvoice)
+                        {
+                            <button class="rpt-btn rpt-btn-sm" @onclick="SaveInvoice" disabled="@_savingInvoice">
+                                @(_savingInvoice ? "..." : "💾 ذخیره صورتحساب")
+                            </button>
+                        }
+                        @if (_billData?.EditableItems is not null && _billData.EditableItems.Count > 0)
+                        {
+                            <button class="rpt-btn rpt-btn-sm" style="background:#f59e0b;color:#fff" @onclick="ToggleOverrideMode">
+                                ✏️ @(_showOverrideEditor ? "پنهان کردن ویرایش" : "ویرایش دستی مقادیر")
+                            </button>
+                        }
+                    </div>
+
+                    @if (_showOverrideEditor && _billData?.EditableItems is not null)
+                    {
+                        <div class="inv-override-section" style="margin-bottom:16px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">
+                            <div class="bll-tariff-subtitle" style="margin-top:0">ویرایش دستی صورتحساب</div>
+                            <div style="display:flex;flex-direction:column;gap:6px">
+                                @foreach (var item in _billData.EditableItems)
+                                {
+                                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                        <span style="min-width:160px;font-size:13px">@item.Label</span>
+                                        <span style="font-size:12px;color:#6b7280">(خودکار: @P(item.AutoValue, "N0"))</span>
+                                        <input type="number" class="rpt-fi" style="width:140px;padding:4px 8px;font-size:13px"
+                                               value="@(item.OverrideValue ?? item.AutoValue)"
+                                               @onchange="(e) => OnOverrideChange(item.FieldName, decimal.Parse(e.Value?.ToString() ?? item.AutoValue.ToString()))" />
+                                        <input class="rpt-fi" style="width:200px;padding:4px 8px;font-size:12px" placeholder="دلیل تغییر"
+                                               value="@item.OverrideReason" @onchange="(e) => OnOverrideReasonChange(item.FieldName, e.Value?.ToString())" />
+                                    </div>
+                                }
+                            </div>
+                            <div style="margin-top:8px;font-size:12px;color:#6b7280">مقادیر ویرایش شده پس از ذخیره در صورتحساب ثبت می‌شوند.</div>
+                        </div>
+                    }
+
+                    <div class="inv-bill" id="invoiceArea">
+                        <div class="inv-top">
+                            <div class="inv-logo">
+                                <div class="inv-logo-icon">⚡</div>
+                                <div>
+                                    <div class="inv-logo-title">انرژی‌کال</div>
+                                    <div class="inv-logo-sub">سیستم پایش هوشمند انرژی</div>
+                                </div>
+                            </div>
+                            <div class="inv-title">صورتحساب مصرف انرژی</div>
+                            <div class="inv-badge">@_billData.TariffName</div>
+                        </div>
+
+                        <div class="inv-info">
+                            <div class="inv-info-card">
+                                <div class="inv-info-icon">🏢</div>
+                                <div class="inv-info-body">
+                                    <div class="inv-info-lbl">مشترک</div>
+                                    <div class="inv-info-val">@_billData.CenterName</div>
+                                </div>
+                            </div>
+                            <div class="inv-info-card">
+                                <div class="inv-info-icon">📅</div>
+                                <div class="inv-info-body">
+                                    <div class="inv-info-lbl">دوره صورتحساب</div>
+                                    <div class="inv-info-val" style="font-size:13px;white-space:nowrap">@_billData.FromDate لغایت @_billData.ToDate</div>
+                                </div>
+                            </div>
+                            <div class="inv-info-card inv-info-card-sm">
+                                <div class="inv-info-icon">⏳</div>
+                                <div class="inv-info-body">
+                                    <div class="inv-info-lbl">تعداد روز</div>
+                                    <div class="inv-info-val">@P(_billData.Days) روز &mdash; @P(_billData.Months) ماه</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(_billData.ConsumerTypeName))
+                        {
+                            <div class="inv-divider"></div>
+                            <div class="inv-section">
+                                <div class="inv-section-title">اطلاعات تعرفه</div>
+                                <div class="tariff-card">
+                                    <div class="tariff-row">
+                                        <div class="tariff-item">
+                                            <span class="tariff-lbl">نوع مصرف‌کننده</span>
+                                            <span class="tariff-val">@_billData.ConsumerTypeName</span>
+                                        </div>
+                                        @if (_billData.Year.HasValue)
+                                        {
+                                            <div class="tariff-item">
+                                                <span class="tariff-lbl">سال</span>
+                                                <span class="tariff-val">@P(_billData.Year)</span>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (_billData.EcaCoefficient.HasValue)
+                                    {
+                                        <div class="tariff-divider"></div>
+                                        <div class="tariff-formula">
+                                            <div class="tariff-formula-item">
+                                                <span class="tariff-formula-lbl">نرخ پایه</span>
+                                                <span class="tariff-formula-val">@P(_billData.BaseEcaRate, "N0")</span>
+                                                <span class="tariff-formula-unit">ریال/kWh</span>
+                                            </div>
+                                            <div class="tariff-formula-op">×</div>
+                                            <div class="tariff-formula-item">
+                                                <span class="tariff-formula-lbl">ECA</span>
+                                                <span class="tariff-formula-val">@P(_billData.EcaCoefficient, "F4")</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (_billData.EffectiveOffPeakRate.HasValue)
+                                    {
+                                        <div class="tariff-divider"></div>
+                                        <div class="tariff-rate-row">
+                                            <div class="tariff-rate-item tariff-rate-offpeak">
+                                                <span class="tariff-rate-dot"></span>
+                                                <span class="tariff-rate-lbl">کم‌باری</span>
+                                                <span class="tariff-rate-val">@P(_billData.EffectiveOffPeakRate, "N0")</span>
+                                            </div>
+                                            <div class="tariff-rate-item tariff-rate-midpeak">
+                                                <span class="tariff-rate-dot"></span>
+                                                <span class="tariff-rate-lbl">میان‌باری</span>
+                                                <span class="tariff-rate-val">@P(_billData.EffectiveMidPeakRate, "N0")</span>
+                                            </div>
+                                            <div class="tariff-rate-item tariff-rate-peak">
+                                                <span class="tariff-rate-dot"></span>
+                                                <span class="tariff-rate-lbl">اوج‌باری</span>
+                                                <span class="tariff-rate-val">@P(_billData.EffectivePeakRate, "N0")</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (_billData.TouOffPeakMultiplier.HasValue)
+                                    {
+                                        <div class="tariff-divider"></div>
+                                        <div class="tariff-tou-row">
+                                            <span class="tariff-tou-lbl">ضرایب TOU:</span>
+                                            <span class="tariff-tou-item">کم‌باری <strong>@P(_billData.TouOffPeakMultiplier, "F1")</strong></span>
+                                            <span class="tariff-tou-sep">|</span>
+                                            <span class="tariff-tou-item">میان‌باری <strong>@P(_billData.TouMidPeakMultiplier, "F1")</strong></span>
+                                            <span class="tariff-tou-sep">|</span>
+                                            <span class="tariff-tou-item">اوج‌باری <strong>@P(_billData.TouPeakMultiplier, "F1")</strong></span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="inv-divider"></div>
+
+                        <div class="inv-section">
+                            <div class="inv-section-title">مصرف انرژی (kWh)</div>
+                            <table class="inv-table">
+                                <thead>
+                                    <tr><th>فاز</th><th>کم‌باری</th><th>میان‌باری</th><th>اوج‌باری</th><th>جمع</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><span class="inv-dot" style="background:#f97316"></span>فاز A</td><td>@P(_billData.PhaseA.OffPeak, "N3")</td><td>@P(_billData.PhaseA.MidPeak, "N3")</td><td>@P(_billData.PhaseA.Peak, "N3")</td><td class="inv-total">@P(_billData.PhaseA.Total, "N3")</td></tr>
+                                    <tr><td><span class="inv-dot" style="background:#3b82f6"></span>فاز B</td><td>@P(_billData.PhaseB.OffPeak, "N3")</td><td>@P(_billData.PhaseB.MidPeak, "N3")</td><td>@P(_billData.PhaseB.Peak, "N3")</td><td class="inv-total">@P(_billData.PhaseB.Total, "N3")</td></tr>
+                                    <tr><td><span class="inv-dot" style="background:#ef4444"></span>فاز C</td><td>@P(_billData.PhaseC.OffPeak, "N3")</td><td>@P(_billData.PhaseC.MidPeak, "N3")</td><td>@P(_billData.PhaseC.Peak, "N3")</td><td class="inv-total">@P(_billData.PhaseC.Total, "N3")</td></tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr><td><strong>جمع کل</strong></td><td><strong>@P(_billData.OffPeakKWh, "N3")</strong></td><td><strong>@P(_billData.MidPeakKWh, "N3")</strong></td><td><strong>@P(_billData.PeakKWh, "N3")</strong></td><td class="inv-grand">@P(_billData.TotalKWh, "N3")</td></tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="inv-divider"></div>
+
+                        <div class="inv-section">
+                            <div class="inv-section-title">هزینه مصرف (ریال)</div>
+                            <table class="inv-table inv-table-sm">
+                                <thead>
+                                    <tr><th>ردیف</th><th>شرح</th><th>نرخ</th><th>مبلغ</th></tr>
+                                </thead>
+                                <tbody>
+                                    @{
+                                        int rIdx = 1;
+                                        if (_billData.PhaseACost > 0 || _billData.PhaseBCost > 0 || _billData.PhaseCCost > 0)
+                                        {
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>هزینه فاز A</td><td>@P(_billData.PhaseA.Total, "N3") kWh</td><td>@P(_billData.PhaseACost, "N0")</td></tr>
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>هزینه فاز B</td><td>@P(_billData.PhaseB.Total, "N3") kWh</td><td>@P(_billData.PhaseBCost, "N0")</td></tr>
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>هزینه فاز C</td><td>@P(_billData.PhaseC.Total, "N3") kWh</td><td>@P(_billData.PhaseCCost, "N0")</td></tr>
+                                            <tr class="inv-separator"><td colspan="4"></td></tr>
+                                        }
+                                        if (_billData.HasTieredRates)
+                                        {
+                                            if (_billData.Tier1KWh > 0 || _billData.Tier1Cost > 0)
+                                            {
+                                                <tr><td class="inv-ridx">@(rIdx++)</td><td>پله اول</td><td>@P(_billData.Tier1Rate, "N0") ریال/kWh</td><td>@P(_billData.Tier1Cost, "N0")</td></tr>
+                                            }
+                                            if (_billData.Tier2KWh > 0 || _billData.Tier2Cost > 0)
+                                            {
+                                                <tr><td class="inv-ridx">@(rIdx++)</td><td>پله دوم</td><td>@P(_billData.Tier2Rate, "N0") ریال/kWh</td><td>@P(_billData.Tier2Cost, "N0")</td></tr>
+                                            }
+                                            if (_billData.Tier3KWh > 0 || _billData.Tier3Cost > 0)
+                                            {
+                                                <tr><td class="inv-ridx">@(rIdx++)</td><td>پله سوم</td><td>@P(_billData.Tier3Rate, "N0") ریال/kWh</td><td>@P(_billData.Tier3Cost, "N0")</td></tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>مصرف کم‌باری</td><td>@P(_billData.EffectiveOffPeakRate, "N0") ریال/kWh</td><td>@P(_billData.OffPeakCost, "N0")</td></tr>
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>مصرف میان‌باری</td><td>@P(_billData.EffectiveMidPeakRate, "N0") ریال/kWh</td><td>@P(_billData.MidPeakCost, "N0")</td></tr>
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>مصرف اوج‌باری</td><td>@P(_billData.EffectivePeakRate, "N0") ریال/kWh</td><td>@P(_billData.PeakCost, "N0")</td></tr>
+                                        }
+                                        <tr><td class="inv-ridx">@(rIdx++)</td><td class="inv-highlight">جمع هزینه انرژی</td><td>—</td><td>@P(_billData.EnergyCost, "N0")</td></tr>
+                                        if (_billData.MonthlyFixedFee > 0)
+                                        {
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>آبونمان (@P(_billData.Months) ماه)</td><td>@P(_billData.MonthlyFixedFee, "N0") ریال/ماه</td><td>@P(_billData.MonthlyFixedFeeTotal, "N0")</td></tr>
+                                        }
+                                        if (_billData.DemandCost > 0)
+                                        {
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>هزینه دیماند</td><td>@P(_billData.MaxDemandKW, "N0") kW حداکثر</td><td>@P(_billData.DemandCost, "N0")</td></tr>
+                                        }
+                                        if (_billData.PeakPenalty > 0)
+                                        {
+                                            <tr class="inv-penalty"><td class="inv-ridx">@(rIdx++)</td><td>جریمه اوج مصرف</td><td>—</td><td>@P(_billData.PeakPenalty, "N0")</td></tr>
+                                        }
+                                        if (_billData.OffPeakDiscount > 0)
+                                        {
+                                            <tr class="inv-discount"><td class="inv-ridx">@(rIdx++)</td><td>تخفیف کم‌باری</td><td>—</td><td>-@P(_billData.OffPeakDiscount, "N0")</td></tr>
+                                        }
+                                        if (_billData.Article16Cost > 0 || _billData.HasArticle16)
+                                        {
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>قانون ماده ۱۶</td><td>—</td><td>@P(_billData.Article16Cost, "N0")</td></tr>
+                                        }
+                                        if (_billData.TollAmount > 0)
+                                        {
+                                            <tr><td class="inv-ridx">@(rIdx++)</td><td>عوارض</td><td>—</td><td>@P(_billData.TollAmount, "N0")</td></tr>
+                                        }
+                                        if (_billData.HasReactivePenalty)
+                                        {
+                                            <tr class="inv-penalty"><td class="inv-ridx">@(rIdx++)</td>
+                                                <td>جریمه راکتیو (PF: @P(_billData.AveragePfA, "F3"))</td>
+                                                <td>@P(_billData.ReactivePenaltyMultiplier, "F1") برابر</td>
+                                                <td>@P(_billData.ReactivePenalty, "N0")</td></tr>
+                                        }
+                                        if (_billData.HasReactiveBonus)
+                                        {
+                                            <tr class="inv-discount"><td class="inv-ridx">@(rIdx++)</td><td>پاداش راکتیو</td><td>—</td><td>@P(_billData.ReactiveBonus, "N0")</td></tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (_billData.AveragePfA > 0 || _billData.AveragePfB > 0 || _billData.AveragePfC > 0)
+                        {
+                            <div class="inv-divider"></div>
+                            <div class="inv-section">
+                                <div class="inv-section-title">ضریب توان (Power Factor)</div>
+                                <div class="inv-pf-row">
+                                    <div class="inv-pf-item"><span class="inv-pf-dot" style="background:#f97316"></span><span>فاز A:</span><span class="inv-pf-val">@P(_billData.AveragePfA, "F3")</span></div>
+                                    <div class="inv-pf-item"><span class="inv-pf-dot" style="background:#3b82f6"></span><span>فاز B:</span><span class="inv-pf-val">@P(_billData.AveragePfB, "F3")</span></div>
+                                    <div class="inv-pf-item"><span class="inv-pf-dot" style="background:#ef4444"></span><span>فاز C:</span><span class="inv-pf-val">@P(_billData.AveragePfC, "F3")</span></div>
+                                    <div class="inv-pf-item inv-pf-avg"><span>میانگین:</span><span class="inv-pf-val">@P(_billData.AveragePf, "F3")</span></div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (_billData.PeriodDetails is not null && _billData.PeriodDetails.Count > 0)
+                        {
+                            <div class="page-break-before"></div>
+                            <div class="inv-divider"></div>
+                            <div class="inv-section">
+                                <div class="inv-section-title">جزئیات روزانه مصرف</div>
+                                <div style="max-height:300px;overflow-y:auto">
+                                    <table class="inv-table inv-table-xs">
+                                        <thead>
+                                            <tr><th>تاریخ</th><th>کم‌باری</th><th>میان‌باری</th><th>اوج‌باری</th><th>جمع</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var day in _billData.PeriodDetails)
+                                            {
+                                                <tr><td>@day.PersianDate</td><td>@P(day.OffPeakKWh, "N3")</td><td>@P(day.MidPeakKWh, "N3")</td><td>@P(day.PeakKWh, "N3")</td><td class="inv-total">@P(day.TotalKWh, "N3")</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+
+                        @if (_invoices.Count > 0)
+                        {
+                            <div class="inv-divider"></div>
+                            <div style="margin-bottom:14px">
+                                <div class="inv-section-title" style="font-size:13px;margin-bottom:8px">صورتحساب‌های ذخیره شده</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                                    @foreach (var inv in _invoices)
+                                    {
+                                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px;font-size:11px">
+                                            <span class="card-tag @(inv.Status == "Final" ? "active" : "")" style="font-size:10px">@(inv.Status == "Final" ? "نهایی" : "پیش‌نویس")</span>
+                                            <span style="margin-right:6px">@inv.FromDate → @inv.ToDate</span>
+                                            <span style="margin-right:6px;font-weight:600">@P(inv.GrandTotal, "N0") ریال</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="inv-divider"></div>
+
+                        <div class="inv-summary">
+                            <div class="inv-summary-row"><span>قبل از مالیات</span><span>@P(_billData.SubTotal, "N0") ریال</span></div>
+                            <div class="inv-summary-row"><span>مالیات بر ارزش افزوده (@P(_billData.TaxPercent)%)</span><span>@P(_billData.TaxAmount, "N0") ریال</span></div>
+                            <div class="inv-summary-row inv-summary-grand">
+                                <span>قابل پرداخت</span>
+                                <span>@P(_billData.GrandTotal, "N0") <small>ریال</small></span>
+                            </div>
+                        </div>
+
+                        <div class="inv-footer">
+                            <div class="inv-footer-row">
+                                <span>صادر شده توسط سامانه انرژی‌کال</span>
+                                <span>@P(DateTime.Now, "yyyy/MM/dd HH:mm")</span>
+                            </div>
+                            <div class="inv-footer-barcode">
+                                <div class="inv-qr">⚡</div>
+                                <div class="inv-barcode-text">@_billData.CenterName · @_billData.FromDate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Saved Invoices List *@
+            @if (_invoices.Count > 0)
+            {
+                <div style="margin-top:20px">
+                    <div class="bll-inv-title">صورتحساب‌های ذخیره شده</div>
+                    <div class="bll-inv-grid">
+                        @foreach (var inv in _invoices)
+                        {
+                            <div class="bll-inv-card">
+                                <div class="bll-inv-top">
+                                    <span class="card-tag @(inv.Status == "Final" ? "active" : "")">@(inv.Status == "Final" ? "نهایی" : "پیش‌نویس")</span>
+                                    <span style="color:#94a3b8;font-size:11px">@inv.Status</span>
+                                </div>
+                                <div class="bll-inv-body">
+                                    <div class="bll-inv-row"><span>دوره</span><span>@inv.FromDate تا @inv.ToDate</span></div>
+                                    <div class="bll-inv-row"><span>مدت</span><span>@P(inv.Days) روز</span></div>
+                                    <div class="bll-inv-row"><span>مصرف</span><span>@P(inv.TotalKWh, "N3") kWh</span></div>
+                                    <div class="bll-inv-row"><span>هزینه انرژی</span><span>@P(inv.EnergyCost, "N0") ریال</span></div>
+                                    @if (inv.ReactivePenalty > 0) { <div class="bll-inv-row"><span>جریمه</span><span>@P(inv.ReactivePenalty, "N0") ریال</span></div> }
+                                    <div class="bll-inv-row bll-inv-grand"><span>قابل پرداخت</span><span>@P(inv.GrandTotal, "N0") ریال</span></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+
+        @if (_activeTab == "tariffs")
+        {
+            <div class="bll-tariff-section">
+                <div class="bll-tariff-toolbar">
+                    <button class="rpt-btn" @onclick="OpenCreateTariff">+ تعرفه جدید</button>
+                </div>
+                @if (_tariffs.Count == 0)
+                {
+                    <div class="bll-empty">هیچ تعرفه‌ای تعریف نشده است</div>
+                }
+                else
+                {
+                    <div class="bll-tariff-grid">
+                        @foreach (var t in _tariffs)
+                        {
+                            <div class="bll-tariff-card">
+                                <div class="bll-tariff-top">
+                                    <div>
+                                        <div class="bll-tariff-name">@t.Name</div>
+                                        @if (!string.IsNullOrEmpty(t.Description))
+                                        {
+                                            <div class="bll-tariff-desc">@t.Description</div>
+                                        }
+                                    </div>
+                                    <span class="bll-badge @(t.IsActive ? "bll-badge-active" : "bll-badge-inactive")">@(t.IsActive ? "فعال" : "غیرفعال")</span>
+                                </div>
+                                <div class="bll-tariff-body">
+                                    <div class="bll-tariff-rates">
+                                        <div class="bll-tr">
+                                            <span>کم‌باری</span>
+                                            <span>@P(t.OffPeakRate, "N0") ریال</span>
+                                            @if (!string.IsNullOrEmpty(t.SummerOffPeakStart))
+                                            {
+                                                <span class="bll-tr-time">@t.SummerOffPeakStart-@t.SummerOffPeakEnd</span>
+                                            }
+                                        </div>
+                                        <div class="bll-tr">
+                                            <span>میان‌باری</span>
+                                            <span>@P(t.MidPeakRate, "N0") ریال</span>
+                                            @if (!string.IsNullOrEmpty(t.SummerMidPeakStart))
+                                            {
+                                                <span class="bll-tr-time">@t.SummerMidPeakStart-@t.SummerMidPeakEnd</span>
+                                            }
+                                        </div>
+                                        <div class="bll-tr">
+                                            <span>اوج‌باری</span>
+                                            <span>@P(t.PeakRate, "N0") ریال</span>
+                                            @if (!string.IsNullOrEmpty(t.SummerPeakStart))
+                                            {
+                                                <span class="bll-tr-time">@t.SummerPeakStart-@t.SummerPeakEnd</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="bll-tariff-meta">
+                                        <span>@(t.RateDerivationMode == "ECA" ? "خودکار" : "ثابت")</span>
+                                        <span>|</span>
+                                        <span>آبونمان: @P(t.MonthlyFixedFee, "N0") ریال</span>
+                                        @if (t.ReactivePenaltyThreshold > 0)
+                                        {
+                                            <span>| PF &lt; @t.ReactivePenaltyThreshold</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="bll-tariff-actions">
+                                    <button class="rpt-btn-link" @onclick="() => EditTariff(t)">ویرایش</button>
+                                    <button class="rpt-btn-link" style="color:#ef4444" @onclick="() => ConfirmDelete(t)">حذف</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_activeTab == "consumerTypes")
+        {
+            <div>
+                <div class="bll-tariff-toolbar">
+                    <button class="rpt-btn" @onclick="OpenCreateConsumerType">+ نوع مصرف‌کننده جدید</button>
+                </div>
+                @if (_consumerTypes.Count == 0)
+                {
+                    <div class="bll-empty">هیچ نوع مصرف‌کننده‌ای تعریف نشده است</div>
+                }
+                else
+                {
+                    <div class="bll-tariff-grid">
+                        @foreach (var ct in _consumerTypes)
+                        {
+                            <div class="bll-tariff-card">
+                                <div class="bll-tariff-top">
+                                    <div>
+                                        <div class="bll-tariff-name">@ct.Name <span class="bll-code">@ct.Code</span></div>
+                                        <div class="bll-tariff-desc">@ct.Category</div>
+                                    </div>
+                                    <span class="bll-badge bll-badge-info">@ct.BillingModel</span>
+                                </div>
+                                <div class="bll-tariff-body">
+                                    <div class="bll-tariff-meta" style="margin-top:0">
+                                        <span class="bll-feature @(ct.HasTOU ? "bll-feature-on" : "bll-feature-off")">@(ct.HasTOU ? "✅ TOU" : "❌ TOU")</span>
+                                        <span class="bll-feature @(ct.HasTieredRates ? "bll-feature-on" : "bll-feature-off")">@(ct.HasTieredRates ? "✅ پلکانی" : "❌ پلکانی")</span>
+                                        <span>ضریب ECA: @ct.EcaCoefficient</span>
+                                    </div>
+                                </div>
+                                <div class="bll-tariff-actions">
+                                    <button class="rpt-btn-link" @onclick="() => EditConsumerType(ct)">ویرایش</button>
+                                    <button class="rpt-btn-link" style="color:#ef4444" @onclick="() => DeleteConsumerType(ct.Code)">حذف</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_activeTab == "yearlyRates")
+        {
+            <div>
+                <div class="bll-tariff-toolbar">
+                    <button class="rpt-btn" @onclick="OpenCreateYearlyRate">+ نرخ پایه جدید</button>
+                </div>
+                @if (_yearlyRates.Count == 0)
+                {
+                    <div class="bll-empty">هیچ نرخ پایه‌ای تعریف نشده است</div>
+                }
+                else
+                {
+                    <div class="bll-tariff-grid">
+                        @foreach (var yr in _yearlyRates)
+                        {
+                            <div class="bll-tariff-card">
+                                <div class="bll-tariff-top">
+                                    <div>
+                                        <div class="bll-tariff-name">سال @P(yr.Year)</div>
+                                        @if (!string.IsNullOrEmpty(yr.SourceDocument))
+                                        {
+                                            <div class="bll-tariff-desc">@yr.SourceDocument</div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="bll-tariff-body">
+                                    <div class="bll-tariff-rates">
+                                        <div class="bll-tr">
+                                            <span>نرخ پایه</span>
+                                            <span>@P(yr.BaseRatePerKwh, "N0") ریال/kWh</span>
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(yr.Description))
+                                    {
+                                        <div class="bll-tariff-meta">@yr.Description</div>
+                                    }
+                                </div>
+                                <div class="bll-tariff-actions">
+                                    <button class="rpt-btn-link" @onclick="() => EditYearlyRate(yr)">ویرایش</button>
+                                    <button class="rpt-btn-link" style="color:#ef4444" @onclick="() => DeleteYearlyRate(yr.Year)">حذف</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@* Help Modal *@
+@if (_showHelp)
+{
+    <div class="modal-overlay" @onclick="() => _showHelp = false">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">راهنمای جامع تعرفه‌ها و صورتحساب</div>
+            <div class="modal-body" style="max-height:70vh;overflow-y:auto;font-size:13px;line-height:2">
+                <p>سیستم محاسبه صورتحساب انرژی‌کال از سه بخش اصلی تشکیل شده است:</p>
+                <h4>۱. انواع مصرف‌کننده (تب 🏭)</h4>
+                <p>مشخص می‌کند مصرف‌کننده از چه نوعی است: خانگی، صنعتی، تجاری، کشاورزی.</p>
+                <h4>۲. نرخ پایه سالانه (تب 📅)</h4>
+                <p>نرخ پایه برق (ریال بر کیلووات-ساعت) که هر سال توسط وزارت نیرو ابلاغ می‌شود.</p>
+                <h4>۳. ایجاد تعرفه (تب ⚙️)</h4>
+                <p>تعرفه مشخص می‌کند هر کیلووات-ساعت مصرف در ساعت‌های مختلف روز چه قیمتی دارد.</p>
+                <ul>
+                    <li><strong>روش محاسبه:</strong> دستی (ثابت) یا خودکار (ECA)</li>
+                    <li><strong>خودکار:</strong> نرخ = نرخ پایه × ضریب ECA × ضریب TOU</li>
+                    <li><strong>ضریب TOU:</strong> کم‌باری ۰.۵، میان‌باری ۱.۰، اوج‌باری ۲.۰</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button class="rpt-btn" @onclick="() => _showHelp = false">متوجه شدم</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Tariff Modal *@
+@if (_showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">@(_editingId == Guid.Empty ? "تعرفه جدید" : "ویرایش تعرفه")</div>
+            <div class="modal-body">
+                <div class="rpt-fg"><label class="rpt-fl">نام تعرفه</label><input class="rpt-fi" @bind="_form.Name" /></div>
+                <div class="rpt-fg">
+                    <label class="rpt-fl">وضعیت</label>
+                    <select class="rpt-fi" @bind="_form.IsActive">
+                        <option value="true">فعال</option>
+                        <option value="false">غیرفعال</option>
+                    </select>
+                </div>
+                <div class="rpt-fg"><label class="rpt-fl">توضیحات</label><input class="rpt-fi" @bind="_form.Description" /></div>
+                <div class="rpt-fg">
+                    <label class="rpt-fl">روش محاسبه</label>
+                    <select class="rpt-fi" @bind="_form.RateDerivationMode">
+                        <option value="Manual">دستی (ثابت)</option>
+                        <option value="ECA">خودکار (بر اساس ECA)</option>
+                    </select>
+                </div>
+                @if (_form.RateDerivationMode == "ECA")
+                {
+                    <div class="rpt-fg">
+                        <label class="rpt-fl">نوع مصرف‌کننده</label>
+                        <select class="rpt-fi" @bind="_form.ConsumerTypeCode">
+                            <option value="">انتخاب کنید</option>
+                            @foreach (var ct in _consumerTypes)
+                            {
+                                <option value="@ct.Code">@ct.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="rpt-fg">
+                        <label class="rpt-fl">سال</label>
+                        <select class="rpt-fi" @bind="_form.Year">
+                            <option value="">انتخاب کنید</option>
+                            @foreach (var yr in _yearlyRates)
+                            {
+                                <option value="@yr.Year">@yr.Year</option>
+                            }
+                        </select>
+                    </div>
+                }
+                <div class="rpt-fg"><label class="rpt-fl">ولتاژ (kV)</label><input class="rpt-fi" @bind="_form.VoltageLevelKV" /></div>
+                <div class="bll-note">در حالت خودکار، نرخ‌ها از ضریب ECA و ضرایب TOU محاسبه می‌شوند. برای تغییر نرخ نهایی از override استفاده کنید.</div>
+
+                <div style="margin-top:12px">
+                    <div class="bll-tariff-subtitle">تابستان (ماه ۴ تا ۹)</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">کم‌باری از</label><input class="rpt-fi" @bind="_form.SummerOffPeakStart" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">کم‌باری تا</label><input class="rpt-fi" @bind="_form.SummerOffPeakEnd" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">میان‌باری از</label><input class="rpt-fi" @bind="_form.SummerMidPeakStart" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">میان‌باری تا</label><input class="rpt-fi" @bind="_form.SummerMidPeakEnd" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">اوج‌باری از</label><input class="rpt-fi" @bind="_form.SummerPeakStart" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">اوج‌باری تا</label><input class="rpt-fi" @bind="_form.SummerPeakEnd" /></div>
+                    </div>
+                </div>
+                <div style="margin-top:8px">
+                    <div class="bll-tariff-subtitle">زمستان (ماه ۱ تا ۳ و ۱۰ تا ۱۲)</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">کم‌باری از</label><input class="rpt-fi" @bind="_form.WinterOffPeakStart" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">کم‌باری تا</label><input class="rpt-fi" @bind="_form.WinterOffPeakEnd" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">میان‌باری از</label><input class="rpt-fi" @bind="_form.WinterMidPeakStart" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">میان‌باری تا</label><input class="rpt-fi" @bind="_form.WinterMidPeakEnd" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">اوج‌باری از</label><input class="rpt-fi" @bind="_form.WinterPeakStart" /></div>
+                        <div class="rpt-fg" style="flex:1"><label class="rpt-fl">اوج‌باری تا</label><input class="rpt-fi" @bind="_form.WinterPeakEnd" /></div>
+                    </div>
+                </div>
+
+                @if (_form.RateDerivationMode == "Manual")
+                {
+                    <div style="margin-top:12px">
+                        <div class="bll-tariff-subtitle">نرخ‌ها (دستی)</div>
+                        <div class="rpt-fg"><label class="rpt-fl">کم‌باری (ریال)</label><input class="rpt-fi" type="number" @bind="_form.OffPeakRate" /></div>
+                        <div class="rpt-fg"><label class="rpt-fl">میان‌باری (ریال)</label><input class="rpt-fi" type="number" @bind="_form.MidPeakRate" /></div>
+                        <div class="rpt-fg"><label class="rpt-fl">اوج‌باری (ریال)</label><input class="rpt-fi" type="number" @bind="_form.PeakRate" /></div>
+                    </div>
+                }
+                else
+                {
+                    <div style="margin-top:12px">
+                        <div class="bll-tariff-subtitle">نرخ‌ها (محاسبه خودکار — فقط نمایش)</div>
+                        <div class="rpt-fg"><label class="rpt-fl">نرخ پایه ECA</label><input class="rpt-fi" disabled="disabled" value="@GetBaseRateDisplay()" /></div>
+                        <div class="rpt-fg"><label class="rpt-fl">ضریب TOU کم‌باری</label><input class="rpt-fi" disabled="disabled" value="0.5" /></div>
+                        <div class="rpt-fg"><label class="rpt-fl">ضریب TOU میان‌باری</label><input class="rpt-fi" disabled="disabled" value="1.0" /></div>
+                        <div class="rpt-fg"><label class="rpt-fl">ضریب TOU اوج‌باری</label><input class="rpt-fi" disabled="disabled" value="2.0" /></div>
+                    </div>
+                }
+
+                <div style="margin-top:12px">
+                    <div class="bll-tariff-subtitle">سایر تنظیمات</div>
+                    <div class="rpt-fg"><label class="rpt-fl">آبونمان ماهانه</label><input class="rpt-fi" type="number" @bind="_form.MonthlyFixedFee" /></div>
+                    <div class="rpt-fg"><label class="rpt-fl">آستانه جریمه PF</label><input class="rpt-fi" type="number" step="0.01" @bind="_form.ReactivePenaltyThreshold" /></div>
+                    <div class="rpt-fg"><label class="rpt-fl">ضریب جریمه</label><input class="rpt-fi" type="number" step="0.1" @bind="_form.ReactivePenaltyMultiplier" /></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="rpt-btn" @onclick="CloseModal">انصراف</button>
+                <button class="rpt-btn rpt-btn-primary" @onclick="SaveTariff">@(_saving ? "ذخیره..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Delete Confirmation *@
+@if (_deleteTarget is not null)
+{
+    <div class="modal-overlay" @onclick="() => _deleteTarget = null">
+        <div class="modal" @onclick:stopPropagation style="max-width:400px">
+            <div class="modal-header">حذف تعرفه</div>
+            <div class="modal-body">
+                آیا از حذف تعرفه «@_deleteTarget.Name» اطمینان دارید؟
+            </div>
+            <div class="modal-footer">
+                <button class="rpt-btn" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="rpt-btn" style="background:#ef4444;color:#fff" @onclick="DeleteTariff">حذف</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Consumer Type Modal *@
+@if (_showConsumerTypeModal)
+{
+    <div class="modal-overlay" @onclick="() => _showConsumerTypeModal = false">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">@(_editingConsumerTypeCode == null ? "نوع مصرف‌کننده جدید" : "ویرایش نوع مصرف‌کننده")</div>
+            <div class="modal-body">
+                <div class="rpt-fg"><label class="rpt-fl">کد</label><input class="rpt-fi" @bind="_consumerTypeForm.Code" /></div>
+                <div class="rpt-fg"><label class="rpt-fl">نام</label><input class="rpt-fi" @bind="_consumerTypeForm.Name" /></div>
+                <div class="rpt-fg">
+                    <label class="rpt-fl">دسته‌بندی</label>
+                    <select class="rpt-fi" @bind="_consumerTypeForm.Category">
+                        <option value="Residential">خانگی</option>
+                        <option value="Commercial">تجاری</option>
+                        <option value="Industrial">صنعتی</option>
+                        <option value="Agricultural">کشاورزی</option>
+                        <option value="Other">سایر</option>
+                    </select>
+                </div>
+                <div class="rpt-fg">
+                    <label class="rpt-fl">مدل محاسبه</label>
+                    <select class="rpt-fi" @bind="_consumerTypeForm.BillingModel">
+                        <option value="TOU">سه‌زمانه (TOU)</option>
+                        <option value="Tiered">پلکانی</option>
+                        <option value="Flat">تخت</option>
+                        <option value="TOU_Tiered">TOU + پلکانی</option>
+                    </select>
+                </div>
+                <div class="rpt-fg">
+                    <label class="rpt-fl">ضریب ECA</label>
+                    <input class="rpt-fi" type="number" step="0.0001" @bind="_consumerTypeForm.EcaCoefficient" />
+                </div>
+                <div class="rpt-fg"><label class="rpt-fl">ترتیب نمایش</label><input class="rpt-fi" type="number" @bind="_consumerTypeForm.SortOrder" /></div>
+                <div class="rpt-fg"><label class="rpt-fl">توضیحات</label><input class="rpt-fi" @bind="_consumerTypeForm.Description" /></div>
+            </div>
+            <div class="modal-footer">
+                <button class="rpt-btn" @onclick="() => _showConsumerTypeModal = false">انصراف</button>
+                <button class="rpt-btn rpt-btn-primary" @onclick="SaveConsumerType">ذخیره</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Yearly Rate Modal *@
+@if (_showYearlyRateModal)
+{
+    <div class="modal-overlay" @onclick="() => _showYearlyRateModal = false">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-header">@(_editingYear == null ? "نرخ پایه جدید" : "ویرایش نرخ پایه")</div>
+            <div class="modal-body">
+                <div class="rpt-fg"><label class="rpt-fl">سال</label><input class="rpt-fi" type="number" @bind="_yearlyRateForm.Year" /></div>
+                <div class="rpt-fg"><label class="rpt-fl">نرخ پایه (ریال/kWh)</label><input class="rpt-fi" type="number" step="1" @bind="_yearlyRateForm.BaseRatePerKwh" /></div>
+                <div class="rpt-fg"><label class="rpt-fl">ماخذ (سند)</label><input class="rpt-fi" @bind="_yearlyRateForm.SourceDocument" /></div>
+                <div class="rpt-fg"><label class="rpt-fl">توضیحات</label><input class="rpt-fi" @bind="_yearlyRateForm.Description" /></div>
+            </div>
+            <div class="modal-footer">
+                <button class="rpt-btn" @onclick="() => _showYearlyRateModal = false">انصراف</button>
+                <button class="rpt-btn rpt-btn-primary" @onclick="SaveYearlyRate">ذخیره</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Error / Info *@
+@if (!string.IsNullOrEmpty(_billResult))
+{
+    <div class="modal-overlay" @onclick='() => _billResult = ""'>
+        <div class="modal" @onclick:stopPropagation style="max-width:500px">
+            <div class="modal-header">نتیجه</div>
+            <div class="modal-body">@_billResult</div>
+            <div class="modal-footer">
+                <button class="rpt-btn" @onclick='() => _billResult = ""'>باشه</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _authorized;
+    private string _activeTab = "calc";
+    private string _billFrom = "", _billTo = "";
+    private bool _showHelp;
+    private List<TariffItem> _tariffs = new();
+    private bool _loading = true, _saving, _calculating, _showModal, _savingInvoice;
+    private Guid _editingId;
+    private TariffForm _form = new();
+    private List<CenterRef> _centers = new();
+    private List<DeviceRef> _devices = new();
+    private Guid _selectedCenterId;
+    private string _selectedDeviceId = "";
+    private Guid _selectedTariffId;
+    private string _billResult = "";
+    private BillingResultDto? _billData;
+    private bool _saveInvoice;
+    private List<InvoiceItem> _invoices = new();
+    private TariffItem? _deleteTarget;
+    private string _lastCalcFrom = "", _lastCalcTo = "";
+    private List<ConsumerTypeItem> _consumerTypes = new();
+    private List<YearlyRateItem> _yearlyRates = new();
+    private bool _showConsumerTypeModal;
+    private bool _showYearlyRateModal;
+    private ConsumerTypeForm _consumerTypeForm = new();
+    private YearlyRateForm _yearlyRateForm = new();
+    private string? _editingConsumerTypeCode;
+    private int? _editingYear;
+    private string _consumerTypeMsg = "";
+    private string _yearlyRateMsg = "";
+    private bool _showOverrideEditor;
+
+    private string P(decimal? value, string format = "N0") =>
+        value.HasValue ? ToPersian(value.Value.ToString(format)) : "";
+    private string P(decimal value, string format = "N0") =>
+        ToPersian(value.ToString(format));
+    private string P(int? value, string format = "N0") =>
+        value.HasValue ? ToPersian(value.Value.ToString(format)) : "";
+    private string P(int value, string format = "N0") =>
+        ToPersian(value.ToString(format));
+    private string P(DateTime? value, string format = "yyyy/MM/dd HH:mm") =>
+        value.HasValue ? ToPersian(value.Value.ToString(format)) : "";
+    private string P(DateTime value, string format = "yyyy/MM/dd HH:mm") =>
+        ToPersian(value.ToString(format));
+    private static string ToPersian(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s)
+        {
+            if (c >= '0' && c <= '9') sb.Append((char)('۰' + (c - '0')));
+            else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _authorized = Auth.IsInRole("Admin") || Auth.IsInRole("SuperAdmin");
+        if (_authorized) await Load();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var pc = new System.Globalization.PersianCalendar();
+            var iranTz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran");
+            var iranNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, iranTz);
+            _billTo = $"{pc.GetYear(iranNow):D4}/{pc.GetMonth(iranNow):D2}/{pc.GetDayOfMonth(iranNow):D2}";
+            var from = iranNow.AddDays(-30);
+            _billFrom = $"{pc.GetYear(from):D4}/{pc.GetMonth(from):D2}/{pc.GetDayOfMonth(from):D2}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task Load()
+    {
+        _loading = true;
+        try
+        {
+            _tariffs = await Http.GetFromJsonAsync<List<TariffItem>>("/api/v2/tariffs") ?? new();
+            _centers = await Http.GetFromJsonAsync<List<CenterRef>>("/api/v2/centers") ?? new();
+            _consumerTypes = await Http.GetFromJsonAsync<List<ConsumerTypeItem>>("/api/v2/consumer-types") ?? new();
+            _yearlyRates = await Http.GetFromJsonAsync<List<YearlyRateItem>>("/api/v2/yearly-base-rates") ?? new();
+        }
+        catch (Exception ex) { _billResult = $"خطا در بارگذاری: {ex.Message}"; }
+        _loading = false;
+    }
+
+    private void SwitchTab(string tab) { _activeTab = tab; StateHasChanged(); }
+    private void ShowCalc() { SwitchTab("calc"); }
+    private void ShowTariffs() { SwitchTab("tariffs"); }
+    private void ShowConsumerTypes() { SwitchTab("consumerTypes"); }
+    private void ShowYearlyRates() { SwitchTab("yearlyRates"); }
+
+    private async Task Calculate()
+    {
+        if (_selectedCenterId == Guid.Empty) { _billResult = "مرکز را انتخاب کنید"; return; }
+        if (string.IsNullOrEmpty(_billFrom) || string.IsNullOrEmpty(_billTo)) { _billResult = "بازه تاریخ را انتخاب کنید"; return; }
+        _calculating = true;
+        _billData = null;
+        try
+        {
+            var req = new BillingCalculationRequest
+            {
+                CenterId = _selectedCenterId,
+                FromDate = _billFrom,
+                ToDate = _billTo,
+                TariffId = _selectedTariffId == Guid.Empty ? null : _selectedTariffId
+            };
+            var res = await Http.PostAsJsonAsync("/api/v2/billing/calculate", req);
+            if (res.IsSuccessStatusCode)
+            {
+                _billData = await res.Content.ReadFromJsonAsync<BillingResultDto>();
+                _saveInvoice = false;
+                _lastCalcFrom = _billFrom; _lastCalcTo = _billTo;
+            }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا در محاسبه: {ex.Message}"; }
+        _calculating = false;
+    }
+
+    private async Task SaveInvoice()
+    {
+        if (_billData is null) return;
+        _savingInvoice = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync("/api/v2/billing/save-invoice", _billData);
+            if (res.IsSuccessStatusCode) { _billResult = "صورتحساب ذخیره شد"; _saveInvoice = true; await Load(); }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا در ذخیره: {ex.Message}"; }
+        _savingInvoice = false;
+    }
+
+    private async Task PrintInvoice()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.print");
+        }
+        catch (Exception ex) { _billResult = $"خطا در چاپ: {ex.Message}"; }
+    }
+
+    private void ToggleOverrideMode() => _showOverrideEditor = !_showOverrideEditor;
+
+    private void OnOverrideChange(string field, decimal value)
+    {
+        var item = _billData?.EditableItems?.FirstOrDefault(i => i.FieldName == field);
+        if (item is not null) item.OverrideValue = value;
+    }
+
+    private void OnOverrideReasonChange(string field, string? reason)
+    {
+        var item = _billData?.EditableItems?.FirstOrDefault(i => i.FieldName == field);
+        if (item is not null) item.OverrideReason = reason ?? "";
+    }
+
+    // Tariff CRUD
+    private void OpenCreateTariff() { _editingId = Guid.Empty; _form = new(); _showModal = true; }
+    private void EditTariff(TariffItem t) { _editingId = t.Id; _form = MapToForm(t); _showModal = true; }
+    private void ConfirmDelete(TariffItem t) { _deleteTarget = t; }
+    private void CloseModal() { _showModal = false; _deleteTarget = null; }
+
+    private async Task SaveTariff()
+    {
+        _saving = true;
+        try
+        {
+            HttpResponseMessage res;
+            if (_editingId == Guid.Empty) res = await Http.PostAsJsonAsync("/api/v2/tariffs", _form);
+            else res = await Http.PutAsJsonAsync($"/api/v2/tariffs/{_editingId}", _form);
+            if (res.IsSuccessStatusCode) { _billResult = _editingId == Guid.Empty ? "تعرفه ساخته شد" : "تعرفه ویرایش شد"; _showModal = false; await Load(); }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا در ذخیره: {ex.Message}"; }
+        _saving = false;
+    }
+
+    private async Task DeleteTariff()
+    {
+        if (_deleteTarget is null) return;
+        try
+        {
+            var res = await Http.DeleteAsync($"/api/v2/tariffs/{_deleteTarget.Id}");
+            if (res.IsSuccessStatusCode) { _billResult = "تعرفه حذف شد"; _deleteTarget = null; await Load(); }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا در حذف: {ex.Message}"; }
+    }
+
+    // Consumer Type CRUD
+    private void OpenCreateConsumerType() { _editingConsumerTypeCode = null; _consumerTypeForm = new(); _showConsumerTypeModal = true; }
+    private void EditConsumerType(ConsumerTypeItem ct) { _editingConsumerTypeCode = ct.Code; _consumerTypeForm = MapToForm(ct); _showConsumerTypeModal = true; }
+
+    private async Task SaveConsumerType()
+    {
+        try
+        {
+            HttpResponseMessage res;
+            if (_editingConsumerTypeCode == null) res = await Http.PostAsJsonAsync("/api/v2/consumer-types", _consumerTypeForm);
+            else res = await Http.PutAsJsonAsync($"/api/v2/consumer-types/{_editingConsumerTypeCode}", _consumerTypeForm);
+            if (res.IsSuccessStatusCode) { _billResult = "ذخیره شد"; _showConsumerTypeModal = false; await Load(); }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا: {ex.Message}"; }
+    }
+
+    private async Task DeleteConsumerType(string code)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync($"/api/v2/consumer-types/{code}");
+            if (res.IsSuccessStatusCode) { _billResult = "حذف شد"; await Load(); }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا: {ex.Message}"; }
+    }
+
+    // Yearly Rate CRUD
+    private void OpenCreateYearlyRate() { _editingYear = null; _yearlyRateForm = new(); _showYearlyRateModal = true; }
+    private void EditYearlyRate(YearlyRateItem yr) { _editingYear = yr.Year; _yearlyRateForm = MapToForm(yr); _showYearlyRateModal = true; }
+
+    private async Task SaveYearlyRate()
+    {
+        try
+        {
+            HttpResponseMessage res;
+            if (_editingYear == null) res = await Http.PostAsJsonAsync("/api/v2/yearly-base-rates", _yearlyRateForm);
+            else res = await Http.PutAsJsonAsync($"/api/v2/yearly-base-rates/{_editingYear}", _yearlyRateForm);
+            if (res.IsSuccessStatusCode) { _billResult = "ذخیره شد"; _showYearlyRateModal = false; await Load(); }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا: {ex.Message}"; }
+    }
+
+    private async Task DeleteYearlyRate(int year)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync($"/api/v2/yearly-base-rates/{year}");
+            if (res.IsSuccessStatusCode) { _billResult = "حذف شد"; await Load(); }
+            else { var err = await res.Content.ReadAsStringAsync(); _billResult = $"خطا: {err}"; }
+        }
+        catch (Exception ex) { _billResult = $"خطا: {ex.Message}"; }
+    }
+
+
+
+    private string GetBaseRateDisplay()
+    {
+        if (_form.RateDerivationMode != "ECA" || string.IsNullOrEmpty(_form.ConsumerTypeCode) || !_form.Year.HasValue) return "—";
+        var rate = _yearlyRates.FirstOrDefault(r => r.Year == _form.Year.Value);
+        if (rate != null) return rate.BaseRatePerKwh.ToString("N0") + " ریال";
+        return "—";
+    }
+
+    // Mapping helpers
+    private TariffForm MapToForm(TariffItem t) => new()
+    {
+        Name = t.Name, IsActive = t.IsActive, Description = t.Description, RateDerivationMode = t.RateDerivationMode,
+        ConsumerTypeCode = t.ConsumerTypeCode, Year = t.Year, VoltageLevelKV = t.VoltageLevelKV,
+        SummerOffPeakStart = t.SummerOffPeakStart, SummerOffPeakEnd = t.SummerOffPeakEnd,
+        SummerMidPeakStart = t.SummerMidPeakStart, SummerMidPeakEnd = t.SummerMidPeakEnd,
+        SummerPeakStart = t.SummerPeakStart, SummerPeakEnd = t.SummerPeakEnd,
+        WinterOffPeakStart = t.WinterOffPeakStart, WinterOffPeakEnd = t.WinterOffPeakEnd,
+        WinterMidPeakStart = t.WinterMidPeakStart, WinterMidPeakEnd = t.WinterMidPeakEnd,
+        WinterPeakStart = t.WinterPeakStart, WinterPeakEnd = t.WinterPeakEnd,
+        OffPeakRate = t.OffPeakRate, MidPeakRate = t.MidPeakRate, PeakRate = t.PeakRate,
+        MonthlyFixedFee = t.MonthlyFixedFee, ReactivePenaltyThreshold = t.ReactivePenaltyThreshold,
+        ReactivePenaltyMultiplier = t.ReactivePenaltyMultiplier
+    };
+
+    private ConsumerTypeForm MapToForm(ConsumerTypeItem ct) => new()
+    {
+        Code = ct.Code, Name = ct.Name, Category = ct.Category, BillingModel = ct.BillingModel,
+        EcaCoefficient = ct.EcaCoefficient, SortOrder = ct.SortOrder, Description = ct.Description
+    };
+
+    private YearlyRateForm MapToForm(YearlyRateItem yr) => new()
+    {
+        Year = yr.Year, BaseRatePerKwh = yr.BaseRatePerKwh,
+        SourceDocument = yr.SourceDocument, Description = yr.Description
+    };
+
+    // DTO classes
+    public class TariffItem
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public bool IsActive { get; set; }
+        public string? Description { get; set; }
+        public string RateDerivationMode { get; set; } = "Manual";
+        public string? ConsumerTypeCode { get; set; }
+        public int? Year { get; set; }
+        public decimal? VoltageLevelKV { get; set; }
+        public string? SummerOffPeakStart { get; set; }
+        public string? SummerOffPeakEnd { get; set; }
+        public string? SummerMidPeakStart { get; set; }
+        public string? SummerMidPeakEnd { get; set; }
+        public string? SummerPeakStart { get; set; }
+        public string? SummerPeakEnd { get; set; }
+        public string? WinterOffPeakStart { get; set; }
+        public string? WinterOffPeakEnd { get; set; }
+        public string? WinterMidPeakStart { get; set; }
+        public string? WinterMidPeakEnd { get; set; }
+        public string? WinterPeakStart { get; set; }
+        public string? WinterPeakEnd { get; set; }
+        public decimal OffPeakRate { get; set; }
+        public decimal MidPeakRate { get; set; }
+        public decimal PeakRate { get; set; }
+        public decimal MonthlyFixedFee { get; set; }
+        public decimal ReactivePenaltyThreshold { get; set; }
+        public decimal ReactiveBonusThreshold { get; set; }
+        public decimal ReactivePenaltyMultiplier { get; set; }
+        public decimal DemandRate { get; set; }
+        public bool DemandChargeEnabled { get; set; }
+        public string? EffectiveFrom { get; set; }
+        public string? EffectiveTo { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class ConsumerTypeItem
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string BillingModel { get; set; } = "TOU";
+        public decimal EcaCoefficient { get; set; }
+        public int SortOrder { get; set; }
+        public string? Description { get; set; }
+        public bool HasTOU { get; set; }
+        public bool HasTieredRates { get; set; }
+    }
+
+    public class YearlyRateItem
+    {
+        public int Year { get; set; }
+        public decimal BaseRatePerKwh { get; set; }
+        public string? SourceDocument { get; set; }
+        public string? Description { get; set; }
+    }
+
+    public class CenterRef { public Guid Id { get; set; } public string Name { get; set; } = ""; }
+    public class DeviceRef { public string Id { get; set; } = ""; public string Name { get; set; } = ""; }
+
+    public class TariffForm
+    {
+        public string Name { get; set; } = "";
+        public bool IsActive { get; set; } = true;
+        public string? Description { get; set; }
+        public string RateDerivationMode { get; set; } = "Manual";
+        public string? ConsumerTypeCode { get; set; }
+        public int? Year { get; set; }
+        public decimal? VoltageLevelKV { get; set; }
+        public string SummerOffPeakStart { get; set; } = "23:00";
+        public string SummerOffPeakEnd { get; set; } = "07:00";
+        public string SummerMidPeakStart { get; set; } = "07:00";
+        public string SummerMidPeakEnd { get; set; } = "19:00";
+        public string SummerPeakStart { get; set; } = "19:00";
+        public string SummerPeakEnd { get; set; } = "23:00";
+        public string WinterOffPeakStart { get; set; } = "23:00";
+        public string WinterOffPeakEnd { get; set; } = "07:00";
+        public string WinterMidPeakStart { get; set; } = "07:00";
+        public string WinterMidPeakEnd { get; set; } = "19:00";
+        public string WinterPeakStart { get; set; } = "19:00";
+        public string WinterPeakEnd { get; set; } = "23:00";
+        public decimal OffPeakRate { get; set; }
+        public decimal MidPeakRate { get; set; }
+        public decimal PeakRate { get; set; }
+        public decimal MonthlyFixedFee { get; set; } = 121279;
+        public decimal ReactivePenaltyThreshold { get; set; } = 0.9m;
+        public decimal ReactivePenaltyMultiplier { get; set; } = 3;
+    }
+
+    public class ConsumerTypeForm
+    {
+        public string Code { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "Residential";
+        public string BillingModel { get; set; } = "TOU";
+        public decimal EcaCoefficient { get; set; } = 1;
+        public int SortOrder { get; set; }
+        public string? Description { get; set; }
+    }
+
+    public class YearlyRateForm
+    {
+        public int Year { get; set; }
+        public decimal BaseRatePerKwh { get; set; }
+        public string? SourceDocument { get; set; }
+        public string? Description { get; set; }
+    }
+
+    public class BillingCalculationRequest
+    {
+        public Guid CenterId { get; set; }
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+        public Guid? TariffId { get; set; }
+    }
+
+    public class InvoiceItem
+    {
+        public Guid Id { get; set; }
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+        public int Days { get; set; }
+        public decimal TotalKWh { get; set; }
+        public decimal EnergyCost { get; set; }
+        public decimal ReactivePenalty { get; set; }
+        public decimal GrandTotal { get; set; }
+        public string Status { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+    }
+}

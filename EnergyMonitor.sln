@@ -1,0 +1,52 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnergyMonitor", "EnergyMonitor\EnergyMonitor.csproj", "{8CA05959-8AD4-4F0B-AD84-77C194DF73B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnergyMonitor.Client", "EnergyMonitor.Client\EnergyMonitor.Client.csproj", "{8C1889E4-1CC1-4B08-945B-A141D3757C70}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnergyMonitor.Shared", "EnergyMonitor.Shared\EnergyMonitor.Shared.csproj", "{47269C64-21C5-420C-8244-9353B46C1BDD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnergyMonitor.Domain", "EnergyMonitor.Domain\EnergyMonitor.Domain.csproj", "{05E69476-64B7-45B7-9929-1D3D61F91980}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnergyMonitor.Application", "EnergyMonitor.Application\EnergyMonitor.Application.csproj", "{7743F4FE-CBAF-4230-805C-7F989B44F17E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnergyMonitor.Infrastructure", "EnergyMonitor.Infrastructure\EnergyMonitor.Infrastructure.csproj", "{64634BE5-7556-4A1F-8DDA-6F9EA2DC6365}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8CA05959-8AD4-4F0B-AD84-77C194DF73B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CA05959-8AD4-4F0B-AD84-77C194DF73B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CA05959-8AD4-4F0B-AD84-77C194DF73B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CA05959-8AD4-4F0B-AD84-77C194DF73B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C1889E4-1CC1-4B08-945B-A141D3757C70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C1889E4-1CC1-4B08-945B-A141D3757C70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C1889E4-1CC1-4B08-945B-A141D3757C70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C1889E4-1CC1-4B08-945B-A141D3757C70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{47269C64-21C5-420C-8244-9353B46C1BDD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{47269C64-21C5-420C-8244-9353B46C1BDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{47269C64-21C5-420C-8244-9353B46C1BDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{47269C64-21C5-420C-8244-9353B46C1BDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05E69476-64B7-45B7-9929-1D3D61F91980}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05E69476-64B7-45B7-9929-1D3D61F91980}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05E69476-64B7-45B7-9929-1D3D61F91980}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05E69476-64B7-45B7-9929-1D3D61F91980}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7743F4FE-CBAF-4230-805C-7F989B44F17E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7743F4FE-CBAF-4230-805C-7F989B44F17E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7743F4FE-CBAF-4230-805C-7F989B44F17E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7743F4FE-CBAF-4230-805C-7F989B44F17E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64634BE5-7556-4A1F-8DDA-6F9EA2DC6365}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64634BE5-7556-4A1F-8DDA-6F9EA2DC6365}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64634BE5-7556-4A1F-8DDA-6F9EA2DC6365}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64634BE5-7556-4A1F-8DDA-6F9EA2DC6365}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

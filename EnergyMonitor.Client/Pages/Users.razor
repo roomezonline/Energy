@@ -1,0 +1,238 @@
+@page "/users"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthService Auth
+@inject ToastService Toast
+
+@if (Auth.CurrentUser?.Role == "SuperAdmin")
+{
+<div class="page-container">
+    <div class="page-toolbar">
+        <h2>مدیریت کاربران</h2>
+        <button class="btn btn-primary" @onclick="OpenCreate">+ کاربر جدید</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div></div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>نام کاربری</th>
+                        <th>نام و نام خانوادگی</th>
+                        <th>نقش</th>
+                        <th>مرکز</th>
+                        <th>وضعیت</th>
+                        <th>آخرین ورود</th>
+                        <th>تاریخ ایجاد</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in _users)
+                    {
+                        <tr>
+                            <td>@u.Username</td>
+                            <td>@u.FullName</td>
+                            <td><span class="role-badge role-@u.Role">@u.Role</span></td>
+                            <td>@(u.CenterIds.Count > 0 ? string.Join("، ", u.CenterIds.Select(id => _centerNames.GetValueOrDefault(id, "")).Where(n => n != "")) : "—")</td>
+                            <td><span class="status-@(u.IsActive ? "active" : "inactive")">@(u.IsActive ? "فعال" : "غیرفعال")</span></td>
+                            <td class="ltr">@(u.LastLoginAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
+                            <td class="ltr">@u.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                            <td>
+                                <button class="btn-sm" @onclick="() => OpenEdit(u)">ویرایش</button>
+                                <button class="btn-sm danger" @onclick="() => ConfirmDelete(u)">حذف</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (_showModal)
+    {
+        <div class="modal-overlay" @onclick="CloseModal">
+            <div class="modal-card" @onclick:stopPropagation>
+                <div class="modal-hdr">
+                    <h3>@(_editingId == Guid.Empty ? "کاربر جدید" : "ویرایش کاربر")</h3>
+                    <button class="modal-close" @onclick="CloseModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row"><label>نام کاربری</label><input @bind="_username" class="form-input" /></div>
+                    <div class="form-row"><label>@(_editingId == Guid.Empty ? "رمز عبور" : "رمز عبور (خالی = بدون تغییر)")</label><input @bind="_password" type="password" class="form-input ltr" /></div>
+                    <div class="form-row"><label>نام و نام خانوادگی</label><input @bind="_fullName" class="form-input" /></div>
+                    <div class="form-row">
+                        <label>نقش</label>
+                        <select @bind="_role" class="form-input">
+                            <option value="Operator">اپراتور</option>
+                            <option value="Viewer">بیننده</option>
+                            <option value="Admin">مدیر مرکز</option>
+                            <option value="SuperAdmin">مدیر کل</option>
+                            <option value="RegionalAdmin">مدیر منطقه</option>
+                            <option value="BillingOperator">اپراتور صورتحساب</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>مراکز</label>
+                        <div class="checkbox-group">
+                            @foreach (var c in _centers)
+                            {
+                                <label class="checkbox-item">
+                                    <input type="checkbox" checked="@_centerIds.Contains(c.Id)" @onchange="(e) => ToggleCenter(c.Id, (bool)(e.Value ?? false))" />
+                                    <span>@c.Name (@c.Code)</span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label>فعال</label>
+                        <label class="tgl"><input type="checkbox" @bind="_isActive" /><span class="sl"></span></label>
+                    </div>
+                </div>
+                <div class="modal-ftr">
+                    <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "در حال ذخیره..." : "ذخیره")</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+}
+else
+{
+    <div style="text-align:center;padding:4rem 1rem;color:#888">
+        <h3>🔒 دسترسی محدود</h3>
+        <p>فقط مدیران کل می‌توانند به این بخش دسترسی داشته باشند.</p>
+        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+    </div>
+}
+
+@code {
+    private List<UserItem> _users = new();
+    private List<CenterOption> _centers = new();
+    private Dictionary<Guid, string> _centerNames = new();
+    private bool _loading = true, _saving, _showModal;
+    private Guid _editingId = Guid.Empty;
+    private string _username = "", _password = "", _fullName = "", _role = "Operator";
+    private HashSet<Guid> _centerIds = new();
+    private bool _isActive = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUser?.Role == "SuperAdmin") await Load();
+    }
+
+    private async Task Load()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            _users = await Http.GetFromJsonAsync<List<UserItem>>("api/v2/users") ?? new();
+            var centers = await Http.GetFromJsonAsync<List<CenterOption>>("api/v2/centers") ?? new();
+            _centers = centers.Where(c => c.IsActive).ToList();
+            _centerNames = centers.ToDictionary(c => c.Id, c => c.Name ?? "");
+        }
+        catch { }
+        _loading = false; StateHasChanged();
+    }
+
+    private void ToggleCenter(Guid id, bool selected)
+    {
+        if (selected) _centerIds.Add(id); else _centerIds.Remove(id);
+    }
+
+    private void OpenCreate()
+    {
+        _editingId = Guid.Empty; _username = ""; _password = ""; _fullName = "";
+        _role = "Operator"; _centerIds = new(); _isActive = true;
+        _showModal = true;
+    }
+
+    private void OpenEdit(UserItem u)
+    {
+        _editingId = u.Id; _username = u.Username; _password = ""; _fullName = u.FullName ?? "";
+        _role = u.Role; _centerIds = new(u.CenterIds); _isActive = u.IsActive;
+        _showModal = true;
+    }
+
+    private void CloseModal() { _showModal = false; }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_username)) { Toast.ShowError("نام کاربری را وارد کنید"); return; }
+        if (_editingId == Guid.Empty && string.IsNullOrWhiteSpace(_password)) { Toast.ShowError("رمز عبور را وارد کنید"); return; }
+
+        _saving = true; StateHasChanged();
+        try
+        {
+            var cids = _centerIds.ToList();
+            var body = new
+            {
+                username = _username.Trim(),
+                password = _password,
+                fullName = _fullName.Trim(),
+                role = _role,
+                centerId = cids.Count > 0 ? cids[0] : (Guid?)null,
+                centerIds = cids,
+                isActive = _isActive
+            };
+
+            HttpResponseMessage resp;
+            if (_editingId == Guid.Empty)
+                resp = await Http.PostAsJsonAsync("api/v2/users", body);
+            else
+                resp = await Http.PutAsJsonAsync($"api/v2/users/{_editingId}", body);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                _showModal = false;
+                await Load();
+                Toast.ShowSuccess(_editingId == Guid.Empty ? "کاربر با موفقیت ایجاد شد" : "کاربر با موفقیت ویرایش شد");
+            }
+            else
+            {
+                var err = await resp.Content.ReadFromJsonAsync<ErrorResponse>();
+                Toast.ShowError(err?.error ?? "خطا در ذخیره کاربر");
+            }
+        }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
+        _saving = false; StateHasChanged();
+    }
+
+    private async Task ConfirmDelete(UserItem u)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"حذف کاربر «{u.Username}»؟")) return;
+        try { await Http.DeleteAsync($"api/v2/users/{u.Id}"); await Load(); Toast.ShowSuccess("کاربر با موفقیت حذف شد"); }
+        catch { Toast.ShowError("خطا در حذف کاربر"); }
+    }
+
+    public class UserItem
+    {
+        public Guid Id { get; set; }
+        public string Username { get; set; } = "";
+        public string? FullName { get; set; }
+        public string Role { get; set; } = "";
+        public Guid? CenterId { get; set; }
+        public List<Guid> CenterIds { get; set; } = new();
+        public bool IsActive { get; set; }
+        public DateTime? LastLoginAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class CenterOption
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Code { get; set; } = "";
+        public bool IsActive { get; set; }
+    }
+
+    public class ErrorResponse { public string error { get; set; } = ""; }
+}

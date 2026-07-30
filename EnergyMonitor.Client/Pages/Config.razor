@@ -1,0 +1,134 @@
+@page "/config"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthService Auth
+@inject ToastService Toast
+
+@if (Auth.IsInRole("Admin"))
+{
+<div class="page-container">
+    <div class="page-toolbar">
+        <h2>تنظیمات دستگاه</h2>
+    </div>
+
+    <div class="form-row" style="max-width:400px">
+        <label>انتخاب دستگاه</label>
+        <select @bind="_selectedDeviceId" @bind:after="LoadConfig" class="form-select">
+            <option value="">-- انتخاب دستگاه --</option>
+            @foreach (var d in _devices)
+            {
+                <option value="@d.DeviceId">@d.DisplayName (@d.DeviceId)</option>
+            }
+        </select>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div></div>
+    }
+    else if (_cfg != null)
+    {
+        <div class="cfg-card">
+            <div class="cfg-section">
+                <h4>تنظیمات ولتاژ</h4>
+                <div class="form-row"><label>حداکثر ولتاژ (V)</label><input @bind="_cfg.OverVoltageThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
+                <div class="form-row"><label>حداقل ولتاژ (V)</label><input @bind="_cfg.UnderVoltageThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
+                <div class="form-row"><label>عدم تعادل فاز (V)</label><input @bind="_cfg.PhaseImbalanceThreshold" type="number" inputmode="numeric" class="form-input ltr" step="1" /></div>
+            </div>
+            <div class="cfg-section">
+                <h4>تنظیمات جریان و توان</h4>
+                <div class="form-row"><label>حداکثر جریان (A)</label><input @bind="_cfg.OverCurrentThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
+                <div class="form-row"><label>حداکثر توان هر فاز (W)</label><input @bind="_cfg.HighPowerThreshold" type="number" inputmode="numeric" class="form-input ltr" step="100" /></div>
+            </div>
+            <div class="cfg-section">
+                <h4>ضریب توان و فرکانس</h4>
+                <div class="form-row"><label>حداقل PF</label><input @bind="_cfg.LowPFThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.01" max="0.99" /></div>
+                <div class="form-row"><label>حداقل فرکانس (Hz)</label><input @bind="_cfg.FreqMinThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.1" /></div>
+                <div class="form-row"><label>حداکثر فرکانس (Hz)</label><input @bind="_cfg.FreqMaxThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.1" /></div>
+            </div>
+            <div class="cfg-section">
+                <h4>دمای محیط</h4>
+                <div class="form-row"><label>آستانه دمای بالا (°C)</label><input @bind="_cfg.TemperatureThreshold" type="number" inputmode="decimal" class="form-input ltr" step="0.5" /></div>
+            </div>
+            <div class="cfg-section">
+                <h4>سایر</h4>
+                <div class="form-row"><label>فاصله ارسال (ms)</label><input @bind="_cfg.PublishIntervalMs" type="number" inputmode="numeric" class="form-input ltr" step="1000" min="1000" /></div>
+                <div class="form-row">
+                    <label>ذخیره خودکار</label>
+                    <label class="tgl"><input type="checkbox" @bind="_cfg.IsSavingEnabled" /><span class="sl"></span></label>
+                </div>
+                <div class="form-row">
+                    <label>صدای هشدار</label>
+                    <label class="tgl"><input type="checkbox" @bind="_cfg.AlarmSoundEnabled" /><span class="sl"></span></label>
+                </div>
+            </div>
+            <button class="btn btn-primary" @onclick="SaveConfig" disabled="@_saving">@(_saving ? "در حال ذخیره..." : "ذخیره تنظیمات")</button>
+        </div>
+    }
+</div>
+}
+else
+{
+    <div style="text-align:center;padding:4rem 1rem;color:#888">
+        <h3>🔒 دسترسی محدود</h3>
+        <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
+        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+    </div>
+}
+
+@code {
+    private List<DeviceRef> _devices = new();
+    private string _selectedDeviceId = "";
+    private CfgModel? _cfg;
+    private bool _loading, _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsInRole("Admin")) return;
+        try { _devices = await Http.GetFromJsonAsync<List<DeviceRef>>("api/v2/devices") ?? new(); } catch { }
+        if (_devices.Count > 0) { _selectedDeviceId = _devices[0].DeviceId; await LoadConfig(); }
+    }
+
+    private async Task LoadConfig()
+    {
+        if (string.IsNullOrEmpty(_selectedDeviceId)) return;
+        _loading = true; StateHasChanged();
+        try { _cfg = await Http.GetFromJsonAsync<CfgModel>($"api/v2/config/{_selectedDeviceId}"); }
+        catch { Toast.ShowError("خطا در دریافت تنظیمات"); }
+        _loading = false; StateHasChanged();
+    }
+
+    private async Task SaveConfig()
+    {
+        if (_cfg == null) return;
+        _saving = true; StateHasChanged();
+        try
+        {
+            var resp = await Http.PutAsJsonAsync($"api/v2/config/{_selectedDeviceId}", _cfg);
+            if (resp.IsSuccessStatusCode) { Toast.ShowSuccess("تنظیمات با موفقیت ذخیره شد"); }
+            else { Toast.ShowError("خطا در ذخیره تنظیمات"); }
+        }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
+        _saving = false; StateHasChanged();
+    }
+
+    public class CfgModel
+    {
+        public double OverVoltageThreshold { get; set; } = 253;
+        public double UnderVoltageThreshold { get; set; } = 207;
+        public double OverCurrentThreshold { get; set; } = 20;
+        public double PhaseImbalanceThreshold { get; set; } = 15;
+        public double LowPFThreshold { get; set; } = 0.8;
+        public double FreqMinThreshold { get; set; } = 49.5;
+        public double FreqMaxThreshold { get; set; } = 50.5;
+        public double HighPowerThreshold { get; set; } = 5000;
+        public double TemperatureThreshold { get; set; } = 40;
+        public int PublishIntervalMs { get; set; } = 15000;
+        public bool IsSavingEnabled { get; set; } = true;
+        public bool AlarmSoundEnabled { get; set; } = true;
+    }
+
+    public class DeviceRef { public string DeviceId { get; set; } = ""; public string DisplayName { get; set; } = ""; }
+}

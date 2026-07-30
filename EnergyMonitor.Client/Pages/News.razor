@@ -1,0 +1,289 @@
+@page "/"
+@page "/news/manage"
+@page "/news"
+@layout HomeLayout
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@implements IDisposable
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthService Auth
+@inject ToastService Toast
+
+@if (_loading)
+{
+    <div class="hp-loading">
+        <div class="hp-spinner"></div>
+    </div>
+}
+else
+{
+    @if (_sliders.Count > 0)
+    {
+        <section class="hp-hero">
+            @for (var i = 0; i < _sliders.Count; i++)
+            {
+                var sl = _sliders[i];
+                <div class="hp-hero-slide" style="opacity:@(i == _currentSlide ? 1 : 0)">
+                    @if (!string.IsNullOrEmpty(sl.ImageUrl))
+                    {
+                        <img src="@sl.ImageUrl" alt="@sl.Title" class="hp-hero-img" />
+                    }
+                    else
+                    {
+                        <div class="hp-hero-gradient"></div>
+                    }
+                    @if (!string.IsNullOrEmpty(sl.Title))
+                    {
+                        <div class="hp-hero-overlay">
+                            <h2 class="hp-hero-title">@sl.Title</h2>
+                        </div>
+                    }
+                </div>
+            }
+            @if (_sliders.Count > 1)
+            {
+                <div class="hp-hero-dots">
+                    @for (var i = 0; i < _sliders.Count; i++)
+                    {
+                        <button class="hp-dot @(i == _currentSlide ? "active" : "")" @onclick="() => GoSlide(i)"></button>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <div class="hp-login-row">
+        <a href="/login" class="hp-login-btn">ورود به سامانه</a>
+    </div>
+
+    <section class="hp-section">
+        <div class="hp-container">
+            <div class="hp-info-cards">
+                <div class="hp-info-card">
+                    <div class="hp-info-icon">⚡</div>
+                    <div class="hp-info-title">پایش لحظه‌ای</div>
+                    <div class="hp-info-desc">ولتاژ، جریان و توان هر کارگاه را به صورت آنلاین و لحظه‌ای مشاهده کنید</div>
+                </div>
+                <div class="hp-info-card">
+                    <div class="hp-info-icon">📊</div>
+                    <div class="hp-info-title">نمودارهای تحلیلی</div>
+                    <div class="hp-info-desc">روند مصرف انرژی و تغییرات پارامترهای الکتریکی را در بازه‌های مختلف بررسی کنید</div>
+                </div>
+                <div class="hp-info-card">
+                    <div class="hp-info-icon">🔔</div>
+                    <div class="hp-info-title">هشدارهای هوشمند</div>
+                    <div class="hp-info-desc">در صورت بروز خطا یا شرایط بحرانی، به سرعت مطلع شوید و اقدام کنید</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hp-section hp-section-alt">
+        <div class="hp-container">
+            <div class="hp-section-header">
+                <h2>اخبار و اطلاعیه‌ها</h2>
+                @if (_isAdmin)
+                {
+                    <button class="hp-btn hp-btn-sm" @onclick="OpenCreate">+ خبر جدید</button>
+                }
+            </div>
+            @if (_news.Count == 0)
+            {
+                <p class="hp-empty">خبری یافت نشد</p>
+            }
+            else
+            {
+                <div class="hp-news-list">
+                    @foreach (var n in _news)
+                    {
+                        <div class="hp-news-row@(_expandedId == n.Id ? " expanded" : "")">
+                            @if (!string.IsNullOrEmpty(n.ImageFileName))
+                            {
+                                <div class="hp-news-img">
+                                    <img src="/uploads/@n.ImageFileName" alt="@n.Title" />
+                                </div>
+                            }
+                            <div class="hp-news-body">
+                                <small class="hp-news-date">@n.CreatedAt.ToPersianDate()</small>
+                                <h3>@n.Title</h3>
+                                <div class="hp-news-summary">@n.Summary</div>
+                                @if (!string.IsNullOrEmpty(n.FullText) && _expandedId == n.Id)
+                                {
+                                    <div class="news-fulltext">@n.FullText</div>
+                                }
+                                @if (!string.IsNullOrEmpty(n.FullText))
+                                {
+                                    <button class="news-readmore-btn" @onclick="@(() => ToggleExpand(n.Id))">
+                                        @(_expandedId == n.Id ? "بستن ▲" : "ادامه مطلب ▼")
+                                    </button>
+                                }
+                                @if (_isAdmin)
+                                {
+                                    <div class="hp-news-actions">
+                                        <button class="hp-btn hp-btn-sm hp-btn-ghost" @onclick="@(() => OpenEdit(n))">ویرایش</button>
+                                        <button class="hp-btn hp-btn-sm hp-btn-danger" @onclick="@(() => DeleteNews(n))">حذف</button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@if (_showModal)
+{
+    <div class="hp-modal-backdrop" @onclick="CloseModal">
+        <div class="hp-modal" @onclick:stopPropagation>
+            <div class="hp-modal-head">
+                <h3>@(_editingId == Guid.Empty ? "خبر جدید" : "ویرایش خبر")</h3>
+                <button class="hp-modal-close" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="hp-modal-body">
+                <label>عنوان</label>
+                <input @bind="_title" class="hp-input" />
+                <label>خلاصه</label>
+                <textarea @bind="_summary" class="hp-input" rows="3"></textarea>
+                <label>متن کامل</label>
+                <textarea @bind="_fullText" class="hp-input" rows="6"></textarea>
+                <div class="hp-form-row">
+                    <div>
+                        <label>ترتیب</label>
+                        <input @bind="_sortOrder" type="number" inputmode="numeric" class="hp-input" />
+                    </div>
+                    <div>
+                        <label>فعال</label>
+                        <label class="hp-toggle">
+                            <input type="checkbox" @bind="_isActive" />
+                            <span class="hp-toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <label>تصویر</label>
+                <div class="upload-zone">
+                    <InputFile OnChange="OnFile" accept="image/*" />
+                    @if (_preview != null)
+                    {
+                        <img src="@_preview" class="upload-preview" alt="" />
+                    }
+                    else
+                    {
+                        <div class="upload-placeholder">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4361ee" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span>انتخاب تصویر</span>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="hp-modal-foot">
+                <button class="hp-btn hp-btn-ghost" @onclick="CloseModal">انصراف</button>
+                <button class="hp-btn" @onclick="Save" disabled="@_saving">@(_saving ? "ذخیره..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SliderItem> _sliders = new();
+    private List<NewsItem> _news = new();
+    private int _currentSlide;
+    private Timer? _slideTimer;
+    private bool _loading = true;
+    private bool _isAdmin;
+    private Guid? _expandedId;
+
+    private bool _saving, _showModal;
+    private Guid _editingId = Guid.Empty;
+    private string _title = "", _summary = "", _fullText = "";
+    private int _sortOrder;
+    private bool _isActive = true;
+    private string? _preview;
+    private IBrowserFile? _file;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isAdmin = Nav.Uri.Contains("/manage") && Auth.IsInRole("Admin");
+        await LoadAll();
+        if (_sliders.Count > 1)
+            _slideTimer = new Timer(_ => { _currentSlide = (_currentSlide + 1) % _sliders.Count; InvokeAsync(StateHasChanged); }, null, 5000, 5000);
+    }
+
+    private async Task LoadAll()
+    {
+        _loading = true; StateHasChanged();
+        try { _sliders = await Http.GetFromJsonAsync<List<SliderItem>>("api/v2/sliders") ?? new(); } catch { }
+        try { _news = await Http.GetFromJsonAsync<List<NewsItem>>("api/v2/news") ?? new(); } catch { }
+        _loading = false; StateHasChanged();
+    }
+
+    private void GoSlide(int i) { _currentSlide = i; }
+    private void ToggleExpand(Guid id) { if (_isAdmin) return; _expandedId = _expandedId == id ? null : id; }
+
+    private void OpenCreate()
+    {
+        _editingId = Guid.Empty; _title = ""; _summary = ""; _fullText = "";
+        _sortOrder = 0; _isActive = true; _preview = null; _file = null;
+        _showModal = true;
+    }
+
+    private void OpenEdit(NewsItem n)
+    {
+        _editingId = n.Id; _title = n.Title; _summary = n.Summary ?? "";
+        _fullText = n.FullText ?? ""; _sortOrder = n.SortOrder; _isActive = n.IsActive;
+        _preview = !string.IsNullOrEmpty(n.ImageFileName) ? $"/uploads/{n.ImageFileName}" : null;
+        _file = null; _showModal = true;
+    }
+
+    private void CloseModal() { _showModal = false; }
+
+    private async Task OnFile(InputFileChangeEventArgs e)
+    {
+        _file = e.File;
+        if (_file != null)
+        {
+            var buf = new byte[_file.Size];
+            await _file.OpenReadStream(5_242_880).ReadAsync(buf);
+            _preview = $"data:{_file.ContentType};base64,{Convert.ToBase64String(buf)}";
+        }
+    }
+
+    private async Task Save()
+    {
+        _saving = true; StateHasChanged();
+        try
+        {
+            var form = new MultipartFormDataContent();
+            form.Add(new StringContent(_title), "Title");
+            form.Add(new StringContent(_summary ?? ""), "Summary");
+            form.Add(new StringContent(_fullText ?? ""), "FullText");
+            form.Add(new StringContent(_sortOrder.ToString()), "SortOrder");
+            form.Add(new StringContent(_isActive.ToString().ToLower()), "IsActive");
+            if (_file != null)
+                form.Add(new StreamContent(_file.OpenReadStream(5_242_880)), "Image", _file.Name);
+
+            var resp = _editingId == Guid.Empty
+                ? await Http.PostAsync("api/v2/news", form)
+                : await Http.PutAsync($"api/v2/news/{_editingId}", form);
+
+            if (resp.IsSuccessStatusCode) { _showModal = false; await LoadAll(); Toast.ShowSuccess(_editingId == Guid.Empty ? "خبر با موفقیت ایجاد شد" : "خبر با موفقیت ویرایش شد"); }
+            else { Toast.ShowError("خطا در ذخیره خبر"); }
+        }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
+        _saving = false; StateHasChanged();
+    }
+
+    private async Task DeleteNews(NewsItem n)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"حذف «{n.Title}»؟")) return;
+        try { await Http.DeleteAsync($"api/v2/news/{n.Id}"); await LoadAll(); Toast.ShowSuccess("خبر با موفقیت حذف شد"); } catch { Toast.ShowError("خطا در حذف خبر"); }
+    }
+
+    public void Dispose() { _slideTimer?.Dispose(); }
+
+    public class SliderItem { public Guid Id { get; set; } public string? Title { get; set; } public string? ImageUrl { get; set; } public int SortOrder { get; set; } public bool IsActive { get; set; } }
+    public class NewsItem { public Guid Id { get; set; } public string Title { get; set; } = ""; public string? Summary { get; set; } public string? FullText { get; set; } public int SortOrder { get; set; } public bool IsActive { get; set; } public string? ImageFileName { get; set; } public DateTime CreatedAt { get; set; } }
+}
