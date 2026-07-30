@@ -1110,12 +1110,16 @@
     .bll-mf{padding:10px 16px 14px}
     .bll-modal-grid{grid-template-columns:1fr 1fr;gap:8px}
     .bll-modal-grid--6{grid-template-columns:1fr 1fr}
-    .inv-bill{padding:16px 12px;border-radius:10px}
-    .inv-hdr{flex-direction:column;gap:8px}
-    .inv-meta{flex-direction:column;gap:8px}
-    .inv-meta-c{padding:8px 10px}
-    .inv-table{font-size:11px;min-width:400px}
-    .inv-table td,.inv-table th{padding:5px 6px}
+    .inv-bill{padding:14px 10px;border-radius:10px}
+    .inv-hdr{flex-direction:column;gap:6px}
+    .inv-meta{flex-direction:column;gap:6px}
+    .inv-meta-c{padding:6px 8px}
+    .inv-table{font-size:11px;min-width:auto;width:100%;table-layout:fixed}
+    .inv-table td,.inv-table th{padding:4px 5px;white-space:normal;word-break:keep-all}
+    .inv-table-sm td,.inv-table-sm th{padding:3px 4px;font-size:10px}
+    .inv-table-xs td,.inv-table-xs th{padding:2px 3px;font-size:9px}
+    .inv-table-wr{border-radius:6px;overflow-x:hidden}
+    .inv-scroll{overflow-x:hidden;border-radius:6px}
     .inv-summary{max-width:100%}
     .inv-override-r{flex-direction:column;align-items:stretch}
     .inv-override-l{min-width:auto}
@@ -1131,11 +1135,14 @@
     .bll-filter-bar .bll-fg-act{grid-column:1/-1}
     .bll-modal-grid{grid-template-columns:1fr}
     .bll-modal-grid--6{grid-template-columns:1fr 1fr}
-    .inv-table{font-size:10px;min-width:320px}
-    .inv-table td,.inv-table th{padding:3px 5px}
+    .inv-table{font-size:10px;min-width:auto;width:100%;table-layout:fixed}
+    .inv-table td,.inv-table th{padding:2px 4px;white-space:normal;word-break:keep-all}
+    .inv-table-sm td,.inv-table-sm th{padding:2px 3px;font-size:9px}
+    .inv-table-xs td,.inv-table-xs th{padding:1px 2px;font-size:8px}
     .inv-title{font-size:14px}
     .inv-meta-v{font-size:12px}
     .bll-tab{padding:7px 10px;font-size:11px}
+    .inv-scroll{overflow-x:hidden}
     .bll-bm-desc{flex-direction:column;gap:6px;padding:8px 10px}
     .bll-bm-icon{font-size:22px}
     .bll-bm-title{font-size:11px}
@@ -1148,8 +1155,12 @@
 /* ── Print ── */
 @@media print{
     .bll-tabs,.bll-filter-bar,.inv-toolbar,.inv-override,.bll-bar,.bll-invoices,.bll-btn{display:none!important}
-    .bll-wrap{padding:0}
+    .bll-wrap{padding:0;max-width:100%}
     .inv-bill{border:none;box-shadow:none;padding:0;border-radius:0}
+    .inv-table{min-width:auto;width:100%;table-layout:fixed}
+    .inv-table td,.inv-table th{padding:4px 6px;white-space:normal}
+    .inv-table-wr{overflow-x:hidden;border-radius:0;border:none}
+    .inv-scroll{max-height:none;overflow:visible;border-radius:0;border:none}
     .page-break-before{page-break-before:always}
 }
 </style>
