@@ -8,55 +8,63 @@
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>مدیریت مراکز</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ مرکز جدید</button>
+<div class="cnt-container">
+    <div class="cnt-top">
+        <div class="cnt-top-l">
+            <span class="cnt-icon">🏢</span>
+            <h2 class="cnt-title">مدیریت مراکز</h2>
+        </div>
+        <div class="cnt-top-r">
+            <button class="cnt-btn cnt-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="cnt-btn cnt-btn-add" @onclick="OpenCreate">+ مرکز جدید</button>
+        </div>
     </div>
 
-    <PrereqAlert Met="(_cities.Count > 0)"
-        Title="هنوز شهری ثبت نشده"
-        Text="برای ثبت مرکز، ابتدا باید یک شهر ایجاد کنید. به صفحه شهرها بروید."
-        LinkText="رفتن به مدیریت شهرها"
-        LinkHref="/cities" />
-
-    <HelpBox>
-        <p><strong>مرکز</strong> یک مکان فیزیکی است که دستگاه‌های اندازه‌گیری در آن نصب می‌شوند.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>شهر</strong> مربوطه را ایجاد کرده باشید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام و شهر مرکز را وارد کنید — کد به صورت خودکار تولید می‌شود.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت مرکز، به بخش <strong>دستگاه‌ها</strong> بروید و دستگاه را به این مرکز متصل کنید.</span></div>
-        <div class="hlp-tip">💡 مراکز در فرم <strong>صورتحساب</strong> برای محاسبه قبض استفاده می‌شوند.</div>
-    </HelpBox>
+    @if (_cities.Count == 0)
+    {
+        <div class="cnt-prereq">
+            <div class="cnt-prereq-icon">⚠️</div>
+            <div class="cnt-prereq-b">
+                <div class="cnt-prereq-t">هنوز شهری ثبت نشده</div>
+                <div class="cnt-prereq-d">برای ثبت مرکز، ابتدا باید یک شهر ایجاد کنید. به صفحه شهرها بروید.</div>
+                <a class="cnt-prereq-a" href="/cities">← رفتن به مدیریت شهرها</a>
+            </div>
+        </div>
+    }
 
     @if (_loading)
     {
-        <div class="loading-state"><div class="spinner"></div></div>
+        <div class="cnt-loading"><div class="cnt-spinner"></div></div>
     }
-    else if (_centers.Count == 0)
+    else if (_centers.Count == 0 && _cities.Count > 0)
     {
-        <div class="empty-state">
-            <div class="empty-icon">🏢</div>
-            <div class="empty-title">مرکزی ثبت نشده</div>
-            <div class="empty-hint">با کلیک روی «+ مرکز جدید» اولین مرکز را اضافه کنید.</div>
+        <div class="cnt-empty">
+            <div class="cnt-empty-icon">🏢</div>
+            <div class="cnt-empty-t">مرکزی ثبت نشده</div>
+            <div class="cnt-empty-d">روی «+ مرکز جدید» کلیک کنید تا اولین مرکز را ایجاد کنید.</div>
         </div>
     }
     else
     {
-        <div class="card-list">
+        <div class="cnt-grid">
             @foreach (var c in _centers)
             {
-                <div class="card-item">
-                    <div class="card-hdr">
-                        <strong>@c.Name</strong>
-                        <span class="card-tag @(c.IsActive ? "active" : "inactive")">@(c.IsActive ? "فعال" : "غیرفعال")</span>
+                <div class="cnt-card @(c.IsActive ? "cnt-card--on" : "cnt-card--off")">
+                    <div class="cnt-card-bar"></div>
+                    <div class="cnt-card-body">
+                        <div class="cnt-card-top">
+                            <span class="cnt-card-name">@c.Name</span>
+                            <span class="cnt-card-badge @(c.IsActive ? "cnt-badge-on" : "cnt-badge-off")">@(c.IsActive ? "فعال" : "غیرفعال")</span>
+                        </div>
+                        <div class="cnt-card-code">@c.Code</div>
+                        <div class="cnt-card-meta">
+                            <span class="cnt-card-meta-lbl">شهر:</span>
+                            <span class="cnt-card-meta-val">@(c.CityName ?? "---")</span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="card-row"><span>کد</span><span class="ltr">@c.Code</span></div>
-                        <div class="card-row"><span>شهر</span><span>@(c.CityName ?? "---")</span></div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="card-btn primary" @onclick="() => OpenEdit(c)">ویرایش</button>
-                        <button class="card-btn danger" @onclick="() => ConfirmDelete(c)">حذف</button>
+                    <div class="cnt-card-acts">
+                        <button class="cnt-btn-sm cnt-btn-edit" @onclick="() => OpenEdit(c)">ویرایش</button>
+                        <button class="cnt-btn-sm cnt-btn-del" @onclick="() => ConfirmDelete(c)">حذف</button>
                     </div>
                 </div>
             }
@@ -64,55 +72,109 @@
     }
 </div>
 
-    @if (_showModal)
-    {
-        <div class="modal-overlay" @onclick="CloseModal">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr">
-                    <h3>@(_editingId == Guid.Empty ? "مرکز جدید" : "ویرایش مرکز")</h3>
-                    <button class="modal-close" @onclick="CloseModal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
-                    <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" disabled /></div>
-                    <div class="form-row"><label>شهر</label><select class="form-input" @bind="_form.CityId"><option value="">انتخاب کنید</option>@foreach (var ct in _cities) { <option value="@ct.Id">@ct.Name</option> }</select></div>
-                    <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
-                </div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
-                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
-                </div>
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="cnt-overlay" @onclick="() => _showHelp = false">
+        <div class="cnt-modal cnt-modal-help" @onclick:stopPropagation>
+            <div class="cnt-mh">
+                <span class="cnt-mh-icon">📘</span>
+                <span class="cnt-mh-t">راهنمای مدیریت مراکز</span>
+                <button class="cnt-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="cnt-mb">
+                <p class="cnt-mb-intro"><strong>مرکز</strong> یک مکان فیزیکی است که دستگاه‌های اندازه‌گیری در آن نصب می‌شوند.</p>
+                <div class="cnt-mb-step"><span class="cnt-step-n">۱</span><span>مطمئن شوید <strong>شهر</strong> مربوطه قبلاً ایجاد شده باشد.</span></div>
+                <div class="cnt-mb-step"><span class="cnt-step-n">۲</span><span>نام و شهر مرکز را وارد کنید — کد به صورت خودکار تولید می‌شود.</span></div>
+                <div class="cnt-mb-step"><span class="cnt-step-n">۳</span><span>پس از ثبت مرکز، به بخش <strong>دستگاه‌ها</strong> بروید و دستگاه را به این مرکز متصل کنید.</span></div>
+                <div class="cnt-mb-tip">💡 مراکز در فرم <strong>صورتحساب</strong> برای محاسبه قبض استفاده می‌شوند.</div>
+            </div>
+            <div class="cnt-mf">
+                <button class="cnt-btn cnt-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
             </div>
         </div>
-    }
+    </div>
+}
 
-    @if (_deleteTarget is not null)
-    {
-        <div class="modal-overlay" @onclick="() => _deleteTarget = null">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr"><h3>حذف مرکز</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
-                <div class="modal-body"><p>آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p></div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
-                    <button class="btn btn-danger" @onclick="DeleteCenter">حذف</button>
+@* Create / Edit modal *@
+@if (_showModal)
+{
+    <div class="cnt-overlay" @onclick="CloseModal">
+        <div class="cnt-modal cnt-modal-form" @onclick:stopPropagation>
+            <div class="cnt-mh">
+                <span class="cnt-mh-t">@(_editingId == Guid.Empty ? "مرکز جدید" : "ویرایش مرکز")</span>
+                <button class="cnt-mh-x" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="cnt-mb">
+                <div class="cnt-fg">
+                    <label class="cnt-fl">نام مرکز</label>
+                    <input @bind="_form.Name" class="cnt-fi" placeholder="مثلاً مرکز شمال شهر" />
+                </div>
+                <div class="cnt-fg">
+                    <label class="cnt-fl">کد</label>
+                    <input @bind="_form.Code" class="cnt-fi cnt-fi-ltr" disabled />
+                </div>
+                <div class="cnt-fg">
+                    <label class="cnt-fl">شهر</label>
+                    <select class="cnt-fi" @bind="_form.CityId">
+                        <option value="">انتخاب کنید</option>
+                        @foreach (var ct in _cities)
+                        {
+                            <option value="@ct.Id">@ct.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="cnt-fg">
+                    <label class="cnt-fl">وضعیت</label>
+                    <label class="cnt-tgl">
+                        <input type="checkbox" @bind="_form.IsActive" />
+                        <span class="cnt-tgl-sl"></span>
+                        <span class="cnt-tgl-lbl">@(_form.IsActive ? "فعال" : "غیرفعال")</span>
+                    </label>
                 </div>
             </div>
+            <div class="cnt-mf">
+                <button class="cnt-btn cnt-btn-cancel" @onclick="CloseModal">انصراف</button>
+                <button class="cnt-btn cnt-btn-save" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
         </div>
-    }
+    </div>
+}
+
+@* Delete confirm modal *@
+@if (_deleteTarget is not null)
+{
+    <div class="cnt-overlay" @onclick="() => _deleteTarget = null">
+        <div class="cnt-modal cnt-modal-form" @onclick:stopPropagation>
+            <div class="cnt-mh">
+                <span class="cnt-mh-t cnt-mh-t-del">حذف مرکز</span>
+                <button class="cnt-mh-x" @onclick="() => _deleteTarget = null">&times;</button>
+            </div>
+            <div class="cnt-mb">
+                <p class="cnt-del-msg">آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p>
+            </div>
+            <div class="cnt-mf">
+                <button class="cnt-btn cnt-btn-cancel" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="cnt-btn cnt-btn-danger" @onclick="DeleteCenter">حذف</button>
+            </div>
+        </div>
+    </div>
+}
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="cnt-denied">
+        <div class="cnt-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="cnt-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
     private List<CenterItem> _centers = new();
     private List<CityLookup> _cities = new();
-    private bool _loading = true, _saving, _showModal;
+    private bool _loading = true, _saving, _showModal, _showHelp;
     private Guid _editingId;
     private CenterForm _form = new();
     private CenterItem? _deleteTarget;
@@ -197,3 +259,143 @@ else
     public class CenterForm { public string Name { get; set; } = ""; public string Code { get; set; } = ""; public Guid? CityId { get; set; } public bool IsActive { get; set; } = true; }
     public class CityLookup { public Guid Id { get; set; } public string Name { get; set; } = ""; }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Centers page — modern card grid
+   ═══════════════════════════════════════════ */
+.cnt-container{max-width:1120px;margin:0 auto;padding:24px 16px}
+.cnt-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.cnt-top-l{display:flex;align-items:center;gap:10px}
+.cnt-icon{font-size:24px}
+.cnt-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.cnt-top-r{display:flex;gap:8px}
+.cnt-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.cnt-btn:active{transform:scale(.95)}
+.cnt-btn-add{background:var(--grad-blue);color:#fff}
+.cnt-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.cnt-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.cnt-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.cnt-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.cnt-btn-cancel:hover{background:var(--bg-alt)}
+.cnt-btn-save{background:var(--grad-blue);color:#fff}
+.cnt-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.cnt-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.cnt-btn-danger{background:var(--red);color:#fff}
+.cnt-btn-danger:hover{box-shadow:var(--shadow-red);transform:translateY(-1px)}
+.cnt-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.cnt-btn-sm:active{transform:scale(.93)}
+.cnt-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.cnt-btn-edit:hover{background:var(--blue);color:#fff}
+.cnt-btn-del{background:var(--red-bg);color:var(--red)}
+.cnt-btn-del:hover{background:var(--red);color:#fff}
+
+/* Prereq alert */
+.cnt-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.cnt-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.cnt-prereq-b{flex:1}
+.cnt-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.cnt-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.cnt-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none;transition:color .2s}
+.cnt-prereq-a:hover{text-decoration:underline}
+
+/* Loading */
+.cnt-loading{text-align:center;padding:80px 20px}
+.cnt-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:cnt-spin .7s linear infinite;margin:0 auto}
+@@keyframes cnt-spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.cnt-empty{text-align:center;padding:60px 20px}
+.cnt-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.cnt-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.cnt-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.cnt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.cnt-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.cnt-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.cnt-card:active{transform:scale(.97)}
+.cnt-card-bar{height:4px;flex-shrink:0}
+.cnt-card--on .cnt-card-bar{background:var(--grad-green)}
+.cnt-card--off .cnt-card-bar{background:#d1d5db}
+.cnt-card-body{padding:16px 16px 12px;flex:1}
+.cnt-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cnt-card-name{font-size:15px;font-weight:700;color:var(--text)}
+.cnt-card-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.cnt-badge-on{background:var(--green-bg);color:var(--green)}
+.cnt-badge-off{background:var(--red-bg);color:var(--red)}
+.cnt-card-code{direction:ltr;font-size:13px;font-weight:600;color:var(--text-secondary);letter-spacing:.5px;margin-bottom:6px}
+.cnt-card-meta{display:flex;gap:4px;font-size:12px;color:var(--text-muted);align-items:center}
+.cnt-card-meta-lbl{color:var(--text-secondary)}
+.cnt-card-meta-val{color:var(--text);font-weight:600}
+.cnt-card-acts{display:flex;gap:6px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+
+/* Overlay + modal */
+.cnt-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:cnt-fade .2s ease}
+@@keyframes cnt-fade{from{opacity:0}to{opacity:1}}
+.cnt-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:cnt-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes cnt-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cnt-modal-form{max-width:420px}
+.cnt-modal-help{max-width:500px}
+.cnt-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.cnt-mh-icon{font-size:18px}
+.cnt-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.cnt-mh-t-del{color:var(--red)}
+.cnt-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.cnt-mh-x:hover{background:var(--bg);color:var(--text)}
+.cnt-mb{padding:16px 20px}
+.cnt-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.cnt-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.cnt-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.cnt-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.cnt-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.cnt-fg{margin-bottom:16px}
+.cnt-fg:last-child{margin-bottom:0}
+.cnt-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.cnt-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.cnt-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.cnt-fi::placeholder{color:var(--text-muted)}
+.cnt-fi:disabled{background:var(--bg);color:var(--text-muted);cursor:not-allowed}
+.cnt-fi-ltr{direction:ltr;text-align:right}
+.cnt-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.cnt-tgl input{opacity:0;width:0;height:0}
+.cnt-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.cnt-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.cnt-tgl input:checked+.cnt-tgl-sl{background:var(--grad-blue)}
+.cnt-tgl input:checked+.cnt-tgl-sl::before{transform:translateX(18px)}
+.cnt-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.cnt-del-msg{font-size:14px;line-height:1.7;color:var(--text)}
+
+/* Access denied */
+.cnt-denied{text-align:center;padding:80px 20px;color:#888}
+.cnt-denied-icon{font-size:48px;margin-bottom:12px}
+.cnt-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.cnt-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.cnt-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.cnt-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .cnt-container{padding:16px 12px}
+    .cnt-top{flex-direction:column;align-items:stretch;gap:10px}
+    .cnt-top-r{justify-content:space-between}
+    .cnt-title{font-size:16px}
+    .cnt-grid{grid-template-columns:1fr;gap:10px}
+    .cnt-card-body{padding:14px 14px 10px}
+    .cnt-card-acts{padding:8px 14px}
+    .cnt-card-name{font-size:14px}
+    .cnt-btn{padding:8px 14px;font-size:12px}
+    .cnt-modal-form,.cnt-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .cnt-mh{padding:14px 16px 12px}
+    .cnt-mb{padding:12px 16px}
+    .cnt-mf{padding:10px 16px 14px}
+    .cnt-mb-step{font-size:12px}
+    .cnt-empty{padding:40px 16px}
+    .cnt-mb-intro{font-size:12px}
+    .cnt-prereq{padding:14px;border-radius:12px}
+    .cnt-prereq-t{font-size:13px}
+    .cnt-prereq-d{font-size:11px}
+}
+</style>
