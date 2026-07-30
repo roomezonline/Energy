@@ -6,52 +6,63 @@
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>مدیریت استان‌ها</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ استان جدید</button>
+<div class="prv-container">
+    <div class="prv-top">
+        <div class="prv-top-l">
+            <span class="prv-icon">📍</span>
+            <h2 class="prv-title">مدیریت استان‌ها</h2>
+        </div>
+        <div class="prv-top-r">
+            <button class="prv-btn prv-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="prv-btn prv-btn-add" @onclick="OpenCreate">+ استان جدید</button>
+        </div>
     </div>
 
-    <PrereqAlert Met="(_regions.Count > 0)"
-        Title="هنوز منطقه‌ای ثبت نشده"
-        Text="برای ثبت استان، ابتدا باید یک منطقه ایجاد کنید. پس از ایجاد منطقه به این صفحه بازگردید."
-        LinkText="رفتن به مدیریت مناطق"
-        LinkHref="/regions" />
-
-    <HelpBox>
-        <p><strong>استان</strong> دومین سطح جغرافیایی است. هر استان به یک منطقه متصل می‌شود.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا مطمئن شوید <strong>منطقه</strong> مورد نظر قبلاً ایجاد شده باشد.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام استان و منطقه مربوطه را انتخاب کنید — کد به صورت خودکار تولید می‌شود.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت استان‌ها، به بخش <strong>شهرها</strong> بروید.</span></div>
-        <div class="hlp-tip">💡 یک منطقه می‌تواند چندین استان داشته باشد.</div>
-    </HelpBox>
-
-    @if (_loading) { <div class="loading-state"><div class="spinner"></div></div> }
-    else if (_items.Count == 0)
+    @if (_regions.Count == 0)
     {
-        <div class="empty-state">
-            <div class="empty-icon">📍</div>
-            <div class="empty-title">استانی ثبت نشده</div>
-            <div class="empty-hint">ابتدا یک منطقه ایجاد کنید، سپس استان اضافه کنید.</div>
+        <div class="prv-prereq">
+            <div class="prv-prereq-icon">⚠️</div>
+            <div class="prv-prereq-b">
+                <div class="prv-prereq-t">هنوز منطقه‌ای ثبت نشده</div>
+                <div class="prv-prereq-d">برای ثبت استان، ابتدا باید یک منطقه ایجاد کنید. پس از ایجاد منطقه به این صفحه بازگردید.</div>
+                <a class="prv-prereq-a" href="/regions">← رفتن به مدیریت مناطق</a>
+            </div>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <div class="prv-loading"><div class="prv-spinner"></div></div>
+    }
+    else if (_items.Count == 0 && _regions.Count > 0)
+    {
+        <div class="prv-empty">
+            <div class="prv-empty-icon">📍</div>
+            <div class="prv-empty-t">استانی ثبت نشده</div>
+            <div class="prv-empty-d">روی «+ استان جدید» کلیک کنید تا اولین استان را ایجاد کنید.</div>
         </div>
     }
     else
     {
-        <div class="card-list">
+        <div class="prv-grid">
             @foreach (var item in _items)
             {
-                <div class="card-item">
-                    <div class="card-hdr">
-                        <strong>@item.Name</strong>
-                        <span class="card-tag @(item.IsActive ? "active" : "inactive")">@(item.IsActive ? "فعال" : "غیرفعال")</span>
+                <div class="prv-card @(item.IsActive ? "prv-card--on" : "prv-card--off")">
+                    <div class="prv-card-bar"></div>
+                    <div class="prv-card-body">
+                        <div class="prv-card-top">
+                            <span class="prv-card-name">@item.Name</span>
+                            <span class="prv-card-badge @(item.IsActive ? "prv-badge-on" : "prv-badge-off")">@(item.IsActive ? "فعال" : "غیرفعال")</span>
+                        </div>
+                        <div class="prv-card-code">@item.Code</div>
+                        <div class="prv-card-meta">
+                            <span class="prv-card-meta-lbl">منطقه:</span>
+                            <span class="prv-card-meta-val">@item.RegionName</span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="card-row"><span>کد</span><span class="ltr">@item.Code</span></div>
-                        <div class="card-row"><span>منطقه</span><span>@item.RegionName</span></div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="card-btn primary" @onclick="() => OpenEdit(item)">ویرایش</button>
-                        <button class="card-btn danger" @onclick="() => ConfirmDelete(item)">حذف</button>
+                    <div class="prv-card-acts">
+                        <button class="prv-btn-sm prv-btn-edit" @onclick="() => OpenEdit(item)">ویرایش</button>
+                        <button class="prv-btn-sm prv-btn-del" @onclick="() => ConfirmDelete(item)">حذف</button>
                     </div>
                 </div>
             }
@@ -59,37 +70,90 @@
     }
 </div>
 
-@if (_showModal)
+@* Help modal *@
+@if (_showHelp)
 {
-    <div class="modal-overlay" @onclick="CloseModal">
-        <div class="modal-card" @onclick:stopPropagation>
-            <div class="modal-hdr">
-                <h3>@(_editingId == Guid.Empty ? "استان جدید" : "ویرایش استان")</h3>
-                <button class="modal-close" @onclick="CloseModal">&times;</button>
+    <div class="prv-overlay" @onclick="() => _showHelp = false">
+        <div class="prv-modal prv-modal-help" @onclick:stopPropagation>
+            <div class="prv-mh">
+                <span class="prv-mh-icon">📘</span>
+                <span class="prv-mh-t">راهنمای مدیریت استان‌ها</span>
+                <button class="prv-mh-x" @onclick="() => _showHelp = false">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="form-row"><label>منطقه</label><select class="form-input" @bind="_form.RegionId"><option value="">انتخاب کنید</option>@foreach (var r in _regions) { <option value="@r.Id">@r.Name</option> }</select></div>
-                <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
-                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" disabled /></div>
-                <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
+            <div class="prv-mb">
+                <p class="prv-mb-intro"><strong>استان</strong> دومین سطح جغرافیایی است. هر استان به یک منطقه متصل می‌شود.</p>
+                <div class="prv-mb-step"><span class="prv-step-n">۱</span><span>مطمئن شوید <strong>منطقه</strong> مورد نظر قبلاً ایجاد شده باشد.</span></div>
+                <div class="prv-mb-step"><span class="prv-step-n">۲</span><span>نام استان و منطقه مربوطه را انتخاب کنید — کد به صورت خودکار تولید می‌شود.</span></div>
+                <div class="prv-mb-step"><span class="prv-step-n">۳</span><span>پس از ثبت استان‌ها، به بخش <strong>شهرها</strong> بروید.</span></div>
+                <div class="prv-mb-tip">💡 یک منطقه می‌تواند چندین استان داشته باشد.</div>
             </div>
-            <div class="modal-ftr">
-                <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
-                <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            <div class="prv-mf">
+                <button class="prv-btn prv-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
             </div>
         </div>
     </div>
 }
 
+@* Create / Edit modal *@
+@if (_showModal)
+{
+    <div class="prv-overlay" @onclick="CloseModal">
+        <div class="prv-modal prv-modal-form" @onclick:stopPropagation>
+            <div class="prv-mh">
+                <span class="prv-mh-t">@(_editingId == Guid.Empty ? "استان جدید" : "ویرایش استان")</span>
+                <button class="prv-mh-x" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="prv-mb">
+                <div class="prv-fg">
+                    <label class="prv-fl">منطقه</label>
+                    <select class="prv-fi" @bind="_form.RegionId">
+                        <option value="@Guid.Empty">انتخاب کنید</option>
+                        @foreach (var r in _regions)
+                        {
+                            <option value="@r.Id">@r.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="prv-fg">
+                    <label class="prv-fl">نام استان</label>
+                    <input @bind="_form.Name" class="prv-fi" placeholder="مثلاً استان تهران" />
+                </div>
+                <div class="prv-fg">
+                    <label class="prv-fl">کد</label>
+                    <input @bind="_form.Code" class="prv-fi prv-fi-ltr" disabled />
+                </div>
+                <div class="prv-fg">
+                    <label class="prv-fl">وضعیت</label>
+                    <label class="prv-tgl">
+                        <input type="checkbox" @bind="_form.IsActive" />
+                        <span class="prv-tgl-sl"></span>
+                        <span class="prv-tgl-lbl">@(_form.IsActive ? "فعال" : "غیرفعال")</span>
+                    </label>
+                </div>
+            </div>
+            <div class="prv-mf">
+                <button class="prv-btn prv-btn-cancel" @onclick="CloseModal">انصراف</button>
+                <button class="prv-btn prv-btn-save" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Delete confirm modal *@
 @if (_deleteTarget is not null)
 {
-    <div class="modal-overlay" @onclick="() => _deleteTarget = null">
-        <div class="modal-card" @onclick:stopPropagation>
-            <div class="modal-hdr"><h3>حذف استان</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
-            <div class="modal-body"><p>آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p></div>
-            <div class="modal-ftr">
-                <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
-                <button class="btn btn-danger" @onclick="DeleteItem">حذف</button>
+    <div class="prv-overlay" @onclick="() => _deleteTarget = null">
+        <div class="prv-modal prv-modal-form" @onclick:stopPropagation>
+            <div class="prv-mh">
+                <span class="prv-mh-t prv-mh-t-del">حذف استان</span>
+                <button class="prv-mh-x" @onclick="() => _deleteTarget = null">&times;</button>
+            </div>
+            <div class="prv-mb">
+                <p class="prv-del-msg">آیا از حذف <strong>@_deleteTarget.Name</strong> اطمینان دارید؟</p>
+            </div>
+            <div class="prv-mf">
+                <button class="prv-btn prv-btn-cancel" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="prv-btn prv-btn-danger" @onclick="DeleteItem">حذف</button>
             </div>
         </div>
     </div>
@@ -97,17 +161,18 @@
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="prv-denied">
+        <div class="prv-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="prv-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
     private List<ProvinceItem> _items = new();
     private List<RegionItem> _regions = new();
-    private bool _loading = true, _saving, _showModal;
+    private bool _loading = true, _saving, _showModal, _showHelp;
     private Guid _editingId;
     private ProvinceForm _form = new();
     private ProvinceItem? _deleteTarget;
@@ -161,3 +226,143 @@ else
     public class ProvinceForm { public string Name { get; set; } = ""; public string Code { get; set; } = ""; public Guid RegionId { get; set; } public bool IsActive { get; set; } = true; }
     public class RegionItem { public Guid Id { get; set; } public string Name { get; set; } = ""; public string Code { get; set; } = ""; public bool IsActive { get; set; } = true; }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Provinces page — modern card grid
+   ═══════════════════════════════════════════ */
+.prv-container{max-width:1120px;margin:0 auto;padding:24px 16px}
+.prv-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.prv-top-l{display:flex;align-items:center;gap:10px}
+.prv-icon{font-size:24px}
+.prv-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.prv-top-r{display:flex;gap:8px}
+.prv-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.prv-btn:active{transform:scale(.95)}
+.prv-btn-add{background:var(--grad-blue);color:#fff}
+.prv-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.prv-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.prv-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.prv-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.prv-btn-cancel:hover{background:var(--bg-alt)}
+.prv-btn-save{background:var(--grad-blue);color:#fff}
+.prv-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.prv-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.prv-btn-danger{background:var(--red);color:#fff}
+.prv-btn-danger:hover{box-shadow:var(--shadow-red);transform:translateY(-1px)}
+.prv-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.prv-btn-sm:active{transform:scale(.93)}
+.prv-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.prv-btn-edit:hover{background:var(--blue);color:#fff}
+.prv-btn-del{background:var(--red-bg);color:var(--red)}
+.prv-btn-del:hover{background:var(--red);color:#fff}
+
+/* Prereq alert */
+.prv-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.prv-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.prv-prereq-b{flex:1}
+.prv-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.prv-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.prv-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none;transition:color .2s}
+.prv-prereq-a:hover{text-decoration:underline}
+
+/* Loading */
+.prv-loading{text-align:center;padding:80px 20px}
+.prv-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:prv-spin .7s linear infinite;margin:0 auto}
+@@keyframes prv-spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.prv-empty{text-align:center;padding:60px 20px}
+.prv-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.prv-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.prv-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.prv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.prv-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.prv-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.prv-card:active{transform:scale(.97)}
+.prv-card-bar{height:4px;flex-shrink:0}
+.prv-card--on .prv-card-bar{background:var(--grad-green)}
+.prv-card--off .prv-card-bar{background:#d1d5db}
+.prv-card-body{padding:16px 16px 12px;flex:1}
+.prv-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.prv-card-name{font-size:15px;font-weight:700;color:var(--text)}
+.prv-card-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.prv-badge-on{background:var(--green-bg);color:var(--green)}
+.prv-badge-off{background:var(--red-bg);color:var(--red)}
+.prv-card-code{direction:ltr;font-size:13px;font-weight:600;color:var(--text-secondary);letter-spacing:.5px;margin-bottom:6px}
+.prv-card-meta{display:flex;gap:4px;font-size:12px;color:var(--text-muted);align-items:center}
+.prv-card-meta-lbl{color:var(--text-secondary)}
+.prv-card-meta-val{color:var(--text);font-weight:600}
+.prv-card-acts{display:flex;gap:6px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+
+/* Overlay + modal */
+.prv-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:prv-fade .2s ease}
+@@keyframes prv-fade{from{opacity:0}to{opacity:1}}
+.prv-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:prv-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes prv-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.prv-modal-form{max-width:420px}
+.prv-modal-help{max-width:500px}
+.prv-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.prv-mh-icon{font-size:18px}
+.prv-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.prv-mh-t-del{color:var(--red)}
+.prv-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.prv-mh-x:hover{background:var(--bg);color:var(--text)}
+.prv-mb{padding:16px 20px}
+.prv-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.prv-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.prv-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.prv-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.prv-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.prv-fg{margin-bottom:16px}
+.prv-fg:last-child{margin-bottom:0}
+.prv-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.prv-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.prv-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.prv-fi::placeholder{color:var(--text-muted)}
+.prv-fi:disabled{background:var(--bg);color:var(--text-muted);cursor:not-allowed}
+.prv-fi-ltr{direction:ltr;text-align:right}
+.prv-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.prv-tgl input{opacity:0;width:0;height:0}
+.prv-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.prv-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.prv-tgl input:checked+.prv-tgl-sl{background:var(--grad-blue)}
+.prv-tgl input:checked+.prv-tgl-sl::before{transform:translateX(18px)}
+.prv-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.prv-del-msg{font-size:14px;line-height:1.7;color:var(--text)}
+
+/* Access denied */
+.prv-denied{text-align:center;padding:80px 20px;color:#888}
+.prv-denied-icon{font-size:48px;margin-bottom:12px}
+.prv-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.prv-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.prv-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.prv-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .prv-container{padding:16px 12px}
+    .prv-top{flex-direction:column;align-items:stretch;gap:10px}
+    .prv-top-r{justify-content:space-between}
+    .prv-title{font-size:16px}
+    .prv-grid{grid-template-columns:1fr;gap:10px}
+    .prv-card-body{padding:14px 14px 10px}
+    .prv-card-acts{padding:8px 14px}
+    .prv-card-name{font-size:14px}
+    .prv-btn{padding:8px 14px;font-size:12px}
+    .prv-modal-form,.prv-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .prv-mh{padding:14px 16px 12px}
+    .prv-mb{padding:12px 16px}
+    .prv-mf{padding:10px 16px 14px}
+    .prv-mb-step{font-size:12px}
+    .prv-empty{padding:40px 16px}
+    .prv-mb-intro{font-size:12px}
+    .prv-prereq{padding:14px;border-radius:12px}
+    .prv-prereq-t{font-size:13px}
+    .prv-prereq-d{font-size:11px}
+}
+</style>
