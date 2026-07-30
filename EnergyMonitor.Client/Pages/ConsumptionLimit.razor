@@ -3,111 +3,201 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject AuthService Auth
+@inject ToastService Toast
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>محدودیت مصرف</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ محدودیت جدید</button>
+<div class="cns-container">
+    <div class="cns-top">
+        <div class="cns-top-l">
+            <span class="cns-icon">⚖️</span>
+            <h2 class="cns-title">محدودیت مصرف</h2>
+            @if (_limits.Count > 0)
+            {
+                <span class="cns-count">@_limits.Count ثبت</span>
+            }
+        </div>
+        <div class="cns-top-r">
+            <button class="cns-btn cns-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="cns-btn cns-btn-add" @onclick="OpenCreate">+ محدودیت جدید</button>
+        </div>
     </div>
 
-    <PrereqAlert Met="(_centers.Count > 0)"
-        Title="هنوز مرکزی ثبت نشده"
-        Text="برای ثبت محدودیت مصرف، ابتدا باید یک مرکز ایجاد کنید. به صفحه مراکز بروید."
-        LinkText="رفتن به مدیریت مراکز"
-        LinkHref="/centers" />
-
-    <HelpBox>
-        <p><strong>محدودیت مصرف</strong> به شما امکان می‌دهد سقف مصرف مجاز برای هر مرکز را تعیین کنید.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">مرکز مربوطه را انتخاب کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">حداکثر مصرف مجاز را مشخص کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">در صورت تجاوز از حد، هشدار صادر می‌شود.</span></div>
-    </HelpBox>
+    @if (_centers.Count == 0)
+    {
+        <div class="cns-prereq">
+            <div class="cns-prereq-icon">⚠️</div>
+            <div class="cns-prereq-b">
+                <div class="cns-prereq-t">هنوز مرکزی ثبت نشده</div>
+                <div class="cns-prereq-d">برای ثبت محدودیت مصرف، ابتدا باید یک مرکز ایجاد کنید. محدودیت مصرف به مرکز متصل می‌شود.</div>
+                <a class="cns-prereq-a" href="/centers">← رفتن به مدیریت مراکز</a>
+            </div>
+        </div>
+    }
 
     @if (_loading)
     {
-        <div class="loading-state"><div class="spinner"></div></div>
+        <div class="cns-loading"><div class="cns-spinner"></div></div>
     }
     else
     {
-        <div class="form-row">
-            <label>مرکز</label>
-            <select class="form-select" value="@_selectedCenterId" @onchange="OnCenterChanged">
+        <div class="cns-center-sel">
+            <label class="cns-sel-lbl">مرکز</label>
+            <select class="cns-sel" value="@_selectedCenterId" @onchange="OnCenterChanged">
                 @foreach (var c in _centers) { <option value="@c.Id">@c.Name</option> }
             </select>
         </div>
 
-        <div class="card-list" style="margin-top:1rem">
-            @foreach (var l in _limits)
-            {
-                <div class="card-item">
-                    <div class="card-hdr">
-                        <h3>@l.LimitType - @l.PeriodType</h3>
-                        <span class="status-@(l.IsActive ? "active" : "inactive")">@(l.IsActive ? "فعال" : "غیرفعال")</span>
+        @if (_limits.Count == 0)
+        {
+            <div class="cns-empty">
+                <div class="cns-empty-icon">⚖️</div>
+                <div class="cns-empty-t">محدودیتی ثبت نشده</div>
+                <div class="cns-empty-d">روی «+ محدودیت جدید» کلیک کنید تا اولین محدودیت را اضافه کنید.</div>
+            </div>
+        }
+        else
+        {
+            <div class="cns-grid">
+                @foreach (var l in _limits)
+                {
+                    <div class="cns-card @(l.IsActive ? "cns-card--on" : "cns-card--off")">
+                        <div class="cns-card-bar"></div>
+                        <div class="cns-card-body">
+                            <div class="cns-card-top">
+                                <div class="cns-card-type">@l.LimitType</div>
+                                <span class="cns-card-badge @(l.IsActive ? "cns-badge-on" : "cns-badge-off")">@(l.IsActive ? "فعال" : "غیرفعال")</span>
+                            </div>
+                            <div class="cns-card-period">@l.PeriodType</div>
+                            <div class="cns-card-info">
+                                <div class="cns-card-i">
+                                    <span class="cns-card-il">حداکثر مجاز</span>
+                                    <span class="cns-card-iv ltr">@l.MaxValue.ToString("N2")</span>
+                                </div>
+                                <div class="cns-card-i">
+                                    <span class="cns-card-il">آستانه هشدار</span>
+                                    <span class="cns-card-iv">@l.AlertThresholdPercent%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cns-card-ftr">
+                            <div class="cns-card-acts">
+                                <button class="cns-btn-sm cns-btn-edit" @onclick="() => OpenEdit(l)">ویرایش</button>
+                                <button class="cns-btn-sm cns-btn-del" @onclick="() => ConfirmDelete(l)">حذف</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="card-row"><span>حداکثر مجاز</span><span>@l.MaxValue.ToString("N2")</span></div>
-                        <div class="card-row"><span>آستانه هشدار</span><span>@l.AlertThresholdPercent%</span></div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn-sm" @onclick="() => OpenEdit(l)">ویرایش</button>
-                        <button class="btn-sm danger" @onclick="() => ConfirmDelete(l)">حذف</button>
-                    </div>
-                </div>
-            }
-        </div>
+                }
+            </div>
+        }
     }
 </div>
 
-    @if (_showModal)
-    {
-        <div class="modal-overlay" @onclick="() => _showModal = false">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr">
-                    <h3>@(_editingId == Guid.Empty ? "محدودیت جدید" : "ویرایش محدودیت")</h3>
-                    <button class="modal-close" @onclick="() => _showModal = false">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-row"><label>نوع محدودیت</label><select @bind="_form.LimitType" class="form-select"><option>Consumption</option><option>Power</option></select></div>
-                    <div class="form-row"><label>دوره</label><select @bind="_form.PeriodType" class="form-select"><option>Daily</option><option>Monthly</option></select></div>
-                    <div class="form-row"><label>حداکثر مجاز</label><input @bind="_form.MaxValue" type="number" class="form-input ltr" /></div>
-                    <div class="form-row"><label>آستانه هشدار (%)</label><input @bind="_form.AlertThresholdPercent" type="number" class="form-input ltr" /></div>
-                    <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
-                </div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="() => _showModal = false">انصراف</button>
-                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
-                </div>
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="cns-overlay" @onclick="() => _showHelp = false">
+        <div class="cns-modal cns-modal-help" @onclick:stopPropagation>
+            <div class="cns-mh">
+                <span class="cns-mh-icon">📘</span>
+                <span class="cns-mh-t">راهنمای محدودیت مصرف</span>
+                <button class="cns-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="cns-mb">
+                <p class="cns-mb-intro"><strong>محدودیت مصرف</strong> به شما امکان می‌دهد سقف مصرف مجاز برای هر مرکز را تعیین کنید.</p>
+                <div class="cns-mb-step"><span class="cns-step-n">۱</span><span>مرکز مربوطه را از لیست انتخاب کنید.</span></div>
+                <div class="cns-mb-step"><span class="cns-step-n">۲</span><span>نوع، دوره و حداکثر مصرف مجاز را مشخص کنید.</span></div>
+                <div class="cns-mb-step"><span class="cns-step-n">۳</span><span>در صورت تجاوز از حد، هشدار صادر می‌شود.</span></div>
+                <div class="cns-mb-tip">💡 محدودیت‌های فعال در محاسبه صورتحساب و هشدارها اعمال می‌شوند.</div>
+            </div>
+            <div class="cns-mf">
+                <button class="cns-btn cns-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
             </div>
         </div>
-    }
+    </div>
+}
 
-    @if (_deleteTarget is not null)
-    {
-        <div class="modal-overlay" @onclick="() => _deleteTarget = null">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr"><h3>حذف محدودیت</h3><button class="modal-close" @onclick="() => _deleteTarget = null">&times;</button></div>
-                <div class="modal-body"><p>آیا اطمینان دارید؟</p></div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="() => _deleteTarget = null">انصراف</button>
-                    <button class="btn btn-danger" @onclick="DeleteLimit">حذف</button>
+@* Create / Edit modal *@
+@if (_showModal)
+{
+    <div class="cns-overlay" @onclick="() => _showModal = false">
+        <div class="cns-modal cns-modal-form" @onclick:stopPropagation>
+            <div class="cns-mh">
+                <span class="cns-mh-t">@(_editingId == Guid.Empty ? "محدودیت جدید" : "ویرایش محدودیت")</span>
+                <button class="cns-mh-x" @onclick="() => _showModal = false">&times;</button>
+            </div>
+            <div class="cns-mb">
+                <div class="cns-fg">
+                    <label class="cns-fl">نوع محدودیت</label>
+                    <select @bind="_form.LimitType" class="cns-fi">
+                        <option>Consumption</option>
+                        <option>Power</option>
+                    </select>
+                </div>
+                <div class="cns-fg">
+                    <label class="cns-fl">دوره</label>
+                    <select @bind="_form.PeriodType" class="cns-fi">
+                        <option>Daily</option>
+                        <option>Monthly</option>
+                    </select>
+                </div>
+                <div class="cns-fg">
+                    <label class="cns-fl">حداکثر مجاز</label>
+                    <input @bind="_form.MaxValue" type="number" class="cns-fi cns-fi-ltr" step="any" />
+                </div>
+                <div class="cns-fg">
+                    <label class="cns-fl">آستانه هشدار (%)</label>
+                    <input @bind="_form.AlertThresholdPercent" type="number" class="cns-fi cns-fi-ltr" />
+                </div>
+                <div class="cns-fg">
+                    <label class="cns-fl">وضعیت</label>
+                    <label class="cns-tgl">
+                        <input type="checkbox" @bind="_form.IsActive" />
+                        <span class="cns-tgl-sl"></span>
+                        <span class="cns-tgl-lbl">@(_form.IsActive ? "فعال" : "غیرفعال")</span>
+                    </label>
                 </div>
             </div>
+            <div class="cns-mf">
+                <button class="cns-btn cns-btn-cancel" @onclick="() => _showModal = false">انصراف</button>
+                <button class="cns-btn cns-btn-save" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
         </div>
-    }
+    </div>
+}
+
+@* Delete confirm modal *@
+@if (_deleteTarget is not null)
+{
+    <div class="cns-overlay" @onclick="() => _deleteTarget = null">
+        <div class="cns-modal cns-modal-form" @onclick:stopPropagation>
+            <div class="cns-mh">
+                <span class="cns-mh-t cns-mh-t-del">حذف محدودیت</span>
+                <button class="cns-mh-x" @onclick="() => _deleteTarget = null">&times;</button>
+            </div>
+            <div class="cns-mb">
+                <p class="cns-del-msg">آیا اطمینان دارید؟</p>
+            </div>
+            <div class="cns-mf">
+                <button class="cns-btn cns-btn-cancel" @onclick="() => _deleteTarget = null">انصراف</button>
+                <button class="cns-btn cns-btn-danger" @onclick="DeleteLimit">حذف</button>
+            </div>
+        </div>
+    </div>
+}
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="cns-denied">
+        <div class="cns-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="cns-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
-    private bool _loading = true, _saving, _showModal;
+    private bool _loading = true, _saving, _showModal, _showHelp;
     private Guid _editingId;
     private List<CenterRef> _centers = new();
     private Guid _selectedCenterId;
@@ -124,7 +214,7 @@ else
                 _centers = await Http.GetFromJsonAsync<List<CenterRef>>("api/v2/centers") ?? new();
                 if (_centers.Count > 0) { _selectedCenterId = _centers[0].Id; await LoadLimits(); }
             }
-            catch { }
+            catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
             _loading = false;
         }
     }
@@ -141,7 +231,7 @@ else
         {
             _limits = await Http.GetFromJsonAsync<List<LimitItem>>($"api/v2/limits/by-center/{_selectedCenterId}") ?? new();
         }
-        catch { }
+        catch { Toast.ShowError("خطا در دریافت محدودیت‌ها"); }
     }
 
     private void OpenCreate() { _editingId = Guid.Empty; _form = new(); _showModal = true; }
@@ -166,19 +256,169 @@ else
                 resp = await Http.PostAsJsonAsync("api/v2/limits", _form);
             else
                 resp = await Http.PutAsJsonAsync($"api/v2/limits/{_editingId}", _form);
-            if (resp.IsSuccessStatusCode) { _showModal = false; await LoadLimits(); }
+            if (resp.IsSuccessStatusCode) { _showModal = false; Toast.ShowSuccess(_editingId == Guid.Empty ? "محدودیت با موفقیت ایجاد شد" : "محدودیت با موفقیت ویرایش شد"); await LoadLimits(); }
+            else { Toast.ShowError("خطا در ذخیره"); }
         }
-        catch { }
+        catch { Toast.ShowError("خطا در ارتباط با سرور"); }
         finally { _saving = false; }
     }
 
     private async Task DeleteLimit()
     {
         if (_deleteTarget is null) return;
-        try { await Http.DeleteAsync($"api/v2/limits/{_deleteTarget.Id}"); _deleteTarget = null; await LoadLimits(); } catch { }
+        try { await Http.DeleteAsync($"api/v2/limits/{_deleteTarget.Id}"); _deleteTarget = null; Toast.ShowSuccess("محدودیت با موفقیت حذف شد"); await LoadLimits(); }
+        catch { Toast.ShowError("خطا در حذف"); }
     }
 
     public class CenterRef { public Guid Id { get; set; } public string Name { get; set; } = ""; }
     public class LimitItem { public Guid Id { get; set; } public Guid CenterId { get; set; } public string LimitType { get; set; } = ""; public string PeriodType { get; set; } = ""; public double MaxValue { get; set; } public double AlertThresholdPercent { get; set; } public bool IsActive { get; set; } }
     public class LimitForm { public Guid CenterId { get; set; } public string LimitType { get; set; } = "Consumption"; public string PeriodType { get; set; } = "Monthly"; public double MaxValue { get; set; } public double AlertThresholdPercent { get; set; } = 80; public bool IsActive { get; set; } = true; }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   ConsumptionLimit page — modern card grid
+   ═══════════════════════════════════════════ */
+.cns-container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.cns-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.cns-top-l{display:flex;align-items:center;gap:10px}
+.cns-icon{font-size:24px}
+.cns-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.cns-count{font-size:11px;font-weight:600;color:var(--text-secondary);background:var(--bg);padding:2px 10px;border-radius:20px}
+.cns-top-r{display:flex;gap:8px}
+.cns-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.cns-btn:active{transform:scale(.95)}
+.cns-btn-add{background:var(--grad-blue);color:#fff}
+.cns-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.cns-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.cns-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.cns-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.cns-btn-cancel:hover{background:var(--bg-alt)}
+.cns-btn-save{background:var(--grad-blue);color:#fff}
+.cns-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.cns-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.cns-btn-danger{background:var(--red);color:#fff}
+.cns-btn-danger:hover{box-shadow:var(--shadow-red);transform:translateY(-1px)}
+
+/* Prereq alert */
+.cns-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.cns-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.cns-prereq-b{flex:1}
+.cns-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.cns-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.cns-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none;transition:color .2s}
+.cns-prereq-a:hover{text-decoration:underline}
+
+/* Loading */
+.cns-loading{text-align:center;padding:80px 20px}
+.cns-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:cns-spin .7s linear infinite;margin:0 auto}
+@@keyframes cns-spin{to{transform:rotate(360deg)}}
+
+/* Center selector */
+.cns-center-sel{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.cns-sel-lbl{font-size:13px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
+.cns-sel{padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;font-family:var(--font);max-width:300px;flex:1}
+.cns-sel:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+
+/* Empty state */
+.cns-empty{text-align:center;padding:60px 20px}
+.cns-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.cns-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.cns-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.cns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.cns-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.cns-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.cns-card:active{transform:scale(.97)}
+.cns-card-bar{height:4px;flex-shrink:0}
+.cns-card--on .cns-card-bar{background:var(--grad-green)}
+.cns-card--off .cns-card-bar{background:#d1d5db}
+.cns-card-body{padding:16px 16px 12px;flex:1}
+.cns-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.cns-card-type{font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:2px 10px;border-radius:6px}
+.cns-card-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.cns-badge-on{background:var(--green-bg);color:var(--green)}
+.cns-badge-off{background:var(--red-bg);color:var(--red)}
+.cns-card-period{font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:10px}
+.cns-card-info{display:flex;flex-direction:column;gap:5px}
+.cns-card-i{display:flex;align-items:center;gap:6px;font-size:12px}
+.cns-card-il{color:var(--text-secondary);min-width:80px}
+.cns-card-iv{color:var(--text);font-weight:500}
+.cns-card-iv.ltr{direction:ltr}
+.cns-card-ftr{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+.cns-card-acts{display:flex;gap:6px}
+.cns-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.cns-btn-sm:active{transform:scale(.93)}
+.cns-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.cns-btn-edit:hover{background:var(--blue);color:#fff}
+.cns-btn-del{background:var(--red-bg);color:var(--red)}
+.cns-btn-del:hover{background:var(--red);color:#fff}
+
+/* Overlay + modal */
+.cns-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:cns-fade .2s ease}
+@@keyframes cns-fade{from{opacity:0}to{opacity:1}}
+.cns-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:cns-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes cns-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.cns-modal-form{max-width:480px}
+.cns-modal-help{max-width:500px}
+.cns-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.cns-mh-icon{font-size:18px}
+.cns-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.cns-mh-t-del{color:var(--red)}
+.cns-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.cns-mh-x:hover{background:var(--bg);color:var(--text)}
+.cns-mb{padding:16px 20px}
+.cns-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.cns-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.cns-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.cns-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.cns-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.cns-fg{margin-bottom:16px}
+.cns-fg:last-child{margin-bottom:0}
+.cns-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.cns-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.cns-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.cns-fi::placeholder{color:var(--text-muted)}
+.cns-fi-ltr{direction:ltr;text-align:right}
+.cns-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.cns-tgl input{opacity:0;width:0;height:0}
+.cns-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.cns-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.cns-tgl input:checked+.cns-tgl-sl{background:var(--grad-blue)}
+.cns-tgl input:checked+.cns-tgl-sl::before{transform:translateX(18px)}
+.cns-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.cns-del-msg{font-size:14px;line-height:1.7;color:var(--text)}
+
+/* Access denied */
+.cns-denied{text-align:center;padding:80px 20px;color:#888}
+.cns-denied-icon{font-size:48px;margin-bottom:12px}
+.cns-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.cns-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.cns-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.cns-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .cns-container{padding:16px 12px}
+    .cns-top{flex-direction:column;align-items:stretch;gap:10px}
+    .cns-top-r{justify-content:space-between}
+    .cns-title{font-size:16px}
+    .cns-grid{grid-template-columns:1fr;gap:10px}
+    .cns-card-body{padding:14px 14px 10px}
+    .cns-card-ftr{padding:8px 14px}
+    .cns-btn{padding:8px 14px;font-size:12px}
+    .cns-modal-form,.cns-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .cns-mh{padding:14px 16px 12px}
+    .cns-mb{padding:12px 16px}
+    .cns-mf{padding:10px 16px 14px}
+    .cns-center-sel{flex-direction:column;align-items:stretch}
+    .cns-sel{max-width:100%}
+    .cns-empty{padding:40px 16px}
+    .cns-prereq{padding:14px;border-radius:12px}
+    .cns-prereq-t{font-size:13px}
+    .cns-prereq-d{font-size:11px}
+}
+</style>

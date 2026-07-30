@@ -9,106 +9,160 @@
 
 @if (Auth.IsInRole("Admin"))
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>مدیریت اسلایدرها</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ اسلایدر جدید</button>
+<div class="sld-container">
+    <div class="sld-top">
+        <div class="sld-top-l">
+            <span class="sld-icon">🎠</span>
+            <h2 class="sld-title">مدیریت اسلایدرها</h2>
+            @if (_items.Count > 0)
+            {
+                <span class="sld-count">@_items.Count اسلایدر</span>
+            }
+        </div>
+        <div class="sld-top-r">
+            <button class="sld-btn sld-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="sld-btn sld-btn-add" @onclick="OpenCreate">+ اسلایدر جدید</button>
+        </div>
     </div>
-
-    <HelpBox>
-        <p><strong>اسلایدرها</strong> تصاویر چرخان در صفحه اصلی سایت را مدیریت می‌کنند.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">عنوان و ترتیب نمایش اسلایدر را مشخص کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">تصویر مورد نظر را بارگذاری کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">وضعیت فعال بودن اسلایدر را تنظیم کنید.</span></div>
-        <div class="hlp-tip">💡 اسلایدرهای فعال به ترتیب Sort Order در صفحه اصلی نمایش داده می‌شوند.</div>
-    </HelpBox>
 
     @if (_loading)
     {
-        <div class="loading-state"><div class="spinner"></div></div>
+        <div class="sld-loading"><div class="sld-spinner"></div></div>
+    }
+    else if (_items.Count == 0)
+    {
+        <div class="sld-empty">
+            <div class="sld-empty-icon">🎠</div>
+            <div class="sld-empty-t">اسلایدری ثبت نشده</div>
+            <div class="sld-empty-d">روی «+ اسلایدر جدید» کلیک کنید تا اولین اسلایدر را اضافه کنید.</div>
+        </div>
     }
     else
     {
-        <div class="slider-grid">
+        <div class="sld-grid">
             @foreach (var s in _items)
             {
-                <div class="slider-card">
-                    <div class="slider-img">
+                <div class="sld-card @(s.IsActive ? "sld-card--on" : "sld-card--off")">
+                    <div class="sld-card-bar"></div>
+                    <div class="sld-card-img">
                         @if (!string.IsNullOrEmpty(s.ImageUrl))
                         {
                             <img src="@s.ImageUrl" alt="@s.Title" />
                         }
                     </div>
-                    <div class="slider-info">
-                        <div class="slider-title">@s.Title</div>
-                        <div class="slider-meta">
-                            <span>ترتیب: @s.SortOrder</span>
-                            <span class="status-@(s.IsActive ? "active" : "inactive")">@(s.IsActive ? "فعال" : "غیرفعال")</span>
+                    <div class="sld-card-body">
+                        <div class="sld-card-top">
+                            <div class="sld-card-title">@s.Title</div>
+                            <span class="sld-card-badge @(s.IsActive ? "sld-badge-on" : "sld-badge-off")">@(s.IsActive ? "فعال" : "غیرفعال")</span>
                         </div>
-                        <div class="slider-actions">
-                            <button class="btn-sm" @onclick="() => OpenEdit(s)">ویرایش</button>
-                            <button class="btn-sm danger" @onclick="() => ConfirmDelete(s)">حذف</button>
+                        <div class="sld-card-info">
+                            <div class="sld-card-i">
+                                <span class="sld-card-il">ترتیب</span>
+                                <span class="sld-card-iv">@s.SortOrder</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sld-card-ftr">
+                        <div class="sld-card-acts">
+                            <button class="sld-btn-sm sld-btn-edit" @onclick="() => OpenEdit(s)">ویرایش</button>
+                            <button class="sld-btn-sm sld-btn-del" @onclick="() => ConfirmDelete(s)">حذف</button>
                         </div>
                     </div>
                 </div>
             }
         </div>
     }
+</div>
 
-    @if (_showModal)
-    {
-        <div class="modal-overlay" @onclick="CloseModal">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr">
-                    <h3>@(_editingId == Guid.Empty ? "اسلایدر جدید" : "ویرایش اسلایدر")</h3>
-                    <button class="modal-close" @onclick="CloseModal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-row"><label>عنوان</label><input @bind="_title" class="form-input" /></div>
-                    <div class="form-row"><label>ترتیب</label><input @bind="_sortOrder" type="number" inputmode="numeric" class="form-input ltr" /></div>
-                    <div class="form-row">
-                        <label>فعال</label>
-                        <label class="tgl"><input type="checkbox" @bind="_isActive" /><span class="sl"></span></label>
-                    </div>
-                    <div class="form-row">
-                        <label>تصویر</label>
-                        <div class="upload-zone">
-                            <InputFile OnChange="OnFileSelected" accept="image/*" />
-                            @if (_previewImage != null)
-                            {
-                                <img src="@_previewImage" class="upload-preview" alt="" />
-                            }
-                            else
-                            {
-                                <div class="upload-placeholder">
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4361ee" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                    <span>انتخاب تصویر</span>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
-                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "در حال ذخیره..." : "ذخیره")</button>
-                </div>
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="sld-overlay" @onclick="() => _showHelp = false">
+        <div class="sld-modal sld-modal-help" @onclick:stopPropagation>
+            <div class="sld-mh">
+                <span class="sld-mh-icon">📘</span>
+                <span class="sld-mh-t">راهنمای مدیریت اسلایدرها</span>
+                <button class="sld-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="sld-mb">
+                <p class="sld-mb-intro"><strong>اسلایدرها</strong> تصاویر چرخان در صفحه اصلی سایت را مدیریت می‌کنند.</p>
+                <div class="sld-mb-step"><span class="sld-step-n">۱</span><span>عنوان و ترتیب نمایش اسلایدر را مشخص کنید.</span></div>
+                <div class="sld-mb-step"><span class="sld-step-n">۲</span><span>تصویر مورد نظر را بارگذاری کنید.</span></div>
+                <div class="sld-mb-step"><span class="sld-step-n">۳</span><span>وضعیت فعال بودن اسلایدر را تنظیم کنید.</span></div>
+                <div class="sld-mb-tip">💡 اسلایدرهای فعال به ترتیب Sort Order در صفحه اصلی نمایش داده می‌شوند.</div>
+            </div>
+            <div class="sld-mf">
+                <button class="sld-btn sld-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
             </div>
         </div>
-    }
-</div>
+    </div>
+}
+
+@* Create / Edit modal *@
+@if (_showModal)
+{
+    <div class="sld-overlay" @onclick="CloseModal">
+        <div class="sld-modal sld-modal-form" @onclick:stopPropagation>
+            <div class="sld-mh">
+                <span class="sld-mh-t">@(_editingId == Guid.Empty ? "اسلایدر جدید" : "ویرایش اسلایدر")</span>
+                <button class="sld-mh-x" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="sld-mb">
+                <div class="sld-fg">
+                    <label class="sld-fl">عنوان</label>
+                    <input @bind="_title" class="sld-fi" placeholder="عنوان اسلایدر" />
+                </div>
+                <div class="sld-fg">
+                    <label class="sld-fl">ترتیب</label>
+                    <input @bind="_sortOrder" type="number" inputmode="numeric" class="sld-fi sld-fi-ltr" />
+                </div>
+                <div class="sld-fg">
+                    <label class="sld-fl">وضعیت</label>
+                    <label class="sld-tgl">
+                        <input type="checkbox" @bind="_isActive" />
+                        <span class="sld-tgl-sl"></span>
+                        <span class="sld-tgl-lbl">@(_isActive ? "فعال" : "غیرفعال")</span>
+                    </label>
+                </div>
+                <div class="sld-fg">
+                    <label class="sld-fl">تصویر</label>
+                    <div class="sld-upload">
+                        <InputFile OnChange="OnFileSelected" accept="image/*" />
+                        @if (_previewImage != null)
+                        {
+                            <img src="@_previewImage" class="sld-upload-preview" alt="" />
+                        }
+                        else
+                        {
+                            <div class="sld-upload-placeholder">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4361ee" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                <span>انتخاب تصویر</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="sld-mf">
+                <button class="sld-btn sld-btn-cancel" @onclick="CloseModal">انصراف</button>
+                <button class="sld-btn sld-btn-save" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="sld-denied">
+        <div class="sld-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="sld-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
 @code {
     private List<SliderItem> _items = new();
-    private bool _loading = true, _saving, _showModal;
+    private bool _loading = true, _saving, _showModal, _showHelp;
     private Guid _editingId = Guid.Empty;
     private string _title = "";
     private int _sortOrder;
@@ -124,7 +178,7 @@ else
     private async Task Load()
     {
         _loading = true; StateHasChanged();
-        try { _items = await Http.GetFromJsonAsync<List<SliderItem>>("api/v2/sliders/admin") ?? new(); } catch { }
+        try { _items = await Http.GetFromJsonAsync<List<SliderItem>>("api/v2/sliders/admin") ?? new(); } catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
         _loading = false; StateHasChanged();
     }
 
@@ -188,3 +242,135 @@ else
     public class SliderItem { public Guid Id { get; set; } public string? Title { get; set; } public string? ImageUrl { get; set; } public int SortOrder { get; set; } public bool IsActive { get; set; } public DateTime CreatedAt { get; set; }
     }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Sliders page — modern card grid
+   ═══════════════════════════════════════════ */
+.sld-container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.sld-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.sld-top-l{display:flex;align-items:center;gap:10px}
+.sld-icon{font-size:24px}
+.sld-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.sld-count{font-size:11px;font-weight:600;color:var(--text-secondary);background:var(--bg);padding:2px 10px;border-radius:20px}
+.sld-top-r{display:flex;gap:8px}
+.sld-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.sld-btn:active{transform:scale(.95)}
+.sld-btn-add{background:var(--grad-blue);color:#fff}
+.sld-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.sld-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.sld-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.sld-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.sld-btn-cancel:hover{background:var(--bg-alt)}
+.sld-btn-save{background:var(--grad-blue);color:#fff}
+.sld-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.sld-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.sld-btn-danger{background:var(--red);color:#fff}
+.sld-btn-danger:hover{box-shadow:var(--shadow-red);transform:translateY(-1px)}
+
+/* Loading */
+.sld-loading{text-align:center;padding:80px 20px}
+.sld-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:sld-spin .7s linear infinite;margin:0 auto}
+@@keyframes sld-spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.sld-empty{text-align:center;padding:60px 20px}
+.sld-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.sld-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.sld-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.sld-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.sld-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.sld-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.sld-card:active{transform:scale(.97)}
+.sld-card-bar{height:4px;flex-shrink:0}
+.sld-card--on .sld-card-bar{background:var(--grad-green)}
+.sld-card--off .sld-card-bar{background:#d1d5db}
+.sld-card-img{height:160px;overflow:hidden;background:var(--bg-alt);display:flex;align-items:center;justify-content:center}
+.sld-card-img img{width:100%;height:100%;object-fit:cover}
+.sld-card-body{padding:14px 16px 10px;flex:1}
+.sld-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.sld-card-title{font-size:15px;font-weight:700;color:var(--text);flex:1}
+.sld-card-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.sld-badge-on{background:var(--green-bg);color:var(--green)}
+.sld-badge-off{background:var(--red-bg);color:var(--red)}
+.sld-card-info{display:flex;flex-direction:column;gap:4px}
+.sld-card-i{display:flex;align-items:center;gap:6px;font-size:12px}
+.sld-card-il{color:var(--text-secondary);min-width:40px}
+.sld-card-iv{color:var(--text);font-weight:500}
+.sld-card-ftr{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+.sld-card-acts{display:flex;gap:6px}
+.sld-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.sld-btn-sm:active{transform:scale(.93)}
+.sld-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.sld-btn-edit:hover{background:var(--blue);color:#fff}
+.sld-btn-del{background:var(--red-bg);color:var(--red)}
+.sld-btn-del:hover{background:var(--red);color:#fff}
+
+/* Overlay + modal */
+.sld-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:sld-fade .2s ease}
+@@keyframes sld-fade{from{opacity:0}to{opacity:1}}
+.sld-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:sld-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes sld-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.sld-modal-form{max-width:480px}
+.sld-modal-help{max-width:500px}
+.sld-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.sld-mh-icon{font-size:18px}
+.sld-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.sld-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.sld-mh-x:hover{background:var(--bg);color:var(--text)}
+.sld-mb{padding:16px 20px}
+.sld-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.sld-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.sld-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.sld-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.sld-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.sld-fg{margin-bottom:16px}
+.sld-fg:last-child{margin-bottom:0}
+.sld-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.sld-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.sld-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.sld-fi::placeholder{color:var(--text-muted)}
+.sld-fi-ltr{direction:ltr;text-align:right}
+.sld-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.sld-tgl input{opacity:0;width:0;height:0}
+.sld-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.sld-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.sld-tgl input:checked+.sld-tgl-sl{background:var(--grad-blue)}
+.sld-tgl input:checked+.sld-tgl-sl::before{transform:translateX(18px)}
+.sld-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.sld-upload{padding:12px;border:2px dashed var(--border);border-radius:12px;text-align:center;transition:all .2s}
+.sld-upload:hover{border-color:var(--blue);background:var(--blue-glow)}
+.sld-upload-preview{display:block;max-width:100%;max-height:180px;margin:8px auto 0;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.sld-upload-placeholder{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;color:var(--text-muted);font-size:13px;cursor:pointer}
+
+/* Access denied */
+.sld-denied{text-align:center;padding:80px 20px;color:#888}
+.sld-denied-icon{font-size:48px;margin-bottom:12px}
+.sld-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.sld-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.sld-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.sld-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .sld-container{padding:16px 12px}
+    .sld-top{flex-direction:column;align-items:stretch;gap:10px}
+    .sld-top-r{justify-content:space-between}
+    .sld-title{font-size:16px}
+    .sld-grid{grid-template-columns:1fr;gap:10px}
+    .sld-card-img{height:140px}
+    .sld-card-body{padding:12px 14px 8px}
+    .sld-card-title{font-size:14px}
+    .sld-card-ftr{padding:6px 14px}
+    .sld-btn{padding:8px 14px;font-size:12px}
+    .sld-modal-form,.sld-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .sld-mh{padding:14px 16px 12px}
+    .sld-mb{padding:12px 16px}
+    .sld-mf{padding:10px 16px 14px}
+    .sld-empty{padding:40px 16px}
+}
+</style>

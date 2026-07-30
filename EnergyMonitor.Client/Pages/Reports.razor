@@ -7,314 +7,348 @@
 @inject AuthService Auth
 @inject ToastService Toast
 
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>گزارش‌ها</h2>
+<div class="rpt-container">
+    <div class="rpt-top">
+        <div class="rpt-top-l">
+            <span class="rpt-icon">📊</span>
+            <h2 class="rpt-title">گزارش‌ها</h2>
+        </div>
+        <div class="rpt-top-r">
+            <button class="rpt-btn rpt-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+        </div>
     </div>
 
-    <PrereqAlert Met="(_centers.Count > 0)"
-        Title="هنوز مرکزی ثبت نشده"
-        Text="برای مشاهده گزارش، ابتدا باید یک مرکز ایجاد کنید."
-        LinkText="رفتن به مدیریت مراکز"
-        LinkHref="/centers" />
+    @if (_centers.Count == 0)
+    {
+        <div class="rpt-prereq">
+            <div class="rpt-prereq-icon">⚠️</div>
+            <div class="rpt-prereq-b">
+                <div class="rpt-prereq-t">هنوز مرکزی ثبت نشده</div>
+                <div class="rpt-prereq-d">برای مشاهده گزارش، ابتدا باید یک مرکز ایجاد کنید.</div>
+                <a class="rpt-prereq-a" href="/centers">← رفتن به مدیریت مراکز</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="rpt-filters">
+            <div class="rpt-filters-row">
+                <div class="rpt-fg">
+                    <label class="rpt-fl">مرکز</label>
+                    <select class="rpt-fi" value="@_selectedCenterId" @onchange="OnCenterChange">
+                        @foreach (var c in _centers)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="rpt-fg">
+                    <label class="rpt-fl">از تاریخ</label>
+                    <input data-jdp class="rpt-fi" id="rptFrom" value="@_rptFrom" />
+                </div>
+                <div class="rpt-fg">
+                    <label class="rpt-fl">تا تاریخ</label>
+                    <input data-jdp class="rpt-fi" id="rptTo" value="@_rptTo" />
+                </div>
+                <div class="rpt-fg rpt-fg-btn">
+                    <button class="rpt-btn rpt-btn-primary" @onclick="LoadData" disabled="@_loading">
+                        @if (_loading) { <span class="rpt-spinner-sm"></span> } else { <span>📊</span> }
+                        <span>@(_loading ? "در حال بارگذاری..." : "نمایش گزارش")</span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-    <HelpBox>
-        <p><strong>گزارش‌ها</strong> مصرف انرژی را بر اساس مرکز و بازه زمانی نمایش می‌دهند.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">مرکز مورد نظر را انتخاب کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">بازه زمانی (از تاریخ / تا تاریخ) را انتخاب کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">روی دکمه جستجو کلیک کنید تا گزارش نمایش داده شود.</span></div>
-        <div class="hlp-tip">💡 می‌توانید گزارش را به صورت PDF خروجی بگیرید.</div>
-    </HelpBox>
+        @if (_loading)
+        {
+            <div class="rpt-loading"><div class="rpt-spinner"></div></div>
+        }
+        else if (_error != null)
+        {
+            <div class="rpt-empty">
+                <div class="rpt-empty-icon">⚠️</div>
+                <div class="rpt-empty-title">خطا در بارگذاری</div>
+                <div class="rpt-empty-hint">@_error</div>
+            </div>
+        }
+        else if (_loaded && (_dailyData == null || _dailyData.Count == 0))
+        {
+            <div class="rpt-empty">
+                <div class="rpt-empty-icon">📭</div>
+                <div class="rpt-empty-title">داده‌ای وجود ندارد</div>
+                <div class="rpt-empty-hint">برای بازه انتخابی هیچ مصرفی ثبت نشده است</div>
+            </div>
+        }
+        else if (_dailyData != null && _dailyData.Count > 0)
+        {
+            <div class="rpt-kpis">
+                <div class="rpt-kpi">
+                    <div class="rpt-kpi-icon">⚡</div>
+                    <div class="rpt-kpi-body">
+                        <div class="rpt-kpi-val">@_totalKWh.ToString("N1")</div>
+                        <div class="rpt-kpi-lbl">مصرف کل (kWh)</div>
+                    </div>
+                </div>
+                <div class="rpt-kpi">
+                    <div class="rpt-kpi-icon" style="background:var(--blue-bg);color:var(--blue)">📊</div>
+                    <div class="rpt-kpi-body">
+                        <div class="rpt-kpi-val">@_avgDaily.ToString("N1")</div>
+                        <div class="rpt-kpi-lbl">میانگین روزانه (kWh)</div>
+                    </div>
+                </div>
+                <div class="rpt-kpi">
+                    <div class="rpt-kpi-icon" style="background:var(--red-bg);color:var(--red)">🔥</div>
+                    <div class="rpt-kpi-body">
+                        <div class="rpt-kpi-val">@_peakDayKWh.ToString("N1")</div>
+                        <div class="rpt-kpi-lbl">پیک روزانه (kWh)</div>
+                        <div class="rpt-kpi-sub">@_peakDayDate</div>
+                    </div>
+                </div>
+                <div class="rpt-kpi">
+                    <div class="rpt-kpi-icon" style="background:var(--green-bg);color:var(--green)">📅</div>
+                    <div class="rpt-kpi-body">
+                        <div class="rpt-kpi-val">@_dayCount</div>
+                        <div class="rpt-kpi-lbl">تعداد روزها</div>
+                    </div>
+                </div>
+            </div>
 
-    <div class="rpt-filters">
-        <div class="rpt-filters-row">
-            <div class="rpt-fg">
-                <label class="rpt-fl">مرکز</label>
-                <select class="form-select" value="@_selectedCenterId" @onchange="OnCenterChange">
-                    @foreach (var c in _centers)
-                    {
-                        <option value="@c.Id">@c.Name</option>
-                    }
-                </select>
+            <div class="rpt-card">
+                <div class="rpt-card-hdr">
+                    <span class="rpt-card-hdr-icon">📈</span>
+                    <h3>روند مصرف روزانه</h3>
+                    <span class="rpt-card-hdr-unit">kWh</span>
+                </div>
+                <div class="rpt-chart-wrap">
+                    <canvas id="rptDailyChart"></canvas>
+                </div>
             </div>
-            <div class="rpt-fg">
-                <label class="rpt-fl">از تاریخ</label>
-                <input data-jdp class="rpt-fi" id="rptFrom" value="@_rptFrom" />
+
+            <div class="rpt-card">
+                <div class="rpt-card-hdr">
+                    <span class="rpt-card-hdr-icon">🔌</span>
+                    <h3>تفکیک فازها</h3>
+                    <span class="rpt-card-hdr-unit">kWh</span>
+                </div>
+                @{
+                    var totalA = _dailyData.Sum(d => d.phaseAKWh);
+                    var totalB = _dailyData.Sum(d => d.phaseBKWh);
+                    var totalC = _dailyData.Sum(d => d.phaseCKWh);
+                    var totalAll = totalA + totalB + totalC;
+                    var pctA = totalAll > 0 ? totalA / totalAll * 100 : 0;
+                    var pctB = totalAll > 0 ? totalB / totalAll * 100 : 0;
+                    var pctC = totalAll > 0 ? totalC / totalAll * 100 : 0;
+                }
+                <div class="rpt-phase-summary">
+                    <div class="rpt-phase-stat">
+                        <div class="rpt-ps-dot" style="background:#f97316;box-shadow:0 0 8px rgba(249,115,22,.4)"></div>
+                        <div class="rpt-ps-body">
+                            <div class="rpt-ps-val">@totalA.ToString("N1")</div>
+                            <div class="rpt-ps-lbl">فاز A</div>
+                        </div>
+                        <div class="rpt-ps-pct">@pctA.ToString("F1")%</div>
+                    </div>
+                    <div class="rpt-phase-stat">
+                        <div class="rpt-ps-dot" style="background:#3b82f6;box-shadow:0 0 8px rgba(59,130,246,.4)"></div>
+                        <div class="rpt-ps-body">
+                            <div class="rpt-ps-val">@totalB.ToString("N1")</div>
+                            <div class="rpt-ps-lbl">فاز B</div>
+                        </div>
+                        <div class="rpt-ps-pct">@pctB.ToString("F1")%</div>
+                    </div>
+                    <div class="rpt-phase-stat">
+                        <div class="rpt-ps-dot" style="background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,.4)"></div>
+                        <div class="rpt-ps-body">
+                            <div class="rpt-ps-val">@totalC.ToString("N1")</div>
+                            <div class="rpt-ps-lbl">فاز C</div>
+                        </div>
+                        <div class="rpt-ps-pct">@pctC.ToString("F1")%</div>
+                    </div>
+                </div>
+                <div class="rpt-phase-stacked">
+                    <div class="rpt-psb-track">
+                        <div class="rpt-psb-seg" style="flex:@(pctA);background:#f97316" title="فاز A: @pctA.ToString("F1")%"></div>
+                        <div class="rpt-psb-seg" style="flex:@(pctB);background:#3b82f6" title="فاز B: @pctB.ToString("F1")%"></div>
+                        <div class="rpt-psb-seg" style="flex:@(pctC);background:#ef4444" title="فاز C: @pctC.ToString("F1")%"></div>
+                    </div>
+                    <div class="rpt-psb-labels">
+                        <span><span class="rpt-psb-dot" style="background:#f97316"></span>فاز A @pctA.ToString("F1")%</span>
+                        <span><span class="rpt-psb-dot" style="background:#3b82f6"></span>فاز B @pctB.ToString("F1")%</span>
+                        <span><span class="rpt-psb-dot" style="background:#ef4444"></span>فاز C @pctC.ToString("F1")%</span>
+                    </div>
+                </div>
+                <div class="rpt-phase-totals">
+                    <table>
+                        <thead>
+                            <tr><th>فاز</th><th>مصرف کل (kWh)</th><th>میانگین روزانه</th><th>سهم</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><span class="rpt-psb-dot" style="background:#f97316"></span>فاز A</td><td>@totalA.ToString("N1")</td><td>@(_dayCount > 0 ? (totalA / _dayCount).ToString("N1") : "—")</td><td>@pctA.ToString("F1")%</td></tr>
+                            <tr><td><span class="rpt-psb-dot" style="background:#3b82f6"></span>فاز B</td><td>@totalB.ToString("N1")</td><td>@(_dayCount > 0 ? (totalB / _dayCount).ToString("N1") : "—")</td><td>@pctB.ToString("F1")%</td></tr>
+                            <tr><td><span class="rpt-psb-dot" style="background:#ef4444"></span>فاز C</td><td>@totalC.ToString("N1")</td><td>@(_dayCount > 0 ? (totalC / _dayCount).ToString("N1") : "—")</td><td>@pctC.ToString("F1")%</td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr><td><strong>جمع</strong></td><td><strong>@totalAll.ToString("N1")</strong></td><td><strong>@(_dayCount > 0 ? (totalAll / _dayCount).ToString("N1") : "—")</strong></td><td><strong>100%</strong></td></tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
-            <div class="rpt-fg">
-                <label class="rpt-fl">تا تاریخ</label>
-                <input data-jdp class="rpt-fi" id="rptTo" value="@_rptTo" />
+
+            <div class="rpt-card">
+                <div class="rpt-card-hdr">
+                    <span class="rpt-card-hdr-icon">📅</span>
+                    <h3>مقایسه ماهانه</h3>
+                </div>
+                <div class="rpt-monthly-controls">
+                    <div class="rpt-fg">
+                        <label class="rpt-fl">سال</label>
+                        <select class="rpt-fi" value="@_selectedYear" @onchange="OnYearChange">
+                            @for (int y = _currentYear; y >= _currentYear - 5; y--)
+                            {
+                                <option value="@y">@y</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="rpt-fg">
+                        <label class="rpt-fl">مقایسه با</label>
+                        <select class="rpt-fi" value="@(_compareYear?.ToString() ?? "")" @onchange="OnCompareYearChange">
+                            <option value="">ندارد</option>
+                            @for (int y = _currentYear - 1; y >= _currentYear - 5; y--)
+                            {
+                                <option value="@y">@y</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                @if (_monthlyData != null && _monthlyData.Count > 0)
+                {
+                    <div class="rpt-chart-wrap" style="height:200px">
+                        <canvas id="rptMonthlyChart"></canvas>
+                    </div>
+                }
             </div>
-            <div class="rpt-fg rpt-fg-btn">
-                <button class="rpt-btn" @onclick="LoadData" disabled="@_loading">
-                    @if (_loading) { <span class="spinner-sm"></span> } else { <span>📊</span> }
-                    <span>@(_loading ? "در حال بارگذاری..." : "نمایش گزارش")</span>
+
+            <div class="rpt-card">
+                <div class="rpt-card-hdr">
+                    <span class="rpt-card-hdr-icon">⚖️</span>
+                    <h3>مقایسه دو بازه</h3>
+                </div>
+                <div class="rpt-compare-grid">
+                    <div class="rpt-compare-col">
+                        <div class="rpt-compare-label">بازه اول</div>
+                        <div class="rpt-fg">
+                            <label class="rpt-fl">از</label>
+                            <input data-jdp class="rpt-fi" id="cmpFrom1" value="@_cmpFrom1" />
+                        </div>
+                        <div class="rpt-fg">
+                            <label class="rpt-fl">تا</label>
+                            <input data-jdp class="rpt-fi" id="cmpTo1" value="@_cmpTo1" />
+                        </div>
+                    </div>
+                    <div class="rpt-compare-vs">
+                        <span>VS</span>
+                    </div>
+                    <div class="rpt-compare-col">
+                        <div class="rpt-compare-label">بازه دوم</div>
+                        <div class="rpt-fg">
+                            <label class="rpt-fl">از</label>
+                            <input data-jdp class="rpt-fi" id="cmpFrom2" value="@_cmpFrom2" />
+                        </div>
+                        <div class="rpt-fg">
+                            <label class="rpt-fl">تا</label>
+                            <input data-jdp class="rpt-fi" id="cmpTo2" value="@_cmpTo2" />
+                        </div>
+                    </div>
+                </div>
+                <button class="rpt-btn rpt-btn-secondary" @onclick="Compare" disabled="@_loadingCompare">
+                    @(_loadingCompare ? "..." : "مقایسه کن")
+                </button>
+
+                @if (_comparisonData != null)
+                {
+                    <div class="rpt-cmp-result">
+                        <div class="rpt-cmp-row rpt-cmp-hdr">
+                            <span></span><span>مصرف (kWh)</span><span>میانگین روزانه</span>
+                        </div>
+                        <div class="rpt-cmp-row">
+                            <span>بازه اول</span>
+                            <span class="rpt-cmp-val">@_comparisonData.period1.totalKWh.ToString("N1")</span>
+                            <span class="rpt-cmp-val">@(_comparisonData.period1.totalKWh / _dayCount > 0 ? (_comparisonData.period1.totalKWh / _dayCount).ToString("N1") : "—")</span>
+                        </div>
+                        <div class="rpt-cmp-row">
+                            <span>بازه دوم</span>
+                            <span class="rpt-cmp-val">@_comparisonData.period2.totalKWh.ToString("N1")</span>
+                            <span class="rpt-cmp-val">@(_comparisonData.period2.totalKWh / _dayCount > 0 ? (_comparisonData.period2.totalKWh / _dayCount).ToString("N1") : "—")</span>
+                        </div>
+                        <div class="rpt-cmp-row rpt-cmp-total">
+                            <span>تفاوت</span>
+                            <span class="rpt-cmp-val @(_comparisonData.deltaKWh >= 0 ? "up" : "down")">
+                                @(_comparisonData.deltaKWh >= 0 ? "↑" : "↓") @Math.Abs(_comparisonData.deltaKWh).ToString("N1")
+                            </span>
+                            <span class="rpt-cmp-val @(_comparisonData.deltaPercent >= 0 ? "up" : "down")">
+                                @(_comparisonData.deltaPercent >= 0 ? "+" : "")@_comparisonData.deltaPercent.ToString("F1")%
+                            </span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="rpt-card">
+                <div class="rpt-card-hdr">
+                    <span class="rpt-card-hdr-icon">🔥</span>
+                    <h3>اوج مصرف</h3>
+                </div>
+                @if (_peakData != null && _peakData.peakKWh > 0)
+                {
+                    <div class="rpt-peak">
+                        <div class="rpt-peak-val">@_peakData.peakKWh.ToString("N2") <small>kWh</small></div>
+                        <div class="rpt-peak-date">@_peakData.peakDate</div>
+                        <div class="rpt-peak-hour">ساعت @_peakData.peakHour:00</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="rpt-empty-sm">داده‌ای برای اوج مصرف وجود ندارد</div>
+                }
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+                <button class="rpt-btn rpt-btn-outline" @onclick="ExportCsv">
+                    📥 خروجی CSV
                 </button>
             </div>
-        </div>
-    </div>
-
-    @if (_error != null)
-    {
-        <div class="rpt-empty">
-            <div class="rpt-empty-icon">⚠️</div>
-            <div class="rpt-empty-title">خطا در بارگذاری</div>
-            <div class="rpt-empty-hint">@_error</div>
-        </div>
-    }
-    else if (_loaded && (_dailyData == null || _dailyData.Count == 0))
-    {
-        <div class="rpt-empty">
-            <div class="rpt-empty-icon">📭</div>
-            <div class="rpt-empty-title">داده‌ای وجود ندارد</div>
-            <div class="rpt-empty-hint">برای بازه انتخابی هیچ مصرفی ثبت نشده است</div>
-        </div>
-    }
-    else if (_dailyData != null && _dailyData.Count > 0)
-    {
-        <div class="rpt-kpis">
-            <div class="rpt-kpi">
-                <div class="rpt-kpi-icon">⚡</div>
-                <div class="rpt-kpi-body">
-                    <div class="rpt-kpi-val">@_totalKWh.ToString("N1")</div>
-                    <div class="rpt-kpi-lbl">مصرف کل (kWh)</div>
-                </div>
-            </div>
-            <div class="rpt-kpi">
-                <div class="rpt-kpi-icon" style="background:var(--blue-bg);color:var(--blue)">📊</div>
-                <div class="rpt-kpi-body">
-                    <div class="rpt-kpi-val">@_avgDaily.ToString("N1")</div>
-                    <div class="rpt-kpi-lbl">میانگین روزانه (kWh)</div>
-                </div>
-            </div>
-            <div class="rpt-kpi">
-                <div class="rpt-kpi-icon" style="background:var(--red-bg);color:var(--red)">🔥</div>
-                <div class="rpt-kpi-body">
-                    <div class="rpt-kpi-val">@_peakDayKWh.ToString("N1")</div>
-                    <div class="rpt-kpi-lbl">پیک روزانه (kWh)</div>
-                    <div class="rpt-kpi-sub">@_peakDayDate</div>
-                </div>
-            </div>
-            <div class="rpt-kpi">
-                <div class="rpt-kpi-icon" style="background:var(--green-bg);color:var(--green)">📅</div>
-                <div class="rpt-kpi-body">
-                    <div class="rpt-kpi-val">@_dayCount</div>
-                    <div class="rpt-kpi-lbl">تعداد روزها</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="rpt-card">
-            <div class="rpt-card-hdr">
-                <span class="rpt-card-hdr-icon">📈</span>
-                <h3>روند مصرف روزانه</h3>
-                <span class="rpt-card-hdr-unit">kWh</span>
-            </div>
-            <div class="rpt-chart-wrap">
-                <canvas id="rptDailyChart"></canvas>
-            </div>
-        </div>
-
-        <div class="rpt-card">
-            <div class="rpt-card-hdr">
-                <span class="rpt-card-hdr-icon">🔌</span>
-                <h3>تفکیک فازها</h3>
-                <span class="rpt-card-hdr-unit">kWh</span>
-            </div>
-            @{
-                var totalA = _dailyData.Sum(d => d.phaseAKWh);
-                var totalB = _dailyData.Sum(d => d.phaseBKWh);
-                var totalC = _dailyData.Sum(d => d.phaseCKWh);
-                var totalAll = totalA + totalB + totalC;
-                var pctA = totalAll > 0 ? totalA / totalAll * 100 : 0;
-                var pctB = totalAll > 0 ? totalB / totalAll * 100 : 0;
-                var pctC = totalAll > 0 ? totalC / totalAll * 100 : 0;
-            }
-            <div class="rpt-phase-summary">
-                <div class="rpt-phase-stat">
-                    <div class="rpt-ps-dot" style="background:#f97316;box-shadow:0 0 8px rgba(249,115,22,.4)"></div>
-                    <div class="rpt-ps-body">
-                        <div class="rpt-ps-val">@totalA.ToString("N1")</div>
-                        <div class="rpt-ps-lbl">فاز A</div>
-                    </div>
-                    <div class="rpt-ps-pct">@pctA.ToString("F1")%</div>
-                </div>
-                <div class="rpt-phase-stat">
-                    <div class="rpt-ps-dot" style="background:#3b82f6;box-shadow:0 0 8px rgba(59,130,246,.4)"></div>
-                    <div class="rpt-ps-body">
-                        <div class="rpt-ps-val">@totalB.ToString("N1")</div>
-                        <div class="rpt-ps-lbl">فاز B</div>
-                    </div>
-                    <div class="rpt-ps-pct">@pctB.ToString("F1")%</div>
-                </div>
-                <div class="rpt-phase-stat">
-                    <div class="rpt-ps-dot" style="background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,.4)"></div>
-                    <div class="rpt-ps-body">
-                        <div class="rpt-ps-val">@totalC.ToString("N1")</div>
-                        <div class="rpt-ps-lbl">فاز C</div>
-                    </div>
-                    <div class="rpt-ps-pct">@pctC.ToString("F1")%</div>
-                </div>
-            </div>
-            <div class="rpt-phase-stacked">
-                <div class="rpt-psb-track">
-                    <div class="rpt-psb-seg" style="flex:@(pctA);background:#f97316" title="فاز A: @pctA.ToString("F1")%"></div>
-                    <div class="rpt-psb-seg" style="flex:@(pctB);background:#3b82f6" title="فاز B: @pctB.ToString("F1")%"></div>
-                    <div class="rpt-psb-seg" style="flex:@(pctC);background:#ef4444" title="فاز C: @pctC.ToString("F1")%"></div>
-                </div>
-                <div class="rpt-psb-labels">
-                    <span><span class="rpt-psb-dot" style="background:#f97316"></span>فاز A @pctA.ToString("F1")%</span>
-                    <span><span class="rpt-psb-dot" style="background:#3b82f6"></span>فاز B @pctB.ToString("F1")%</span>
-                    <span><span class="rpt-psb-dot" style="background:#ef4444"></span>فاز C @pctC.ToString("F1")%</span>
-                </div>
-            </div>
-            <div class="rpt-phase-totals">
-                <table>
-                    <thead>
-                        <tr><th>فاز</th><th>مصرف کل (kWh)</th><th>میانگین روزانه</th><th>سهم</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><span class="rpt-psb-dot" style="background:#f97316"></span>فاز A</td><td>@totalA.ToString("N1")</td><td>@(_dayCount > 0 ? (totalA / _dayCount).ToString("N1") : "—")</td><td>@pctA.ToString("F1")%</td></tr>
-                        <tr><td><span class="rpt-psb-dot" style="background:#3b82f6"></span>فاز B</td><td>@totalB.ToString("N1")</td><td>@(_dayCount > 0 ? (totalB / _dayCount).ToString("N1") : "—")</td><td>@pctB.ToString("F1")%</td></tr>
-                        <tr><td><span class="rpt-psb-dot" style="background:#ef4444"></span>فاز C</td><td>@totalC.ToString("N1")</td><td>@(_dayCount > 0 ? (totalC / _dayCount).ToString("N1") : "—")</td><td>@pctC.ToString("F1")%</td></tr>
-                    </tbody>
-                    <tfoot>
-                        <tr><td><strong>جمع</strong></td><td><strong>@totalAll.ToString("N1")</strong></td><td><strong>@(_dayCount > 0 ? (totalAll / _dayCount).ToString("N1") : "—")</strong></td><td><strong>100%</strong></td></tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-
-        <div class="rpt-card">
-            <div class="rpt-card-hdr">
-                <span class="rpt-card-hdr-icon">📅</span>
-                <h3>مقایسه ماهانه</h3>
-            </div>
-            <div class="rpt-monthly-controls">
-                <div class="rpt-fg">
-                    <label class="rpt-fl">سال</label>
-                    <select class="form-select" value="@_selectedYear" @onchange="OnYearChange">
-                        @for (int y = _currentYear; y >= _currentYear - 5; y--)
-                        {
-                            <option value="@y">@y</option>
-                        }
-                    </select>
-                </div>
-                <div class="rpt-fg">
-                    <label class="rpt-fl">مقایسه با</label>
-                    <select class="form-select" value="@(_compareYear?.ToString() ?? "")" @onchange="OnCompareYearChange">
-                        <option value="">ندارد</option>
-                        @for (int y = _currentYear - 1; y >= _currentYear - 5; y--)
-                        {
-                            <option value="@y">@y</option>
-                        }
-                    </select>
-                </div>
-            </div>
-            @if (_monthlyData != null && _monthlyData.Count > 0)
-            {
-                <div class="rpt-chart-wrap" style="height:200px">
-                    <canvas id="rptMonthlyChart"></canvas>
-                </div>
-            }
-        </div>
-
-        <div class="rpt-card">
-            <div class="rpt-card-hdr">
-                <span class="rpt-card-hdr-icon">⚖️</span>
-                <h3>مقایسه دو بازه</h3>
-            </div>
-            <div class="rpt-compare-grid">
-                <div class="rpt-compare-col">
-                    <div class="rpt-compare-label">بازه اول</div>
-                    <div class="rpt-fg">
-                        <label class="rpt-fl">از</label>
-                        <input data-jdp class="rpt-fi" id="cmpFrom1" value="@_cmpFrom1" />
-                    </div>
-                    <div class="rpt-fg">
-                        <label class="rpt-fl">تا</label>
-                        <input data-jdp class="rpt-fi" id="cmpTo1" value="@_cmpTo1" />
-                    </div>
-                </div>
-                <div class="rpt-compare-vs">
-                    <span>VS</span>
-                </div>
-                <div class="rpt-compare-col">
-                    <div class="rpt-compare-label">بازه دوم</div>
-                    <div class="rpt-fg">
-                        <label class="rpt-fl">از</label>
-                        <input data-jdp class="rpt-fi" id="cmpFrom2" value="@_cmpFrom2" />
-                    </div>
-                    <div class="rpt-fg">
-                        <label class="rpt-fl">تا</label>
-                        <input data-jdp class="rpt-fi" id="cmpTo2" value="@_cmpTo2" />
-                    </div>
-                </div>
-            </div>
-            <button class="rpt-btn rpt-btn-sm" @onclick="Compare" disabled="@_loadingCompare">
-                @(_loadingCompare ? "..." : "مقایسه کن")
-            </button>
-
-            @if (_comparisonData != null)
-            {
-                <div class="rpt-cmp-result">
-                    <div class="rpt-cmp-row rpt-cmp-hdr">
-                        <span></span><span>مصرف (kWh)</span><span>میانگین روزانه</span>
-                    </div>
-                    <div class="rpt-cmp-row">
-                        <span>بازه اول</span>
-                        <span class="rpt-cmp-val">@_comparisonData.period1.totalKWh.ToString("N1")</span>
-                        <span class="rpt-cmp-val">@(_comparisonData.period1.totalKWh / _dayCount > 0 ? (_comparisonData.period1.totalKWh / _dayCount).ToString("N1") : "—")</span>
-                    </div>
-                    <div class="rpt-cmp-row">
-                        <span>بازه دوم</span>
-                        <span class="rpt-cmp-val">@_comparisonData.period2.totalKWh.ToString("N1")</span>
-                        <span class="rpt-cmp-val">@(_comparisonData.period2.totalKWh / _dayCount > 0 ? (_comparisonData.period2.totalKWh / _dayCount).ToString("N1") : "—")</span>
-                    </div>
-                    <div class="rpt-cmp-row rpt-cmp-total">
-                        <span>تفاوت</span>
-                        <span class="rpt-cmp-val @(_comparisonData.deltaKWh >= 0 ? "up" : "down")">
-                            @(_comparisonData.deltaKWh >= 0 ? "↑" : "↓") @Math.Abs(_comparisonData.deltaKWh).ToString("N1")
-                        </span>
-                        <span class="rpt-cmp-val @(_comparisonData.deltaPercent >= 0 ? "up" : "down")">
-                            @(_comparisonData.deltaPercent >= 0 ? "+" : "")@_comparisonData.deltaPercent.ToString("F1")%
-                        </span>
-                    </div>
-                </div>
-            }
-        </div>
-
-        <div class="rpt-card">
-            <div class="rpt-card-hdr">
-                <span class="rpt-card-hdr-icon">🔥</span>
-                <h3>اوج مصرف</h3>
-            </div>
-            @if (_peakData != null && _peakData.peakKWh > 0)
-            {
-                <div class="rpt-peak">
-                    <div class="rpt-peak-val">@_peakData.peakKWh.ToString("N2") <small>kWh</small></div>
-                    <div class="rpt-peak-date">@_peakData.peakDate</div>
-                    <div class="rpt-peak-hour">ساعت @_peakData.peakHour:00</div>
-                </div>
-            }
-            else
-            {
-                <div class="rpt-empty-sm">داده‌ای برای اوج مصرف وجود ندارد</div>
-            }
-        </div>
-
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
-            <button class="rpt-btn rpt-btn-outline" @onclick="ExportCsv">
-                📥 خروجی CSV
-            </button>
-        </div>
+        }
     }
 </div>
+
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="rpt-overlay" @onclick="() => _showHelp = false">
+        <div class="rpt-modal rpt-modal-help" @onclick:stopPropagation>
+            <div class="rpt-mh">
+                <span class="rpt-mh-icon">📘</span>
+                <span class="rpt-mh-t">راهنمای گزارش‌ها</span>
+                <button class="rpt-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="rpt-mb">
+                <p class="rpt-mb-intro"><strong>گزارش‌ها</strong> مصرف انرژی را بر اساس مرکز و بازه زمانی نمایش می‌دهند.</p>
+                <div class="rpt-mb-step"><span class="rpt-step-n">۱</span><span>مرکز مورد نظر را انتخاب کنید.</span></div>
+                <div class="rpt-mb-step"><span class="rpt-step-n">۲</span><span>بازه زمانی (از تاریخ / تا تاریخ) را انتخاب کنید.</span></div>
+                <div class="rpt-mb-step"><span class="rpt-step-n">۳</span><span>روی دکمه جستجو کلیک کنید تا گزارش نمایش داده شود.</span></div>
+                <div class="rpt-mb-tip">💡 می‌توانید گزارش را به صورت CSV خروجی بگیرید.</div>
+            </div>
+            <div class="rpt-mf">
+                <button class="rpt-btn rpt-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private List<CenterRef> _centers = new();
     private Guid _selectedCenterId;
-    private bool _loading, _loaded, _loadingCompare;
+    private bool _loading, _loaded, _loadingCompare, _showHelp;
     private string _rptFrom = "", _rptTo = "";
     private string? _error;
     private int _currentYear, _selectedYear;
@@ -346,7 +380,6 @@
     {
         if (firstRender && !_chartScriptsLoaded)
         {
-            // Load Chart.js + charts.js dynamically (same pattern as Dashboard)
             try { await JS.InvokeVoidAsync("eval",
                 @"function loadScript(a){return new Promise(function(b,c){var d=document.createElement('script');d.src=a;d.onload=b;d.onerror=c;document.head.appendChild(d)})}
                   loadScript('js/chart.umd.min.js').then(function(){return loadScript('js/charts.js')}).then(function(){window._chartReady=true}).catch(function(){});"); } catch { }
@@ -526,3 +559,174 @@
     public class ComparisonData { public PeriodData period1 { get; set; } = new(); public PeriodData period2 { get; set; } = new(); public double deltaKWh { get; set; } public double deltaPercent { get; set; } }
     public class PeriodData { public string from { get; set; } = ""; public string to { get; set; } = ""; public double totalKWh { get; set; } }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Reports page — modern dashboard
+   ═══════════════════════════════════════════ */
+.rpt-container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.rpt-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.rpt-top-l{display:flex;align-items:center;gap:10px}
+.rpt-icon{font-size:24px}
+.rpt-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.rpt-top-r{display:flex;gap:8px}
+.rpt-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.rpt-btn:active{transform:scale(.95)}
+.rpt-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.rpt-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.rpt-btn-primary{background:var(--grad-blue);color:#fff}
+.rpt-btn-primary:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.rpt-btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.rpt-btn-secondary{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.rpt-btn-secondary:hover{background:var(--bg-alt);color:var(--text)}
+.rpt-btn-outline{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
+.rpt-btn-outline:hover{background:var(--bg-alt);color:var(--text)}
+.rpt-spinner-sm{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;display:inline-block;animation:rpt-spin-l .7s linear infinite}
+@@keyframes rpt-spin-l{to{transform:rotate(360deg)}}
+
+/* Prereq alert */
+.rpt-prereq{display:flex;gap:14px;padding:16px 18px;background:linear-gradient(135deg,var(--gold-bg),#fffbeb);border:1px solid #fde68a;border-radius:14px;margin-bottom:20px;align-items:flex-start}
+.rpt-prereq-icon{font-size:24px;flex-shrink:0;margin-top:1px}
+.rpt-prereq-b{flex:1}
+.rpt-prereq-t{font-size:14px;font-weight:700;color:#92400e;margin-bottom:4px}
+.rpt-prereq-d{font-size:12px;color:#b45309;line-height:1.7}
+.rpt-prereq-a{display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:var(--blue-dark);text-decoration:none}
+.rpt-prereq-a:hover{text-decoration:underline}
+
+/* Loading */
+.rpt-loading{text-align:center;padding:80px 20px}
+.rpt-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:rpt-spin .7s linear infinite;margin:0 auto}
+@@keyframes rpt-spin{to{transform:rotate(360deg)}}
+
+/* Filters */
+.rpt-filters{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px}
+.rpt-filters-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.rpt-fg{flex:1;min-width:150px}
+.rpt-fg-btn{flex:0 0 auto;min-width:0}
+.rpt-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
+.rpt-fi{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s;font-family:var(--font)}
+.rpt-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+
+/* Empty state */
+.rpt-empty{text-align:center;padding:60px 20px}
+.rpt-empty-icon{font-size:48px;margin-bottom:12px;opacity:.5}
+.rpt-empty-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.rpt-empty-hint{font-size:13px;color:var(--text-secondary)}
+.rpt-empty-sm{padding:20px;text-align:center;color:var(--text-muted);font-size:13px}
+
+/* KPI cards */
+.rpt-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.rpt-kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;transition:all .25s}
+.rpt-kpi:hover{border-color:var(--blue);box-shadow:0 2px 12px rgba(59,130,246,.08)}
+.rpt-kpi-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:var(--gold-bg);color:var(--gold)}
+.rpt-kpi-body{flex:1}
+.rpt-kpi-val{font-size:22px;font-weight:800;color:var(--text);line-height:1.2}
+.rpt-kpi-lbl{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.rpt-kpi-sub{font-size:11px;color:var(--text-muted);margin-top:1px}
+
+/* Report cards */
+.rpt-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden}
+.rpt-card-hdr{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg-alt)}
+.rpt-card-hdr-icon{font-size:18px}
+.rpt-card-hdr h3{font-size:14px;font-weight:700;color:var(--text);margin:0;flex:1}
+.rpt-card-hdr-unit{font-size:11px;color:var(--text-muted);font-weight:600}
+
+/* Phase summary */
+.rpt-phase-summary{display:flex;gap:12px;padding:16px;flex-wrap:wrap}
+.rpt-phase-stat{flex:1;min-width:140px;display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.rpt-ps-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.rpt-ps-body{flex:1}
+.rpt-ps-val{font-size:16px;font-weight:700;color:var(--text)}
+.rpt-ps-lbl{font-size:11px;color:var(--text-secondary)}
+.rpt-ps-pct{font-size:14px;font-weight:700;color:var(--text)}
+.rpt-phase-stacked{padding:0 16px 12px}
+.rpt-psb-track{display:flex;height:10px;border-radius:10px;overflow:hidden;background:var(--bg-alt)}
+.rpt-psb-seg{transition:flex .3s}
+.rpt-psb-labels{display:flex;gap:16px;margin-top:6px;flex-wrap:wrap}
+.rpt-psb-labels span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)}
+.rpt-psb-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.rpt-chart-wrap{padding:16px;min-height:200px}
+.rpt-phase-totals{padding:0 16px 16px}
+.rpt-phase-totals table{width:100%;border-collapse:collapse;font-size:12px}
+.rpt-phase-totals th{background:var(--bg-alt);padding:8px 10px;font-weight:600;color:var(--text-secondary);text-align:right;border-bottom:1px solid var(--border)}
+.rpt-phase-totals td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.rpt-phase-totals tfoot td{border-top:2px solid var(--border);color:var(--text);font-weight:700}
+
+/* Monthly */
+.rpt-monthly-controls{display:flex;gap:12px;padding:12px 16px;flex-wrap:wrap}
+
+/* Comparison */
+.rpt-compare-grid{display:flex;gap:16px;padding:12px 16px;align-items:flex-start;flex-wrap:wrap}
+.rpt-compare-col{flex:1;min-width:200px}
+.rpt-compare-label{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
+.rpt-compare-vs{display:flex;align-items:center;padding-top:20px}
+.rpt-compare-vs span{font-size:14px;font-weight:800;color:var(--text-muted);padding:8px 12px;border:1px solid var(--border);border-radius:20px}
+.rpt-cmp-result{margin:12px 16px 16px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.rpt-cmp-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px}
+.rpt-cmp-row:last-child{border-bottom:none}
+.rpt-cmp-hdr{background:var(--bg-alt);font-weight:700;color:var(--text-secondary)}
+.rpt-cmp-row span{flex:1}
+.rpt-cmp-row span:first-child{flex:0 0 80px;font-weight:600}
+.rpt-cmp-val{font-weight:600;color:var(--text)}
+.rpt-cmp-val.up{color:var(--red)}
+.rpt-cmp-val.down{color:var(--green)}
+.rpt-cmp-total{background:var(--bg-alt)}
+
+/* Peak */
+.rpt-peak{text-align:center;padding:24px 16px}
+.rpt-peak-val{font-size:36px;font-weight:800;color:var(--text)}
+.rpt-peak-val small{font-size:14px;font-weight:400;color:var(--text-muted)}
+.rpt-peak-date{font-size:14px;color:var(--text-secondary);margin-top:4px}
+.rpt-peak-hour{font-size:13px;color:var(--text-muted)}
+
+/* Overlay + modal */
+.rpt-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:rpt-fade .2s ease}
+@@keyframes rpt-fade{from{opacity:0}to{opacity:1}}
+.rpt-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:rpt-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes rpt-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.rpt-modal-help{max-width:500px}
+.rpt-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.rpt-mh-icon{font-size:18px}
+.rpt-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.rpt-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.rpt-mh-x:hover{background:var(--bg);color:var(--text)}
+.rpt-mb{padding:16px 20px}
+.rpt-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.rpt-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.rpt-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.rpt-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.rpt-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* ── Responsive ── */
+@@media(max-width:768px){
+    .rpt-filters-row{flex-direction:column;gap:10px}
+    .rpt-fg{min-width:100%}
+    .rpt-fg-btn{width:100%}
+    .rpt-btn-primary{width:100%;justify-content:center}
+    .rpt-kpis{grid-template-columns:repeat(2,1fr)}
+    .rpt-compare-grid{flex-direction:column}
+    .rpt-compare-vs{align-self:center;padding-top:0}
+    .rpt-phase-summary{flex-direction:column}
+}
+@@media(max-width:640px){
+    .rpt-container{padding:16px 12px}
+    .rpt-top{flex-direction:column;align-items:stretch;gap:10px}
+    .rpt-top-r{justify-content:space-between}
+    .rpt-title{font-size:16px}
+    .rpt-kpis{grid-template-columns:1fr 1fr;gap:8px}
+    .rpt-kpi{padding:12px}
+    .rpt-kpi-val{font-size:18px}
+    .rpt-card-hdr{padding:10px 12px}
+    .rpt-card-hdr h3{font-size:13px}
+    .rpt-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .rpt-mh{padding:14px 16px 12px}
+    .rpt-mb{padding:12px 16px}
+    .rpt-mf{padding:10px 16px 14px}
+    .rpt-phase-totals table{font-size:11px}
+    .rpt-phase-totals th,.rpt-phase-totals td{padding:5px 6px}
+    .rpt-empty{padding:40px 16px}
+    .rpt-prereq{padding:14px;border-radius:12px}
+    .rpt-prereq-t{font-size:13px}
+    .rpt-prereq-d{font-size:11px}
+}
+</style>

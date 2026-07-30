@@ -8,117 +8,179 @@
 
 @if (Auth.CurrentUser?.Role == "SuperAdmin")
 {
-<div class="page-container">
-    <div class="page-toolbar">
-        <h2>مدیریت کاربران</h2>
-        <button class="btn btn-primary" @onclick="OpenCreate">+ کاربر جدید</button>
+<div class="usr-container">
+    <div class="usr-top">
+        <div class="usr-top-l">
+            <span class="usr-icon">👥</span>
+            <h2 class="usr-title">مدیریت کاربران</h2>
+            @if (_users.Count > 0)
+            {
+                <span class="usr-count">@_users.Count کاربر</span>
+            }
+        </div>
+        <div class="usr-top-r">
+            <button class="usr-btn usr-btn-help" @onclick="() => _showHelp = true" title="راهنما">❓</button>
+            <button class="usr-btn usr-btn-add" @onclick="OpenCreate">+ کاربر جدید</button>
+        </div>
     </div>
-
-    <HelpBox>
-        <p><strong>کاربران سیستم</strong> می‌توانند نقش‌های مدیر (Admin) یا سوپرادمین (SuperAdmin) داشته باشند.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">نام کاربری، ایمیل و نقش کاربر را وارد کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">رمز عبور موقت برای کاربر تنظیم کنید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">کاربر می‌تواند رمز خود را بعداً تغییر دهد.</span></div>
-        <div class="hlp-warn">⚠️ فقط سوپرادمین می‌تواند کاربران را مدیریت کند.</div>
-    </HelpBox>
 
     @if (_loading)
     {
-        <div class="loading-state"><div class="spinner"></div></div>
+        <div class="usr-loading"><div class="usr-spinner"></div></div>
+    }
+    else if (_users.Count == 0)
+    {
+        <div class="usr-empty">
+            <div class="usr-empty-icon">👥</div>
+            <div class="usr-empty-t">کاربری ثبت نشده</div>
+            <div class="usr-empty-d">روی «+ کاربر جدید» کلیک کنید تا اولین کاربر را اضافه کنید.</div>
+        </div>
     }
     else
     {
-        <div class="table-wrap">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>نام کاربری</th>
-                        <th>نام و نام خانوادگی</th>
-                        <th>نقش</th>
-                        <th>مرکز</th>
-                        <th>وضعیت</th>
-                        <th>آخرین ورود</th>
-                        <th>تاریخ ایجاد</th>
-                        <th>عملیات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var u in _users)
-                    {
-                        <tr>
-                            <td>@u.Username</td>
-                            <td>@u.FullName</td>
-                            <td><span class="role-badge role-@u.Role">@u.Role</span></td>
-                            <td>@(u.CenterIds.Count > 0 ? string.Join("، ", u.CenterIds.Select(id => _centerNames.GetValueOrDefault(id, "")).Where(n => n != "")) : "—")</td>
-                            <td><span class="status-@(u.IsActive ? "active" : "inactive")">@(u.IsActive ? "فعال" : "غیرفعال")</span></td>
-                            <td class="ltr">@(u.LastLoginAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
-                            <td class="ltr">@u.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
-                            <td>
-                                <button class="btn-sm" @onclick="() => OpenEdit(u)">ویرایش</button>
-                                <button class="btn-sm danger" @onclick="() => ConfirmDelete(u)">حذف</button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-
-    @if (_showModal)
-    {
-        <div class="modal-overlay" @onclick="CloseModal">
-            <div class="modal-card" @onclick:stopPropagation>
-                <div class="modal-hdr">
-                    <h3>@(_editingId == Guid.Empty ? "کاربر جدید" : "ویرایش کاربر")</h3>
-                    <button class="modal-close" @onclick="CloseModal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-row"><label>نام کاربری</label><input @bind="_username" class="form-input" /></div>
-                    <div class="form-row"><label>@(_editingId == Guid.Empty ? "رمز عبور" : "رمز عبور (خالی = بدون تغییر)")</label><input @bind="_password" type="password" class="form-input ltr" /></div>
-                    <div class="form-row"><label>نام و نام خانوادگی</label><input @bind="_fullName" class="form-input" /></div>
-                    <div class="form-row">
-                        <label>نقش</label>
-                        <select @bind="_role" class="form-input">
-                            <option value="Operator">اپراتور</option>
-                            <option value="Viewer">بیننده</option>
-                            <option value="Admin">مدیر مرکز</option>
-                            <option value="SuperAdmin">مدیر کل</option>
-                            <option value="RegionalAdmin">مدیر منطقه</option>
-                            <option value="BillingOperator">اپراتور صورتحساب</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <label>مراکز</label>
-                        <div class="checkbox-group">
-                            @foreach (var c in _centers)
+        <div class="usr-grid">
+            @foreach (var u in _users)
+            {
+                <div class="usr-card @(u.IsActive ? "usr-card--on" : "usr-card--off")">
+                    <div class="usr-card-bar"></div>
+                    <div class="usr-card-body">
+                        <div class="usr-card-top">
+                            <div class="usr-card-avatar">@u.Username[..1].ToUpper()</div>
+                            <span class="usr-card-badge usr-role-@u.Role">@u.Role</span>
+                        </div>
+                        <div class="usr-card-name">@u.FullName</div>
+                        <div class="usr-card-uname">@@@u.Username</div>
+                        <div class="usr-card-info">
+                            <div class="usr-card-i">
+                                <span class="usr-card-il">وضعیت</span>
+                                <span class="usr-card-badge-sm @(u.IsActive ? "usr-badge-on" : "usr-badge-off")">@(u.IsActive ? "فعال" : "غیرفعال")</span>
+                            </div>
+                            @if (u.CenterIds.Count > 0)
                             {
-                                <label class="checkbox-item">
-                                    <input type="checkbox" checked="@_centerIds.Contains(c.Id)" @onchange="(e) => ToggleCenter(c.Id, (bool)(e.Value ?? false))" />
-                                    <span>@c.Name (@c.Code)</span>
-                                </label>
+                                <div class="usr-card-i">
+                                    <span class="usr-card-il">مراکز</span>
+                                    <span class="usr-card-iv">@string.Join("، ", u.CenterIds.Select(id => _centerNames.GetValueOrDefault(id, "")).Where(n => n != ""))</span>
+                                </div>
                             }
+                            @if (u.LastLoginAt.HasValue)
+                            {
+                                <div class="usr-card-i">
+                                    <span class="usr-card-il">آخرین ورود</span>
+                                    <span class="usr-card-iv ltr">@u.LastLoginAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                                </div>
+                            }
+                            <div class="usr-card-i">
+                                <span class="usr-card-il">تاریخ ایجاد</span>
+                                <span class="usr-card-iv ltr">@u.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <label>فعال</label>
-                        <label class="tgl"><input type="checkbox" @bind="_isActive" /><span class="sl"></span></label>
+                    <div class="usr-card-ftr">
+                        <div class="usr-card-acts">
+                            <button class="usr-btn-sm usr-btn-edit" @onclick="() => OpenEdit(u)">ویرایش</button>
+                            <button class="usr-btn-sm usr-btn-del" @onclick="() => ConfirmDelete(u)">حذف</button>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-ftr">
-                    <button class="btn btn-secondary" @onclick="CloseModal">انصراف</button>
-                    <button class="btn btn-primary" @onclick="Save" disabled="@_saving">@(_saving ? "در حال ذخیره..." : "ذخیره")</button>
-                </div>
-            </div>
+            }
         </div>
     }
 </div>
+
+@* Help modal *@
+@if (_showHelp)
+{
+    <div class="usr-overlay" @onclick="() => _showHelp = false">
+        <div class="usr-modal usr-modal-help" @onclick:stopPropagation>
+            <div class="usr-mh">
+                <span class="usr-mh-icon">📘</span>
+                <span class="usr-mh-t">راهنمای مدیریت کاربران</span>
+                <button class="usr-mh-x" @onclick="() => _showHelp = false">&times;</button>
+            </div>
+            <div class="usr-mb">
+                <p class="usr-mb-intro"><strong>کاربران سیستم</strong> می‌توانند نقش‌های مختلفی داشته باشند. فقط سوپرادمین می‌تواند کاربران را مدیریت کند.</p>
+                <div class="usr-mb-step"><span class="usr-step-n">۱</span><span>نام کاربری، ایمیل و نقش کاربر را وارد کنید.</span></div>
+                <div class="usr-mb-step"><span class="usr-step-n">۲</span><span>رمز عبور موقت برای کاربر تنظیم کنید.</span></div>
+                <div class="usr-mb-step"><span class="usr-step-n">۳</span><span>کاربر می‌تواند رمز خود را بعداً تغییر دهد.</span></div>
+                <div class="usr-mb-tip">💡 نقش‌های مختلف سطح دسترسی متفاوتی در سامانه دارند.</div>
+                <div class="usr-mb-warn">⚠️ فقط سوپرادمین می‌تواند کاربران را مدیریت کند.</div>
+            </div>
+            <div class="usr-mf">
+                <button class="usr-btn usr-btn-help" @onclick="() => _showHelp = false">متوجه شدم</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* Create / Edit modal *@
+@if (_showModal)
+{
+    <div class="usr-overlay" @onclick="CloseModal">
+        <div class="usr-modal usr-modal-form" @onclick:stopPropagation>
+            <div class="usr-mh">
+                <span class="usr-mh-t">@(_editingId == Guid.Empty ? "کاربر جدید" : "ویرایش کاربر")</span>
+                <button class="usr-mh-x" @onclick="CloseModal">&times;</button>
+            </div>
+            <div class="usr-mb">
+                <div class="usr-fg">
+                    <label class="usr-fl">نام کاربری</label>
+                    <input @bind="_username" class="usr-fi" placeholder="نام کاربری" />
+                </div>
+                <div class="usr-fg">
+                    <label class="usr-fl">@(_editingId == Guid.Empty ? "رمز عبور" : "رمز عبور (خالی = بدون تغییر)")</label>
+                    <input @bind="_password" type="password" class="usr-fi usr-fi-ltr" />
+                </div>
+                <div class="usr-fg">
+                    <label class="usr-fl">نام و نام خانوادگی</label>
+                    <input @bind="_fullName" class="usr-fi" placeholder="نام کامل" />
+                </div>
+                <div class="usr-fg">
+                    <label class="usr-fl">نقش</label>
+                    <select @bind="_role" class="usr-fi">
+                        <option value="Operator">اپراتور</option>
+                        <option value="Viewer">بیننده</option>
+                        <option value="Admin">مدیر مرکز</option>
+                        <option value="SuperAdmin">مدیر کل</option>
+                        <option value="RegionalAdmin">مدیر منطقه</option>
+                        <option value="BillingOperator">اپراتور صورتحساب</option>
+                    </select>
+                </div>
+                <div class="usr-fg">
+                    <label class="usr-fl">مراکز</label>
+                    <div class="usr-chk-group">
+                        @foreach (var c in _centers)
+                        {
+                            <label class="usr-chk-item">
+                                <input type="checkbox" checked="@_centerIds.Contains(c.Id)" @onchange="(e) => ToggleCenter(c.Id, (bool)(e.Value ?? false))" />
+                                <span>@c.Name (@c.Code)</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+                <div class="usr-fg">
+                    <label class="usr-fl">وضعیت</label>
+                    <label class="usr-tgl">
+                        <input type="checkbox" @bind="_isActive" />
+                        <span class="usr-tgl-sl"></span>
+                        <span class="usr-tgl-lbl">@(_isActive ? "فعال" : "غیرفعال")</span>
+                    </label>
+                </div>
+            </div>
+            <div class="usr-mf">
+                <button class="usr-btn usr-btn-cancel" @onclick="CloseModal">انصراف</button>
+                <button class="usr-btn usr-btn-save" @onclick="Save" disabled="@_saving">@(_saving ? "..." : "ذخیره")</button>
+            </div>
+        </div>
+    </div>
+}
 }
 else
 {
-    <div style="text-align:center;padding:4rem 1rem;color:#888">
-        <h3>🔒 دسترسی محدود</h3>
+    <div class="usr-denied">
+        <div class="usr-denied-icon">🔒</div>
+        <h3>دسترسی محدود</h3>
         <p>فقط مدیران کل می‌توانند به این بخش دسترسی داشته باشند.</p>
-        <a href="/dashboard" class="btn-link">بازگشت به داشبورد</a>
+        <a href="/dashboard" class="usr-back-link">← بازگشت به داشبورد</a>
     </div>
 }
 
@@ -126,7 +188,7 @@ else
     private List<UserItem> _users = new();
     private List<CenterOption> _centers = new();
     private Dictionary<Guid, string> _centerNames = new();
-    private bool _loading = true, _saving, _showModal;
+    private bool _loading = true, _saving, _showModal, _showHelp;
     private Guid _editingId = Guid.Empty;
     private string _username = "", _password = "", _fullName = "", _role = "Operator";
     private HashSet<Guid> _centerIds = new();
@@ -147,7 +209,7 @@ else
             _centers = centers.Where(c => c.IsActive).ToList();
             _centerNames = centers.ToDictionary(c => c.Id, c => c.Name ?? "");
         }
-        catch { }
+        catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
         _loading = false; StateHasChanged();
     }
 
@@ -244,3 +306,140 @@ else
 
     public class ErrorResponse { public string error { get; set; } = ""; }
 }
+
+<style>
+/* ═══════════════════════════════════════════
+   Users page — modern card grid
+   ═══════════════════════════════════════════ */
+.usr-container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.usr-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.usr-top-l{display:flex;align-items:center;gap:10px}
+.usr-icon{font-size:24px}
+.usr-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+.usr-count{font-size:11px;font-weight:600;color:var(--text-secondary);background:var(--bg);padding:2px 10px;border-radius:20px}
+.usr-top-r{display:flex;gap:8px}
+.usr-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;text-decoration:none}
+.usr-btn:active{transform:scale(.95)}
+.usr-btn-add{background:var(--grad-blue);color:#fff}
+.usr-btn-add:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.usr-btn-help{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);padding:10px 12px}
+.usr-btn-help:hover{background:var(--bg-alt);color:var(--text)}
+.usr-btn-cancel{background:var(--bg);color:var(--text-secondary);border:1px solid var(--border)}
+.usr-btn-cancel:hover{background:var(--bg-alt)}
+.usr-btn-save{background:var(--grad-blue);color:#fff}
+.usr-btn-save:hover{box-shadow:var(--shadow-blue);transform:translateY(-1px)}
+.usr-btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* Loading */
+.usr-loading{text-align:center;padding:80px 20px}
+.usr-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:usr-spin .7s linear infinite;margin:0 auto}
+@@keyframes usr-spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.usr-empty{text-align:center;padding:60px 20px}
+.usr-empty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.usr-empty-t{font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px}
+.usr-empty-d{font-size:13px;color:var(--text-secondary)}
+
+/* Card grid */
+.usr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.usr-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:all .25s;display:flex;flex-direction:column;position:relative}
+.usr-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(59,130,246,.1);transform:translateY(-2px)}
+.usr-card:active{transform:scale(.97)}
+.usr-card-bar{height:4px;flex-shrink:0}
+.usr-card--on .usr-card-bar{background:var(--grad-green)}
+.usr-card--off .usr-card-bar{background:#d1d5db}
+.usr-card-body{padding:16px 16px 12px;flex:1}
+.usr-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.usr-card-avatar{width:44px;height:44px;border-radius:12px;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0}
+.usr-card-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.3px}
+.usr-role-SuperAdmin{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.usr-role-Admin{background:#eef2ff;color:#4361ee;border:1px solid #c7d2fe}
+.usr-role-Operator{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.usr-role-Viewer{background:#f8fafc;color:#64748b;border:1px solid #e2e8f0}
+.usr-role-RegionalAdmin{background:#fffbeb;color:#d97706;border:1px solid #fde68a}
+.usr-role-BillingOperator{background:#f0f9ff;color:#0284c7;border:1px solid #bae6fd}
+.usr-card-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px}
+.usr-card-uname{font-size:12px;color:var(--text-muted);margin-bottom:10px;direction:ltr}
+.usr-card-info{display:flex;flex-direction:column;gap:5px}
+.usr-card-i{display:flex;align-items:center;gap:6px;font-size:12px}
+.usr-card-il{color:var(--text-secondary);min-width:65px;flex-shrink:0}
+.usr-card-iv{color:var(--text);font-weight:500}
+.usr-card-iv.ltr{direction:ltr}
+.usr-card-badge-sm{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.usr-badge-on{background:var(--green-bg);color:var(--green)}
+.usr-badge-off{background:var(--red-bg);color:var(--red)}
+.usr-card-ftr{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg-alt)}
+.usr-card-acts{display:flex;gap:6px}
+.usr-btn-sm{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.usr-btn-sm:active{transform:scale(.93)}
+.usr-btn-edit{background:var(--blue-bg);color:var(--blue)}
+.usr-btn-edit:hover{background:var(--blue);color:#fff}
+.usr-btn-del{background:var(--red-bg);color:var(--red)}
+.usr-btn-del:hover{background:var(--red);color:#fff}
+
+/* Overlay + modal */
+.usr-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px;animation:usr-fade .2s ease}
+@@keyframes usr-fade{from{opacity:0}to{opacity:1}}
+.usr-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:usr-up .35s cubic-bezier(.34,1.56,.64,1)}
+@@keyframes usr-up{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.usr-modal-form{max-width:480px}
+.usr-modal-help{max-width:500px}
+.usr-mh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);z-index:1}
+.usr-mh-icon{font-size:18px}
+.usr-mh-t{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.usr-mh-x{background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;padding:0;line-height:1;transition:color .2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.usr-mh-x:hover{background:var(--bg);color:var(--text)}
+.usr-mb{padding:16px 20px}
+.usr-mb-intro{font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:14px}
+.usr-mb-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--text)}
+.usr-step-n{width:22px;height:22px;border-radius:50%;background:var(--grad-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px}
+.usr-mb-tip{background:var(--gold-bg);border-right:3px solid var(--gold);padding:10px 14px;border-radius:10px;margin-top:12px;font-size:12px;color:#92400e;line-height:1.6}
+.usr-mb-warn{background:var(--red-bg);border-right:3px solid var(--red);padding:10px 14px;border-radius:10px;margin-top:8px;font-size:12px;color:#991b1b;line-height:1.6}
+.usr-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 18px;border-top:1px solid var(--border)}
+
+/* Form fields */
+.usr-fg{margin-bottom:16px}
+.usr-fg:last-child{margin-bottom:0}
+.usr-fl{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+.usr-fi{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);color:var(--text);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;font-family:var(--font)}
+.usr-fi:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+.usr-fi::placeholder{color:var(--text-muted)}
+.usr-fi-ltr{direction:ltr;text-align:right}
+.usr-tgl{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.usr-tgl input{opacity:0;width:0;height:0}
+.usr-tgl-sl{position:relative;width:42px;height:24px;background:var(--border);border-radius:24px;transition:.3s;flex-shrink:0}
+.usr-tgl-sl::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.usr-tgl input:checked+.usr-tgl-sl{background:var(--grad-blue)}
+.usr-tgl input:checked+.usr-tgl-sl::before{transform:translateX(18px)}
+.usr-tgl-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.usr-chk-group{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.usr-chk-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer}
+
+/* Access denied */
+.usr-denied{text-align:center;padding:80px 20px;color:#888}
+.usr-denied-icon{font-size:48px;margin-bottom:12px}
+.usr-denied h3{font-size:18px;margin-bottom:8px;color:var(--text)}
+.usr-denied p{color:var(--text-secondary);margin-bottom:16px;font-size:13px}
+.usr-back-link{display:inline-block;padding:8px 16px;border-radius:8px;background:var(--blue-bg);color:var(--blue);font-size:13px;font-weight:600;text-decoration:none;transition:all .2s}
+.usr-back-link:hover{background:var(--blue);color:#fff}
+
+/* ── Responsive ── */
+@@media(max-width:640px){
+    .usr-container{padding:16px 12px}
+    .usr-top{flex-direction:column;align-items:stretch;gap:10px}
+    .usr-top-r{justify-content:space-between}
+    .usr-title{font-size:16px}
+    .usr-grid{grid-template-columns:1fr;gap:10px}
+    .usr-card-body{padding:14px 14px 10px}
+    .usr-card-name{font-size:15px}
+    .usr-card-ftr{padding:8px 14px}
+    .usr-btn{padding:8px 14px;font-size:12px}
+    .usr-modal-form,.usr-modal-help{margin:0;border-radius:14px;max-width:100%}
+    .usr-mh{padding:14px 16px 12px}
+    .usr-mb{padding:12px 16px}
+    .usr-mf{padding:10px 16px 14px}
+    .usr-empty{padding:40px 16px}
+    .usr-chk-group{max-height:150px}
+}
+</style>
