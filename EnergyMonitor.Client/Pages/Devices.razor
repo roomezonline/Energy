@@ -23,11 +23,11 @@
     <HelpBox>
         <p><strong>دستگاه اندازه‌گیری</strong> سخت‌افزاری است که در یک مرکز نصب می‌شود و مصرف انرژی را ثبت می‌کند.</p>
         <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>مرکز</strong> مربوطه را ایجاد کرده باشید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">شناسه یکتا (Device ID) و نام نمایشی برای دستگاه وارد کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">شناسه یکتا به صورت خودکار تولید می‌شود — در صورت نیاز می‌توانید آن را تغییر دهید.</span></div>
         <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">مرکز مربوطه را انتخاب کنید — دستگاه به آن مرکز متصل می‌شود.</span></div>
         <div class="hlp-step"><span class="hlp-step-num">۴</span><span class="hlp-step-text">تعداد فازها را انتخاب کنید (۱ یا ۳ فاز).</span></div>
         <div class="hlp-tip">💡 دستگاه‌های فعال در داشبورد و محاسبه صورتحساب استفاده می‌شوند.</div>
-        <div class="hlp-warn">⚠️ شناسه دستگاه باید با شناسه فیزیکی دستگاه (ESP32) یکسان باشد.</div>
+        <div class="hlp-warn">⚠️ شناسه دستگاه باید با شناسه فیزیکی دستگاه (ESP32) یکسان باشد — می‌توانید مقدار پیش‌فرض را تغییر دهید.</div>
     </HelpBox>
 
     @if (_loading)
@@ -181,7 +181,7 @@ else
         finally { _loading = false; StateHasChanged(); }
     }
 
-    private void OpenCreate() { _editing = null; _form = new(); _showForm = true; }
+    private void OpenCreate() { _editing = null; _form = new DeviceForm { DeviceId = NextDeviceId(), PhaseCount = 3, MacAddress = "", Location = "" }; _showForm = true; }
     private void OpenEdit(RawDevice d)
     {
         _editing = d;
@@ -196,6 +196,7 @@ else
     private void CloseForm() { _showForm = false; }
 
     private void ConfirmDelete(RawDevice d) => _deleteTarget = d;
+    private string NextDeviceId() { var m = 0; foreach (var x in _devices) { if (x.DeviceId.StartsWith("DEV-") && int.TryParse(x.DeviceId[4..], out var n) && n > m) m = n; } return $"DEV-{m + 1:D3}"; }
 
     private async Task Save()
     {

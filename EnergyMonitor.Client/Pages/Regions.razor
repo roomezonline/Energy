@@ -14,7 +14,7 @@
 
     <HelpBox>
         <p><strong>منطقه</strong> بالاترین سطح جغرافیایی در سیستم است. هر استان به یک منطقه تعلق دارد.</p>
-        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">نام و کد منحصربه‌فرد برای منطقه وارد کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">نام منطقه را وارد کنید — کد به صورت خودکار تولید می‌شود.</span></div>
         <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">پس از ایجاد منطقه، به بخش <strong>استان‌ها</strong> بروید و استان‌های مربوطه را ثبت کنید.</span></div>
         <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">سپس به ترتیب <strong>شهرها → مراکز → دستگاه‌ها</strong> را تکمیل کنید.</span></div>
         <div class="hlp-tip">💡 زنجیره: منطقه ← استان ← شهر ← مرکز ← دستگاه</div>
@@ -61,7 +61,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
-                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" /></div>
+                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" disabled /></div>
                 <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
             </div>
             <div class="modal-ftr">
@@ -110,8 +110,9 @@ else
         catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
         finally { _loading = false; StateHasChanged(); }
     }
-    private void OpenCreate() { _editingId = Guid.Empty; _form = new(); _showModal = true; }
+    private void OpenCreate() { _editingId = Guid.Empty; _form = new RegionForm { Code = NextRegionCode() }; _showModal = true; }
     private void OpenEdit(RegionItem c) { _editingId = c.Id; _form = new RegionForm { Name = c.Name, Code = c.Code, IsActive = c.IsActive }; _showModal = true; }
+    private string NextRegionCode() { var m = 0; foreach (var x in _items) { if (x.Code.StartsWith("R-") && int.TryParse(x.Code[2..], out var n) && n > m) m = n; } return $"R-{m + 1:D3}"; }
     private void CloseModal() => _showModal = false;
     private void ConfirmDelete(RegionItem c) => _deleteTarget = c;
     private async Task Save()

@@ -23,7 +23,7 @@
     <HelpBox>
         <p><strong>مرکز</strong> یک مکان فیزیکی است که دستگاه‌های اندازه‌گیری در آن نصب می‌شوند.</p>
         <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا <strong>شهر</strong> مربوطه را ایجاد کرده باشید.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام، کد و شهر مرکز را وارد کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام و شهر مرکز را وارد کنید — کد به صورت خودکار تولید می‌شود.</span></div>
         <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت مرکز، به بخش <strong>دستگاه‌ها</strong> بروید و دستگاه را به این مرکز متصل کنید.</span></div>
         <div class="hlp-tip">💡 مراکز در فرم <strong>صورتحساب</strong> برای محاسبه قبض استفاده می‌شوند.</div>
     </HelpBox>
@@ -74,7 +74,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
-                    <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" /></div>
+                    <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" disabled /></div>
                     <div class="form-row"><label>شهر</label><select class="form-input" @bind="_form.CityId"><option value="">انتخاب کنید</option>@foreach (var ct in _cities) { <option value="@ct.Id">@ct.Name</option> }</select></div>
                     <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
                 </div>
@@ -143,7 +143,7 @@ else
         finally { _loading = false; StateHasChanged(); }
     }
 
-    private void OpenCreate() { _editingId = Guid.Empty; _form = new CenterForm { CityId = null }; _showModal = true; }
+    private void OpenCreate() { _editingId = Guid.Empty; _form = new CenterForm { CityId = null, Code = NextCenterCode() }; _showModal = true; }
     private void OpenEdit(CenterItem c)
     {
         _editingId = c.Id;
@@ -152,6 +152,7 @@ else
     }
     private void CloseModal() => _showModal = false;
     private void ConfirmDelete(CenterItem c) => _deleteTarget = c;
+    private string NextCenterCode() { var m = 0; foreach (var x in _centers) { if (x.Code.StartsWith("CTR-") && int.TryParse(x.Code[4..], out var n) && n > m) m = n; } return $"CTR-{m + 1:D3}"; }
 
     private async Task Save()
     {

@@ -21,7 +21,7 @@
     <HelpBox>
         <p><strong>استان</strong> دومین سطح جغرافیایی است. هر استان به یک منطقه متصل می‌شود.</p>
         <div class="hlp-step"><span class="hlp-step-num">۱</span><span class="hlp-step-text">ابتدا مطمئن شوید <strong>منطقه</strong> مورد نظر قبلاً ایجاد شده باشد.</span></div>
-        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام استان و منطقه مربوطه را انتخاب کنید.</span></div>
+        <div class="hlp-step"><span class="hlp-step-num">۲</span><span class="hlp-step-text">نام استان و منطقه مربوطه را انتخاب کنید — کد به صورت خودکار تولید می‌شود.</span></div>
         <div class="hlp-step"><span class="hlp-step-num">۳</span><span class="hlp-step-text">پس از ثبت استان‌ها، به بخش <strong>شهرها</strong> بروید.</span></div>
         <div class="hlp-tip">💡 یک منطقه می‌تواند چندین استان داشته باشد.</div>
     </HelpBox>
@@ -70,7 +70,7 @@
             <div class="modal-body">
                 <div class="form-row"><label>منطقه</label><select class="form-input" @bind="_form.RegionId"><option value="">انتخاب کنید</option>@foreach (var r in _regions) { <option value="@r.Id">@r.Name</option> }</select></div>
                 <div class="form-row"><label>نام</label><input @bind="_form.Name" class="form-input" /></div>
-                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" /></div>
+                <div class="form-row"><label>کد</label><input @bind="_form.Code" class="form-input ltr" disabled /></div>
                 <div class="form-row"><label>فعال</label><label class="tgl"><input type="checkbox" @bind="_form.IsActive" /><span class="sl"></span></label></div>
             </div>
             <div class="modal-ftr">
@@ -131,8 +131,9 @@ else
         catch { Toast.ShowError("خطا در دریافت اطلاعات"); }
         finally { _loading = false; StateHasChanged(); }
     }
-    private void OpenCreate() { _editingId = Guid.Empty; _form = new(); _showModal = true; }
+    private void OpenCreate() { _editingId = Guid.Empty; _form = new ProvinceForm { Code = NextProvinceCode() }; _showModal = true; }
     private void OpenEdit(ProvinceItem c) { _editingId = c.Id; _form = new ProvinceForm { Name = c.Name, Code = c.Code, RegionId = c.RegionId, IsActive = c.IsActive }; _showModal = true; }
+    private string NextProvinceCode() { var m = 0; foreach (var x in _items) { if (x.Code.StartsWith("P-") && int.TryParse(x.Code[2..], out var n) && n > m) m = n; } return $"P-{m + 1:D3}"; }
     private void CloseModal() => _showModal = false;
     private void ConfirmDelete(ProvinceItem c) => _deleteTarget = c;
     private async Task Save()
