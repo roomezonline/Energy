@@ -291,7 +291,7 @@ public class BillingService : IBillingService
 
                     if (typeConfig.TieredRates.Count > 0)
                     {
-                        ApplyTieredRates(result, typeConfig.TieredRates.ToList());
+                        ApplyTieredRates(result, typeConfig.TieredRates.ToList(), supplyCost);
                     }
                     else
                     {
@@ -484,7 +484,7 @@ public class BillingService : IBillingService
         result.EnergyCost = Math.Round(totalCost, 0);
     }
 
-    private static void ApplyTieredRates(BillingCalculationResult result, List<ConsumerTypeTieredRate> tieredRates)
+    private static void ApplyTieredRates(BillingCalculationResult result, List<ConsumerTypeTieredRate> tieredRates, decimal supplyCost = 0)
     {
         var totalKWh = result.OffPeakKWh + result.MidPeakKWh + result.PeakKWh;
         var tiers = tieredRates.OrderBy(r => r.SortOrder).ThenBy(r => r.TierFrom).ToList();
@@ -499,10 +499,15 @@ public class BillingService : IBillingService
         {
             var tierSize = tier.TierTo > 0 ? tier.TierTo - tier.TierFrom : 999999m;
             var kwh = Math.Min(remaining, tierSize);
-            var cost = kwh * tier.RatePerKwh;
+            if (kwh <= 0) continue;
+
+            var rate = tier.Coefficient.HasValue && supplyCost > 0
+                ? tier.Coefficient.Value * supplyCost
+                : tier.RatePerKwh;
+            var cost = kwh * rate;
             tierKWh.Add(kwh);
             tierCosts.Add(Math.Round(cost, 0));
-            tierRates.Add(tier.RatePerKwh);
+            tierRates.Add(Math.Round(rate, 0));
             totalCost += cost;
             remaining -= kwh;
             if (remaining <= 0) break;

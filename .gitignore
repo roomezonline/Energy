@@ -48,3 +48,7 @@ stdout.txt
 
 ## Uploads (user content)
 EnergyMonitor/wwwroot/uploads/
+
+## Server logs (runtime-generated)
+EnergyMonitor/stderr.txt
+EnergyMonitor/stdout.txt
