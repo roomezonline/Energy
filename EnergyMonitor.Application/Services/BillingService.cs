@@ -240,12 +240,9 @@ public class BillingService : IBillingService
                         result.PhaseCCost = result.EnergyCost - result.PhaseACost - result.PhaseBCost;
                     }
 
-                    // Effective rates for display (all equal to supplyCost for tiered billing)
+                    // For tiered billing, all periods use the same supply cost
                     effOffPeakRate = effMidPeakRate = effPeakRate = supplyCost;
                     result.OffPeakRate = result.MidPeakRate = result.PeakRate = supplyCost;
-                    result.EffectiveOffPeakRate = supplyCost;
-                    result.EffectiveMidPeakRate = supplyCost;
-                    result.EffectivePeakRate = supplyCost;
 
                     // Per-period costs proportional to consumption share
                     if (totalKWh > 0 && result.EnergyCost > 0)

@@ -192,8 +192,9 @@
                                             </div>
                                         </div>
                                     }
-                                    @if (_billData.EffectiveOffPeakRate.HasValue)
+                                    @if (_billData.TouOffPeakMultiplier.HasValue && _billData.EffectiveOffPeakRate.HasValue)
                                     {
+                                        @* TOU billing: show per-period effective rates *@
                                         <div class="tariff-divider"></div>
                                         <div class="tariff-rate-row">
                                             <div class="tariff-rate-item tariff-rate-offpeak">
@@ -210,6 +211,17 @@
                                                 <span class="tariff-rate-dot"></span>
                                                 <span class="tariff-rate-lbl">اوج‌باری</span>
                                                 <span class="tariff-rate-val">@P(_billData.EffectivePeakRate, "N0")</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (_billData.SupplyCostPerKwh.HasValue)
+                                    {
+                                        @* Tiered billing: show supply cost as a single rate *@
+                                        <div class="tariff-divider"></div>
+                                        <div class="tariff-rate-row">
+                                            <div class="tariff-rate-item" style="flex:1">
+                                                <span class="tariff-rate-lbl">نرخ تأمین برق</span>
+                                                <span class="tariff-rate-val">@P(_billData.SupplyCostPerKwh, "N0") ریال/kWh</span>
                                             </div>
                                         </div>
                                     }
