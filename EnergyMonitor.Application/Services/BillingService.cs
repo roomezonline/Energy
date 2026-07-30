@@ -240,9 +240,20 @@ public class BillingService : IBillingService
                         result.PhaseCCost = result.EnergyCost - result.PhaseACost - result.PhaseBCost;
                     }
 
-                    // No TOU rates, no peak penalty, no off-peak discount, no demand charge, no Article 16 for tiered billing
+                    // Effective rates for display (all equal to supplyCost for tiered billing)
                     effOffPeakRate = effMidPeakRate = effPeakRate = supplyCost;
                     result.OffPeakRate = result.MidPeakRate = result.PeakRate = supplyCost;
+                    result.EffectiveOffPeakRate = supplyCost;
+                    result.EffectiveMidPeakRate = supplyCost;
+                    result.EffectivePeakRate = supplyCost;
+
+                    // Per-period costs proportional to consumption share
+                    if (totalKWh > 0 && result.EnergyCost > 0)
+                    {
+                        result.OffPeakCost = Math.Round(result.EnergyCost * offPeakTotal / totalKWh, 0);
+                        result.MidPeakCost = Math.Round(result.EnergyCost * midPeakTotal / totalKWh, 0);
+                        result.PeakCost = result.EnergyCost - result.OffPeakCost - result.MidPeakCost;
+                    }
                 }
                 else
                 {
