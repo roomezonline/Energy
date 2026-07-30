@@ -235,7 +235,29 @@ input,select,textarea{font-family:var(--font);outline:none}
 .nav-text{flex:1}
 .nav-divider{border:none;border-top:1px solid var(--border);margin:6px 14px}
 
-.sidebar-footer{
+/* ── Category headers ── */
+.nav-cat{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:10px;
+  color:var(--text);text-decoration:none;
+  font-size:12px;font-weight:700;letter-spacing:.3px;
+  transition:all var(--speed) var(--ease);margin-top:4px;margin-bottom:0;
+  border:none;background:none;width:100%;text-align:right;cursor:pointer;
+  text-transform:uppercase;
+}
+.nav-cat:hover{background:var(--bg);color:var(--text)}
+.nav-cat:active{transform:scale(.97)}
+.nav-cat--active{color:var(--blue)}
+.nav-cat-icon{font-size:14px;flex-shrink:0;width:22px;text-align:center}
+.nav-cat-text{flex:1}
+.nav-cat-chevron{font-size:10px;color:var(--text-muted);transition:transform .25s var(--ease);flex-shrink:0}
+.nav-cat-chevron--open{transform:rotate(-90deg)}
+
+/* ── Sub-items wrapper ── */
+.nav-sub{overflow:hidden;max-height:0;transition:max-height .35s var(--ease),opacity .25s var(--ease);opacity:0}
+.nav-sub--open{max-height:400px;opacity:1}
+.nav-sub-item{padding:9px 14px 9px 30px !important;font-size:12px !important;margin-bottom:1px !important}
+.nav-sub-item .nav-icon{width:30px !important;height:30px !important;font-size:13px !important}.sidebar-footer{
   padding:12px 20px;border-top:1px solid var(--border);
   text-align:center;
 }
@@ -334,16 +356,20 @@ input,select,textarea{font-family:var(--font);outline:none}
 .toast{
   display:flex;align-items:center;gap:10px;
   padding:12px 16px;border-radius:var(--radius);
-  background:var(--bg-card);border:1px solid var(--border);
   box-shadow:var(--shadow-lg);border-right:4px solid;
-  animation:toastIn .3s var(--ease);direction:rtl;
+  animation:toastIn .3s var(--ease);direction:rtl;color:#fff;
 }
-.toast-icon{font-size:18px;flex-shrink:0}
-.toast-msg{flex:1;font-size:13px;font-weight:500}
+.toast-icon{font-size:18px;flex-shrink:0;color:inherit}
+.toast-msg{flex:1;font-size:13px;font-weight:500;color:inherit}
 .toast-close{
   background:none;border:none;font-size:16px;
-  color:var(--text-muted);cursor:pointer;padding:2px;line-height:1;
+  color:inherit;cursor:pointer;padding:2px;line-height:1;opacity:.7;
 }
+.toast-close:hover{opacity:1}
+.toast-success{background:var(--grad-green);border-color:var(--green-dark)}
+.toast-error{background:var(--grad-red);border-color:var(--red-dark)}
+.toast-warning{background:var(--grad-gold);border-color:var(--gold-dark)}
+.toast-info{background:var(--grad-blue);border-color:var(--blue-dark)}
 
 /* ════════════════════════════════════════════
    BUTTONS

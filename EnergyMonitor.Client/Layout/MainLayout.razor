@@ -27,54 +27,43 @@
             </a>
             @if (Auth.IsInRole("Admin"))
             {
-                <a href="/regions" class="nav-item @(IsActive("/regions") ? "active" : "")">
-                    <span class="nav-icon">🗺️</span><span class="nav-text">مناطق</span>
-                </a>
-                <a href="/provinces" class="nav-item @(IsActive("/provinces") ? "active" : "")">
-                    <span class="nav-icon">📍</span><span class="nav-text">استان‌ها</span>
-                </a>
-                <a href="/cities" class="nav-item @(IsActive("/cities") ? "active" : "")">
-                    <span class="nav-icon">🏙️</span><span class="nav-text">شهرها</span>
-                </a>
-                <a href="/centers" class="nav-item @(IsActive("/centers") ? "active" : "")">
-                    <span class="nav-icon">🏢</span><span class="nav-text">مراکز</span>
-                </a>
-                <a href="/device-groups" class="nav-item @(IsActive("/device-groups") ? "active" : "")">
-                    <span class="nav-icon">📁</span><span class="nav-text">گروه دستگاه</span>
-                </a>
-                <a href="/devices" class="nav-item @(IsActive("/devices") ? "active" : "")">
-                    <span class="nav-icon">📟</span><span class="nav-text">مدیریت دستگاه‌ها</span>
-                </a>
-                <a href="/config" class="nav-item @(IsActive("/config") ? "active" : "")">
-                    <span class="nav-icon">⚙</span><span class="nav-text">تنظیمات دستگاه</span>
-                </a>
-                <a href="/alarms" class="nav-item @(IsActive("/alarms") ? "active" : "")">
-                    <span class="nav-icon">🔔</span><span class="nav-text">مدیریت هشدارها</span>
-                </a>
-                <a href="/billing/tariffs" class="nav-item @(IsActive("/billing/tariffs") ? "active" : "")">
-                    <span class="nav-icon">💰</span><span class="nav-text">مدیریت تعرفه‌ها</span>
-                </a>
-                <a href="/billing" class="nav-item @(IsActive("/billing") ? "active" : "")">
-                    <span class="nav-icon">🧾</span><span class="nav-text">صورتحساب</span>
-                </a>
-                <a href="/reports" class="nav-item @(IsActive("/reports") ? "active" : "")">
-                    <span class="nav-icon">📈</span><span class="nav-text">گزارش مصرف</span>
-                </a>
-                <a href="/limits" class="nav-item @(IsActive("/limits") ? "active" : "")">
-                    <span class="nav-icon">⛔</span><span class="nav-text">محدودیت مصرف</span>
-                </a>
-                <a href="/news/manage" class="nav-item @(IsActive("/news/manage") ? "active" : "")">
-                    <span class="nav-icon">📰</span><span class="nav-text">مدیریت اخبار</span>
-                </a>
-                <a href="/sliders/manage" class="nav-item @(IsActive("/sliders") ? "active" : "")">
-                    <span class="nav-icon">🖼</span><span class="nav-text">مدیریت اسلایدر</span>
-                </a>
+                @foreach (var cat in _categories)
+                {
+                    var anyActive = cat.Paths.Any(p => Nav.Uri.Contains(p));
+                    var isOpen = _openCategories.Contains(cat.Key);
+                    <button class="nav-cat @(anyActive ? "nav-cat--active" : "")" @onclick="() => ToggleCategory(cat.Key)" type="button">
+                        <span class="nav-cat-icon">@cat.Icon</span>
+                        <span class="nav-cat-text">@cat.Label</span>
+                        <span class="nav-cat-chevron @(isOpen ? "nav-cat-chevron--open" : "")">◀</span>
+                    </button>
+                    <div class="nav-sub @(isOpen ? "nav-sub--open" : "")">
+                        @foreach (var link in cat.Links)
+                        {
+                            <a href="@link.Href" class="nav-item nav-sub-item @(IsActive(link.Href) ? "active" : "")">
+                                <span class="nav-icon">@link.Icon</span><span class="nav-text">@link.Text</span>
+                            </a>
+                        }
+                    </div>
+                }
+
                 @if (Auth.CurrentUser?.Role == "SuperAdmin")
                 {
-                    <hr class="nav-divider" />
-                    <a href="/users" class="nav-item @(IsActive("/users") ? "active" : "")">
-                        <span class="nav-icon">👥</span><span class="nav-text">مدیریت کاربران</span>
-                    </a>
+                    var sysCat = _sysCategory;
+                    var sysActive = sysCat.Paths.Any(p => Nav.Uri.Contains(p));
+                    var sysOpen = _openCategories.Contains(sysCat.Key);
+                    <button class="nav-cat @(sysActive ? "nav-cat--active" : "")" @onclick="() => ToggleCategory(sysCat.Key)" type="button">
+                        <span class="nav-cat-icon">@sysCat.Icon</span>
+                        <span class="nav-cat-text">@sysCat.Label</span>
+                        <span class="nav-cat-chevron @(sysOpen ? "nav-cat-chevron--open" : "")">◀</span>
+                    </button>
+                    <div class="nav-sub @(sysOpen ? "nav-sub--open" : "")">
+                        @foreach (var link in sysCat.Links)
+                        {
+                            <a href="@link.Href" class="nav-item nav-sub-item @(IsActive(link.Href) ? "active" : "")">
+                                <span class="nav-icon">@link.Icon</span><span class="nav-text">@link.Text</span>
+                            </a>
+                        }
+                    </div>
                 }
             }
             else if (Auth.IsLoggedIn)
@@ -153,6 +142,59 @@
 @code {
     private bool _sidebarOpen = false;
     private string _pageTitle = "داشبورد";
+    private HashSet<string> _openCategories = new();
+
+    private bool IsCategoryOpen(string key) => _openCategories.Contains(key);
+
+    private void ToggleCategory(string key)
+    {
+        if (!_openCategories.Remove(key)) _openCategories.Add(key);
+    }
+
+    private record NavLink(string Icon, string Text, string Href);
+    private record NavCategory(string Icon, string Label, string Key, string[] Paths, NavLink[] Links);
+
+    private List<NavCategory> _categories => new()
+    {
+        new("🏛️", "مدیریت مکان", "loc",
+            new string[] { "/regions", "/provinces", "/cities", "/centers" },
+            new NavLink[] {
+                new("🗺️", "مناطق", "/regions"),
+                new("📍", "استان‌ها", "/provinces"),
+                new("🏙️", "شهرها", "/cities"),
+                new("🏢", "مراکز", "/centers")
+            }),
+        new("📟", "مدیریت دستگاه", "dev",
+            new string[] { "/device-groups", "/devices", "/config" },
+            new NavLink[] {
+                new("📁", "گروه دستگاه", "/device-groups"),
+                new("📟", "مدیریت دستگاه‌ها", "/devices"),
+                new("⚙", "تنظیمات دستگاه", "/config")
+            }),
+        new("🔔", "پایش و هشدار", "mon",
+            new string[] { "/alarms", "/reports", "/limits" },
+            new NavLink[] {
+                new("🔔", "مدیریت هشدارها", "/alarms"),
+                new("📈", "گزارش مصرف", "/reports"),
+                new("⛔", "محدودیت مصرف", "/limits")
+            }),
+        new("🧾", "صورتحساب", "bil",
+            new string[] { "/billing", "/billing/tariffs" },
+            new NavLink[] {
+                new("💰", "مدیریت تعرفه‌ها", "/billing/tariffs"),
+                new("🧾", "صورتحساب", "/billing")
+            }),
+        new("📰", "مدیریت محتوا", "cnt",
+            new string[] { "/news/manage", "/sliders/manage" },
+            new NavLink[] {
+                new("📰", "مدیریت اخبار", "/news/manage"),
+                new("🖼", "مدیریت اسلایدر", "/sliders/manage")
+            })
+    };
+
+    private NavCategory _sysCategory => new("👥", "مدیریت سیستم", "sys",
+        new string[] { "/users" },
+        new NavLink[] { new("👥", "مدیریت کاربران", "/users") });
 
     protected override async Task OnInitializedAsync()
     {
@@ -174,7 +216,12 @@
         }
     }
 
-    private bool IsActive(string path) => Nav.Uri.Contains(path);
+    private bool IsActive(string path)
+    {
+        var uri = Nav.Uri.TrimEnd('/');
+        var p = path.TrimEnd('/');
+        return uri == p || uri.StartsWith(p + "/") || uri.Contains("/" + p + "/");
+    }
 
     private bool IsProtectedPage()
     {
