@@ -8,6 +8,7 @@ public class InvoiceDetailConfiguration : IEntityTypeConfiguration<InvoiceDetail
 {
     public void Configure(EntityTypeBuilder<InvoiceDetail> builder)
     {
+        builder.ToTable("InvoiceRecordDetails");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Phase).HasMaxLength(5);
         builder.Property(x => x.PeriodType).HasMaxLength(20);

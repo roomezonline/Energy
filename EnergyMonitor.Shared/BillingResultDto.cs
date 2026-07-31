@@ -2,6 +2,8 @@ namespace EnergyMonitor.Shared;
 
 public class BillingResultDto
 {
+    public Guid CenterId { get; set; }
+    public Guid? TariffId { get; set; }
     public string CenterName { get; set; } = "";
     public string TariffName { get; set; } = "";
     public string FromDate { get; set; } = "";

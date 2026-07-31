@@ -194,6 +194,8 @@ public class BillingService : IBillingService
         // Build result
         var result = new BillingCalculationResult
         {
+            CenterId = request.CenterId,
+            TariffId = tariffId,
             CenterName = center.Name,
             TariffName = tariff?.Name ?? "بدون تعرفه",
             FromDate = request.FromDate,
@@ -234,8 +236,8 @@ public class BillingService : IBillingService
                     var pattern = center.ConsumptionPatternKWh ?? typeConfig.ConsumptionPatternKWh;
                     result.ConsumptionPatternKWh = pattern;
 
-                    result.MonthlyFixedFee = typeConfig.MonthlyFixedFee;
-                    result.MonthlyFixedFeeTotal = totalMonths > 0 ? typeConfig.MonthlyFixedFee * totalMonths : typeConfig.MonthlyFixedFee;
+                    result.MonthlyFixedFee = typeConfig.MonthlyFixedFee > 0 ? typeConfig.MonthlyFixedFee : tariff.MonthlyFixedFee;
+                    result.MonthlyFixedFeeTotal = totalMonths > 0 ? result.MonthlyFixedFee * totalMonths : result.MonthlyFixedFee;
                     result.ReactivePenaltyThreshold = typeConfig.ReactivePenaltyThreshold;
                     result.ReactivePenaltyMultiplier = typeConfig.ReactivePenaltyMultiplier;
                     result.TaxPercent = (int)typeConfig.TaxPercent;
@@ -309,8 +311,8 @@ public class BillingService : IBillingService
                     result.OffPeakRate = effOffPeakRate;
                     result.MidPeakRate = effMidPeakRate;
                     result.PeakRate = effPeakRate;
-                    result.MonthlyFixedFee = typeConfig.MonthlyFixedFee;
-                    result.MonthlyFixedFeeTotal = totalMonths > 0 ? typeConfig.MonthlyFixedFee * totalMonths : typeConfig.MonthlyFixedFee;
+                    result.MonthlyFixedFee = typeConfig.MonthlyFixedFee > 0 ? typeConfig.MonthlyFixedFee : tariff.MonthlyFixedFee;
+                    result.MonthlyFixedFeeTotal = totalMonths > 0 ? result.MonthlyFixedFee * totalMonths : result.MonthlyFixedFee;
                     result.ReactivePenaltyThreshold = typeConfig.ReactivePenaltyThreshold;
                     result.ReactivePenaltyMultiplier = typeConfig.ReactivePenaltyMultiplier;
                     result.TaxPercent = (int)typeConfig.TaxPercent;

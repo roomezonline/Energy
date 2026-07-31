@@ -106,43 +106,72 @@ public class ConsumerTypesController : ControllerBase
     [HttpPut("{code}/tiers/{year}")]
     public async Task<IActionResult> SaveTiers(string code, int year, [FromBody] List<TieredRateDto> tiers, CancellationToken ct)
     {
-        var config = await _db.ConsumerTypeYearlyConfigs
-            .FirstOrDefaultAsync(c => c.ConsumerTypeCode == code && c.Year == year, ct);
-        if (config is null)
+        if (tiers.Count == 0)
+            return BadRequest("حداقل یک پله باید تعریف شود.");
+
+        var errors = new List<string>();
+        for (int i = 0; i < tiers.Count; i++)
         {
-            config = new ConsumerTypeYearlyConfig { ConsumerTypeCode = code, Year = year };
-            _db.ConsumerTypeYearlyConfigs.Add(config);
-            await _db.SaveChangesAsync(ct);
+            var t = tiers[i];
+            if (t.TierFrom < 0) errors.Add($"پله {i + 1}: «از» نمی‌تواند منفی باشد.");
+            if (t.TierTo < 0) errors.Add($"پله {i + 1}: «تا» نمی‌تواند منفی باشد.");
+            if (t.TierTo > 0 && t.TierTo <= t.TierFrom) errors.Add($"پله {i + 1}: «تا» باید بزرگ‌تر از «از» باشد.");
+            if (t.Coefficient < 0) errors.Add($"پله {i + 1}: ضریب نمی‌تواند منفی باشد.");
+            if (t.RatePerKwh < 0) errors.Add($"پله {i + 1}: نرخ نمی‌تواند منفی باشد.");
+            if (i > 0 && t.TierFrom < tiers[i - 1].TierTo)
+                errors.Add($"تداخل پله‌ها: پله {i} تا {tiers[i - 1].TierTo} تعریف شده ولی پله {i + 1} از {t.TierFrom} شروع می‌شود.");
         }
+        if (errors.Count > 0) return BadRequest(string.Join(" | ", errors));
 
-        await _db.ConsumerTypeTieredRates
-            .Where(t => t.ConsumerTypeYearlyConfigId == config.Id)
-            .ExecuteDeleteAsync(ct);
-
-        int sort = 1;
-        foreach (var t in tiers)
+        try
         {
-            config.TieredRates.Add(new ConsumerTypeTieredRate
+            var config = await _db.ConsumerTypeYearlyConfigs
+                .FirstOrDefaultAsync(c => c.ConsumerTypeCode == code && c.Year == year, ct);
+            if (config is null)
             {
-                TierFrom = t.TierFrom,
-                TierTo = t.TierTo,
-                Coefficient = t.Coefficient,
-                RatePerKwh = t.RatePerKwh,
-                SortOrder = sort++
-            });
+                config = new ConsumerTypeYearlyConfig { ConsumerTypeCode = code, Year = year };
+                _db.ConsumerTypeYearlyConfigs.Add(config);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            var oldTiers = await _db.ConsumerTypeTieredRates
+                .Where(t => t.ConsumerTypeYearlyConfigId == config.Id)
+                .ToListAsync(ct);
+            _db.ConsumerTypeTieredRates.RemoveRange(oldTiers);
+
+            int sort = 1;
+            foreach (var t in tiers)
+            {
+                _db.ConsumerTypeTieredRates.Add(new ConsumerTypeTieredRate
+                {
+                    ConsumerTypeYearlyConfigId = config.Id,
+                    TierFrom = t.TierFrom,
+                    TierTo = t.TierTo,
+                    Coefficient = t.Coefficient,
+                    RatePerKwh = t.RatePerKwh,
+                    SortOrder = sort++
+                });
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            var saved = await _db.ConsumerTypeTieredRates
+                .Where(t => t.ConsumerTypeYearlyConfigId == config.Id)
+                .OrderBy(t => t.SortOrder)
+                .Select(t => new TieredRateDto
+                {
+                    TierFrom = t.TierFrom,
+                    TierTo = t.TierTo,
+                    Coefficient = t.Coefficient ?? 0,
+                    RatePerKwh = t.RatePerKwh,
+                    SortOrder = t.SortOrder
+                }).ToListAsync(ct);
+            return Ok(saved);
         }
-
-        await _db.SaveChangesAsync(ct);
-
-        var saved = config.TieredRates.OrderBy(t => t.SortOrder).Select(t => new TieredRateDto
+        catch (Exception ex)
         {
-            TierFrom = t.TierFrom,
-            TierTo = t.TierTo,
-            Coefficient = t.Coefficient ?? 0,
-            RatePerKwh = t.RatePerKwh,
-            SortOrder = t.SortOrder
-        }).ToList();
-        return Ok(saved);
+            return StatusCode(500, ex.GetBaseException().Message);
+        }
     }
 }
 

@@ -119,7 +119,7 @@ function createOrUpdateChart(id, labels, datasets, unit) {
                         font: { size: 10, family: 'Vazirmatn' },
                         padding: 8,
                         maxTicksLimit: 6,
-                        callback: function(val) { return val + (unit ? ' ' + unit : ''); }
+                        callback: function(val) { var formatted = parseFloat(val.toFixed(4)); return formatted + (unit ? ' ' + unit : ''); }
                     }
                 }
             },

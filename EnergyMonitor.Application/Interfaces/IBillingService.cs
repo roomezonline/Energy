@@ -37,6 +37,8 @@ public class BillingResultItem
 
 public class BillingCalculationResult
 {
+    public Guid CenterId { get; set; }
+    public Guid? TariffId { get; set; }
     public string CenterName { get; set; } = string.Empty;
     public string TariffName { get; set; } = string.Empty;
     public string FromDate { get; set; } = string.Empty;

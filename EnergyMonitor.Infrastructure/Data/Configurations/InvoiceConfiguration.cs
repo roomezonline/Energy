@@ -8,6 +8,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 {
     public void Configure(EntityTypeBuilder<Invoice> builder)
     {
+        builder.ToTable("InvoiceRecords");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
         builder.HasIndex(x => x.InvoiceNumber).IsUnique();

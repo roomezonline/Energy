@@ -274,12 +274,21 @@
                                     <span class="bll-badge @(t.IsActive ? "bll-badge-on" : "bll-badge-off")">@(t.IsActive ? "فعال" : "غیرفعال")</span>
                                 </div>
                                 <div class="bll-card-rates">
-                                    <div class="bll-tr"><span class="bll-tr-l">کم‌باری</span><span class="bll-tr-v">@P(t.OffPeakRate, "N0")</span>@if(!string.IsNullOrEmpty(t.SummerOffPeakStart)){<span class="bll-tr-tm">@t.SummerOffPeakStart-@t.SummerOffPeakEnd</span>}</div>
-                                    <div class="bll-tr"><span class="bll-tr-l">میان‌باری</span><span class="bll-tr-v">@P(t.MidPeakRate, "N0")</span>@if(!string.IsNullOrEmpty(t.SummerMidPeakStart)){<span class="bll-tr-tm">@t.SummerMidPeakStart-@t.SummerMidPeakEnd</span>}</div>
-                                    <div class="bll-tr"><span class="bll-tr-l">اوج‌باری</span><span class="bll-tr-v">@P(t.PeakRate, "N0")</span>@if(!string.IsNullOrEmpty(t.SummerPeakStart)){<span class="bll-tr-tm">@t.SummerPeakStart-@t.SummerPeakEnd</span>}</div>
+                                    @if (t.RateDerivationMode == "Automatic")
+                                    {
+                                        <div class="bll-tr"><span class="bll-tr-l">نوع مصرف</span><span class="bll-tr-v">@(_consumerTypes.FirstOrDefault(c => c.Code == t.ConsumerTypeCode)?.Name ?? t.ConsumerTypeCode ?? "—")</span></div>
+                                        <div class="bll-tr"><span class="bll-tr-l">سال</span><span class="bll-tr-v">@(t.Year?.ToString() ?? "—")</span></div>
+                                        <div class="bll-tr"><span class="bll-tr-l">نرخ پایه</span><span class="bll-tr-v">@P(GetDerivedBaseRate(t), "N0") ریال</span></div>
+                                    }
+                                    else
+                                    {
+                                        <div class="bll-tr"><span class="bll-tr-l">کم‌باری</span><span class="bll-tr-v">@P(t.OffPeakRate, "N0")</span>@if(!string.IsNullOrEmpty(t.SummerOffPeakStart)){<span class="bll-tr-tm">@t.SummerOffPeakStart-@t.SummerOffPeakEnd</span>}</div>
+                                        <div class="bll-tr"><span class="bll-tr-l">میان‌باری</span><span class="bll-tr-v">@P(t.MidPeakRate, "N0")</span>@if(!string.IsNullOrEmpty(t.SummerMidPeakStart)){<span class="bll-tr-tm">@t.SummerMidPeakStart-@t.SummerMidPeakEnd</span>}</div>
+                                        <div class="bll-tr"><span class="bll-tr-l">اوج‌باری</span><span class="bll-tr-v">@P(t.PeakRate, "N0")</span>@if(!string.IsNullOrEmpty(t.SummerPeakStart)){<span class="bll-tr-tm">@t.SummerPeakStart-@t.SummerPeakEnd</span>}</div>
+                                    }
                                 </div>
                                 <div class="bll-card-meta">
-                                    <span>@(t.RateDerivationMode == "ECA" ? "خودکار" : "ثابت")</span>
+                                    <span>@(t.RateDerivationMode == "Automatic" ? "خودکار" : "ثابت")</span>
                                     <span>|</span>
                                     <span>آبونمان: @P(t.MonthlyFixedFee, "N0")</span>
                                     @if (t.ReactivePenaltyThreshold > 0) { <span>| PF &lt; @t.ReactivePenaltyThreshold</span> }
@@ -513,7 +522,7 @@
                     <div class="bll-fg"><label class="bll-fl">وضعیت</label><select class="bll-fi" @bind="_form.IsActive"><option value="@true">فعال</option><option value="@false">غیرفعال</option></select></div>
                     <div class="bll-fg"><label class="bll-fl">توضیحات</label><input class="bll-fi" @bind="_form.Description" /></div>
                     <div class="bll-fg"><label class="bll-fl">روش محاسبه</label><select class="bll-fi" @bind="_form.RateDerivationMode"><option value="Manual">دستی (ثابت)</option><option value="Automatic">خودکار (ECA)</option></select></div>
-                    @if (_form.RateDerivationMode == "ECA")
+                    @if (_form.RateDerivationMode == "Automatic")
                     {
                         <div class="bll-fg"><label class="bll-fl">نوع مصرف‌کننده</label><select class="bll-fi" @bind="_form.ConsumerTypeCode"><option value="">انتخاب کنید</option>@foreach (var ct in _consumerTypes) { <option value="@ct.Code">@ct.Name</option> }</select></div>
                         <div class="bll-fg"><label class="bll-fl">سال</label><select class="bll-fi" @bind="_form.Year"><option value="">انتخاب کنید</option>@foreach (var yr in _yearlyRates) { <option value="@yr.Year">@yr.Year</option> }</select></div>
@@ -871,6 +880,17 @@
     private async Task SaveBillingModelTiers()
     {
         _bmMessage = null;
+        _bmMessageOk = false;
+
+        // Frontend validation
+        var errors = ValidateBillingModelTiers();
+        if (errors.Count > 0)
+        {
+            _bmMessage = string.Join(" | ", errors);
+            _bmSaving = false;
+            return;
+        }
+
         _bmSaving = true;
         try
         {
@@ -892,6 +912,26 @@
         }
         catch (Exception ex) { _bmMessage = $"خطا: {ex.Message}"; _bmMessageOk = false; }
         _bmSaving = false;
+    }
+
+    private List<string> ValidateBillingModelTiers()
+    {
+        var errs = new List<string>();
+        if (_bmTiers.Count == 0) { errs.Add("حداقل یک پله باید تعریف شود."); return errs; }
+
+        var sorted = _bmTiers.OrderBy(t => t.SortOrder).ToList();
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            var t = sorted[i];
+            if (t.TierFrom < 0) errs.Add($"پله {i + 1}: «از» نمی‌تواند منفی باشد.");
+            if (t.TierTo < 0) errs.Add($"پله {i + 1}: «تا» نمی‌تواند منفی باشد.");
+            if (t.TierTo > 0 && t.TierTo <= t.TierFrom) errs.Add($"پله {i + 1}: «تا» ({t.TierTo}) باید بزرگ‌تر از «از» ({t.TierFrom}) باشد.");
+            if (t.Coefficient < 0) errs.Add($"پله {i + 1}: ضریب نمی‌تواند منفی باشد.");
+            if (t.RatePerKwh < 0) errs.Add($"پله {i + 1}: نرخ نمی‌تواند منفی باشد.");
+            if (i > 0 && t.TierFrom < sorted[i - 1].TierTo)
+                errs.Add($"تداخل پله {i} و {i + 1}: پله {i} تا {sorted[i - 1].TierTo} تعریف شده ولی پله {i + 1} از {t.TierFrom} شروع می‌شود.");
+        }
+        return errs;
     }
 
     private async Task Calculate()
@@ -973,9 +1013,19 @@
         catch (Exception ex) { _billResult = $"خطا: {ex.Message}"; }
     }
 
+    private decimal GetDerivedBaseRate(TariffItem t)
+    {
+        var rate = _yearlyRates.FirstOrDefault(r => t.Year.HasValue && r.Year == t.Year.Value)
+                   ?? _yearlyRates.OrderByDescending(r => r.Year).FirstOrDefault();
+        if (rate is null) return 0;
+        var ct = _consumerTypes.FirstOrDefault(c => c.Code == t.ConsumerTypeCode);
+        var coeff = ct?.EcaCoefficient ?? 1m;
+        return rate.BaseRatePerKwh * coeff;
+    }
+
     private string GetBaseRateDisplay()
     {
-        if (_form.RateDerivationMode != "ECA" || string.IsNullOrEmpty(_form.ConsumerTypeCode) || !_form.Year.HasValue) return "—";
+        if (_form.RateDerivationMode != "Automatic" || string.IsNullOrEmpty(_form.ConsumerTypeCode) || !_form.Year.HasValue) return "—";
         var rate = _yearlyRates.FirstOrDefault(r => r.Year == _form.Year.Value)
                    ?? _yearlyRates.OrderByDescending(r => r.Year).FirstOrDefault(r => r.Year <= GetCurrentPersianYear());
         return rate != null ? $"{rate.BaseRatePerKwh:N0} ریال ({rate.Year})" : "—";
