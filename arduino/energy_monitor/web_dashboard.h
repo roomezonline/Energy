@@ -283,34 +283,40 @@ c += ".temp-bar.alert b{color:#b71c1c}";
     }
 
     // === JSON serializer ===
+    // Never emit NaN/Infinity — invalid JSON that breaks browser JSON.parse
+    static String _num(float v, int dec) {
+        if (isnan(v) || isinf(v)) return "0";
+        return String(v, dec);
+    }
+
     static String dataToJson(const EnergyData& d, bool serverReachable = false, const String& alarmsJson = "", int phaseCount = 3) {
         String j = "{";
         j += "\n\"t\":\"" + d.timestamp + "\"";
         String escape = d.deviceId;
         escape.replace("\"", "\\\"");
         j += "\n,\"d\":\"" + escape + "\"";
-        j += "\n,\"f\":" + String(d.frequency, 2);
-        j += "\n,\"tmp\":" + String(d.temperature, 1);
+        j += "\n,\"f\":" + _num(d.frequency, 2);
+        j += "\n,\"tmp\":" + _num(d.temperature, 1);
         j += "\n,\"pc\":" + String(phaseCount);
 
         auto addPhase = [&](const String& n, const PhaseData& p) {
             float s = p.voltage * p.current;
             float reactive = sqrt(max(0.0f, s * s - p.power * p.power));
             j += "\n,\"" + n + "\":[";
-            j += String(p.voltage, 2) + ",";
-            j += String(p.current, 2) + ",";
-            j += String(p.power, 2) + ",";
-            j += String(p.pf, 2) + ",";
-            j += String(p.energy, 2) + ",";
+            j += _num(p.voltage, 2) + ",";
+            j += _num(p.current, 2) + ",";
+            j += _num(p.power, 2) + ",";
+            j += _num(p.pf, 2) + ",";
+            j += _num(p.energy, 2) + ",";
             j += String(p.connected ? 1 : 0) + ",";
-            j += String(reactive, 2);
+            j += _num(reactive, 2);
             j += "\n]";
         };
         addPhase("a", d.phaseA);
         addPhase("b", d.phaseB);
         addPhase("c", d.phaseC);
 
-        j += "\n,\"ptp\":" + String(d.phaseA.power + d.phaseB.power + d.phaseC.power, 2);
+        j += "\n,\"ptp\":" + _num(d.phaseA.power + d.phaseB.power + d.phaseC.power, 2);
         j += "\n,\"sr\":" + String(serverReachable ? "true" : "false");
         // Persian time: server time preferred, RTC fallback
         String pt = g_persianTime;
@@ -437,13 +443,13 @@ c += ".temp-bar.alert b{color:#b71c1c}";
         // Check if we have phase data (any phase with voltage or connected)
         j += "\n\nvar hasData = d && d.a && (d.a[0]>0 || d.a[5]===1 || d.b[0]>0 || d.b[5]===1 || d.c[0]>0 || d.c[5]===1);";
         j += "\n\nif(!hasData){";
-        j += "\n\ns.className='mon-status off';st.textContent='No data yet';return";
+        j += "\n\ns.className='mon-status off';st.textContent='No data yet';";
         j += "\n\n}";
 
         // Update each phase independently
         j += "\n\nvar phs=['a','b','c'];var cols=['A','B','C'];var names=['A','B','C'];";
         j += "\n\nfor(var i=0;i<3;i++){var p=phs[i];var c=cols[i];var n=names[i];";
-        j += "\n\nif(!d[p]||d[p].length<6)continue;";
+        j += "\n\nif(!d[p]||d[p].length<7)continue;";
         j += "\n\nvar connected=d[p][5]===undefined||d[p][5]==1;";
         j += "\n\nvar card=document.querySelector('.mcard-'+p);";
         j += "\n\nif(!connected){";
@@ -499,11 +505,13 @@ c += ".temp-bar.alert b{color:#b71c1c}";
         j += "\n\nif(d.tv===false){tv.style.display='';tv.textContent='⚠ Time not synced';tv.style.color='#ff9500'}";
         j += "\n\nelse{tv.style.display='none'}";
 
-        // Server reachability status
+        // Server reachability status (combined with sensor-data status)
         j += "\n\nif(d.sr){";
-        j += "\n\ns.className='mon-status';st.textContent='✅ Server Online';";
+        j += "\n\ns.className=hasData?'mon-status':'mon-status off';";
+        j += "\n\nst.textContent=hasData?'✅ Server Online':'⚠ No PZEM data — check sensor connections';";
         j += "\n\n}else{";
-        j += "\n\ns.className='mon-status off';st.textContent='❌ CONNECTION ERROR — local data only';";
+        j += "\n\ns.className='mon-status off';";
+        j += "\n\nst.textContent=hasData?'❌ CONNECTION ERROR — local data only':'❌ No sensor data + server offline';";
         j += "\n\n}";
 
         // Update alarms

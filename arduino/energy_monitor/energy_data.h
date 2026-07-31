@@ -3,6 +3,12 @@
 
 #include <Arduino.h>
 
+// Never emit NaN/Infinity — invalid JSON for the server ingestion API
+static inline String _safeNum(float v, int dec) {
+    if (isnan(v) || isinf(v)) return "0";
+    return String(v, dec);
+}
+
 struct PhaseData {
     float voltage = 0;
     float current = 0;
@@ -54,26 +60,26 @@ struct EnergyData {
         j += timestamp;
         j += "\"";
         j += ",\"frequency\":";
-        j += String(frequency, 2);
+        j += _safeNum(frequency, 2);
         j += ",\"temp\":";
-        j += isnan(temperature) ? String("-127") : String(temperature, 1);
+        j += _safeNum(temperature, 1);
 
         auto addPhase = [&](const String& name, const PhaseData& p) {
             j += ",\"";
             j += name;
             j += "\":{";
             j += "\"voltage\":";
-            j += String(p.voltage, 2);
+            j += _safeNum(p.voltage, 2);
             j += ",\"current\":";
-            j += String(p.current, 2);
+            j += _safeNum(p.current, 2);
             j += ",\"power\":";
-            j += String(p.power, 2);
+            j += _safeNum(p.power, 2);
             j += ",\"pf\":";
-            j += String(p.pf, 2);
+            j += _safeNum(p.pf, 2);
             j += ",\"energy\":";
-            j += String(p.energy, 3);
+            j += _safeNum(p.energy, 3);
             j += ",\"delta\":";
-            j += String(p.delta, 4);
+            j += _safeNum(p.delta, 4);
             j += ",\"connected\":";
             j += String(p.connected ? "true" : "false");
             j += "}";

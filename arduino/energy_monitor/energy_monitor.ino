@@ -1,20 +1,4 @@
-// ============================================================
-//  Energy Monitor — ESP32 Client
-// ============================================================
-//  File structure:
-//    global.h              — Global settings
-//    energy_data.h         — Phase data structure + JSON
-//    phase_a.h             — PZEM Phase A (Serial1: GPIO23/22)
-//    phase_b.h             — PZEM Phase B (Serial2: GPIO16/17)
-//    phase_c.h             — PZEM Phase C (UART0: GPIO26/27)
-//    phase_combiner.h      — Three-phase collection (round-robin) + timestamp
-//    config_manager.h      — Receive and apply config from server
-//    wifi_config_manager.h — WiFi + Captive Portal
-//    http_client.h         — HTTP posting to server
-//    alarm_manager.h       — Local alarm detection and storage
-//    outage_buffer.h       — NVS-backed outage data accumulator
-//    ota_updater.h         — OTA firmware update (24h auto-check + manual trigger)
-// ============================================================
+
 
 #include "global.h"
 #include <Preferences.h>
@@ -45,6 +29,7 @@ RtcManager        rtcManager;
 EnergyData        _liveData;
 unsigned long     lastPublish = 0;
 unsigned long     lastRead = 0;
+unsigned long     lastDisplay = 0;
 bool              _wifiWasConnected = false;
 bool              _lastOverheat = false;
 bool              _lastHttpOk = false;
@@ -77,10 +62,7 @@ String loadDeviceIdFromNvs() {
     return id;
 }
 
-// Pin 4 = temperature alert output (HIGH when temp > threshold, LOW otherwise)
-// Alarm indication is now handled by RGB LED
 
-// ================ RGB LED Controller ================
 static unsigned long _rgbBootUntil = 0;
 static unsigned long _rgbLastToggle = 0;
 static int _rgbCycleStep = 0;
@@ -106,7 +88,7 @@ static void _rgbLoop() {
         _rgbBootUntil = 0;
     }
 
-    // Priority 1: OTA update (cycling R→G→B)
+    
     if (otaUpdater.isUpdateInProgress()) {
         if (now - _rgbLastToggle > 400) {
             _rgbLastToggle = now;
@@ -116,54 +98,54 @@ static void _rgbLoop() {
         return;
     }
 
-    // Priority 2: Critical alarm (red blink 300ms)
+   
     if (alarmManager.hasDisconnectAlarms() || alarmManager.hasCriticalAlarms()) {
         if (now - _rgbLastToggle > 300) { _rgbLastToggle = now; _rgbOn = !_rgbOn; }
         _rgbSet(_rgbOn ? 1 : 0, 0, 0);
         return;
     }
 
-    // Priority 3: Warning alarms — orange blink 1s
+    
     if (alarmManager.hasWarningAlarms()) {
         if (now - _rgbLastToggle > 1000) { _rgbLastToggle = now; _rgbOn = !_rgbOn; }
         _rgbSet(_rgbOn ? 1 : 0, _rgbOn ? 1 : 0, 0);
         return;
     }
 
-    // Priority 4: Blue blink after HTTP response (200ms)
+  
     if (_blueBlinkUntil > 0) {
         if (now < _blueBlinkUntil) { _rgbSet(0, 0, 1); return; }
         _blueBlinkUntil = 0;
     }
 
-    // Priority 5: RTC not synced — slow white blink 2s
+   
     if (!energyTracker.hasValidTime()) {
         if (now - _rgbLastToggle > 2000) { _rgbLastToggle = now; _rgbOn = !_rgbOn; }
         _rgbSet(_rgbOn ? 1 : 0, _rgbOn ? 1 : 0, _rgbOn ? 1 : 0);
         return;
     }
 
-    // Priority 6: HTTP last failed — solid red (until next success)
+ 
     if (!_lastHttpOk) {
         _rgbSet(1, 0, 0);
         return;
     }
 
-    // Priority 7: WiFi connecting — blue blink 500ms
+   
     if (WiFi.status() == WL_DISCONNECTED) {
         if (now - _rgbLastToggle > 500) { _rgbLastToggle = now; _rgbOn = !_rgbOn; }
         _rgbSet(0, 0, _rgbOn ? 1 : 0);
         return;
     }
 
-    // Priority 8: WiFi disconnected/idle — yellow blink 1s
+   
     if (!wifiManager.isConnected()) {
         if (now - _rgbLastToggle > 1000) { _rgbLastToggle = now; _rgbOn = !_rgbOn; }
         _rgbSet(_rgbOn ? 1 : 0, _rgbOn ? 1 : 0, 0);
         return;
     }
 
-    // Priority 9: Normal — green solid
+   
     _rgbSet(0, 1, 0);
 }
 
@@ -181,6 +163,7 @@ void setup() {
     pinMode(RGB_R, OUTPUT);
     pinMode(RGB_G, OUTPUT);
     pinMode(RGB_B, OUTPUT);
+    pinMode(DISPLAY_WAKE_PIN, INPUT_PULLDOWN);
 
     configManager.begin();
     configManager.loadCalibration();
@@ -208,11 +191,22 @@ void setup() {
     configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, "");
     otaUpdater.begin();
     oledDisplay.begin();
+    otaUpdater.setDisplay(&oledDisplay);
+
+    // Boot sequence: web address → device ID → WiFi search
+    String webHost = API_BASE_URL;
+    webHost.replace("https://", "");
+    webHost.replace("http://", "");
+    oledDisplay.showBootWeb(webHost);
+    delay(2500);
+    oledDisplay.showBootDeviceId(g_deviceId);
+    delay(2500);
+
     combiner.setDeviceId(g_deviceId);
 
     httpClient.setLoopCallback([] { wifiManager.loop(); });
 
-    // ===== Step 1: WiFi search (AP+STA active, no captive portal yet) =====
+    
     wifiManager.begin();           // AP+STA + start trying saved networks
     wifiManager.setLiveDataRef(&_liveData);
 
@@ -252,7 +246,7 @@ void setup() {
         delay(50);
     }
 
-    // ===== Step 2: Post-WiFi actions =====
+   
     if (wifiConnected) {
         LOGF("[MAIN] Connected to %s (%s)\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
         _wifiWasConnected = true;
@@ -263,7 +257,17 @@ void setup() {
         wifiManager.startCaptivePortal();
 
         LOGF("[MAIN] === OTA Check ===\n");
-        otaUpdater.forceCheckNow();
+        // Show the update-check splash before the (blocking) OTA check
+        oledDisplay.showBootUpdateCheck();
+        delay(1500);
+        if (otaUpdater.checkForUpdates()) {
+            LOGF("[MAIN] Update available — starting OTA\n");
+            otaUpdater.performUpdate();   // displays "Update available" + versions + progress
+        } else {
+            LOGF("[MAIN] No update — showing current version\n");
+            oledDisplay.showBootUpToDate(CURRENT_VERSION);
+            delay(4000);
+        }
 
         if (rtcManager.needsSync()) {
             LOGF("[MAIN] === RTC NTP Fallback ===\n");
@@ -303,6 +307,17 @@ void loop() {
 
     unsigned long now = millis();
 
+    // OLED refresh at fast cadence (slides + standby eyes animation)
+    if (now - lastDisplay >= DISPLAY_REFRESH_MS) {
+        lastDisplay = now;
+        oledDisplay.loop(_liveData, _lastHttpOk);
+    }
+
+    // Wake display from standby when pin 25 goes HIGH
+    if (digitalRead(DISPLAY_WAKE_PIN) == HIGH) {
+        oledDisplay.wake();
+    }
+
     if (now - lastRead >= 1000) {
         lastRead = now;
 
@@ -315,9 +330,7 @@ void loop() {
         _liveData = combiner.readOne();
         _liveData.temperature = savedTemp;
 
-        // Pin 4 = temperature alert with 2°C hysteresis
-        // Turn ON  when temp > threshold
-        // Turn OFF when temp < (threshold - 2)
+     
         float thresh = configManager.getTemperatureThreshold();
         if (savedTemp > thresh) {
             if (!_lastOverheat) { _lastOverheat = true; digitalWrite(ALARM_LED, HIGH); }
@@ -330,11 +343,9 @@ void loop() {
         energyTracker.update(0, _liveData.phaseA.energy);
         energyTracker.update(1, _liveData.phaseB.energy);
         energyTracker.update(2, _liveData.phaseC.energy);
-
-        oledDisplay.loop(_liveData, _lastHttpOk);
     }
 
-    // WiFi handling — async, handled by wifiManager internally
+    
     if (!wifiManager.isConnected()) {
         _lastHttpOk = false;
         return;
